@@ -1,0 +1,37 @@
+name: Protect Main Branch
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  alert-direct-push:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Send Slack alert
+        env:
+          SLACK_WEBHOOK: ${{ secrets.SLACK_ALERTS_WEBHOOK }}
+          GH_REPO: ${{ github.repository }}
+          GH_SHA: ${{ github.sha }}
+          GH_ACTOR: ${{ github.actor }}
+          GH_MESSAGE: ${{ github.event.head_commit.message }}
+        run: |
+          python3 << 'PYEOF'
+          import urllib.request, json, os
+          msg = (
+              "\U0001F6A8 *Direct push to main detected*\n"
+              "Repo: `" + os.environ["GH_REPO"] + "`\n"
+              "Commit: `" + os.environ["GH_SHA"] + "`\n"
+              "Pushed by: `" + os.environ["GH_ACTOR"] + "`\n"
+              "Message: `" + os.environ["GH_MESSAGE"] + "`\n"
+              "This bypassed the PR review process. Investigate immediately."
+          )
+          payload = json.dumps({"text": msg}).encode("utf-8")
+          req = urllib.request.Request(
+              os.environ["SLACK_WEBHOOK"],
+              data=payload,
+              headers={"Content-Type": "application/json"}
+          )
+          urllib.request.urlopen(req)
+          PYEOF
