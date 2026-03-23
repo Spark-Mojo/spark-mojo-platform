@@ -25,16 +25,29 @@ async function frappeRequest(path, options = {}) {
   return response.json();
 }
 
+// Dev fallback user when Frappe auth is not available
+const DEV_USER = {
+  email: 'dev@willow.com',
+  full_name: 'Dev User',
+  roles: ['Front Desk'],
+};
+
 export class FrappeAuth {
   async me() {
-    const { message: email } = await frappeRequest('/api/method/frappe.auth.get_logged_user');
-    // Fetch full user profile through the abstraction layer — never call Frappe directly
-    const { data } = await frappeRequest('/api/modules/desktop/me');
-    return {
-      email: data.email || email,
-      full_name: data.full_name,
-      roles: data.roles || [],
-    };
+    try {
+      const { data } = await frappeRequest('/api/modules/desktop/me');
+      return {
+        email: data.email,
+        full_name: data.full_name,
+        roles: data.roles || [],
+      };
+    } catch {
+      // In development, return mock user so desktop renders
+      if (import.meta.env.VITE_ENVIRONMENT === 'development') {
+        return DEV_USER;
+      }
+      throw new Error('Not authenticated');
+    }
   }
 
   async login(email, password) {

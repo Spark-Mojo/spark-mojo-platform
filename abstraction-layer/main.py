@@ -7,6 +7,9 @@ NEVER calls Frappe directly — it always calls this layer (DECISION-003).
 """
 
 import os
+from dotenv import load_dotenv
+load_dotenv()
+
 from fastapi import FastAPI, Request, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
@@ -14,6 +17,7 @@ from contextlib import asynccontextmanager
 from auth import validate_frappe_session, get_current_user
 from registry import ConnectorRegistry
 from connectors import frappe_native, simplepractice, valant, plane
+from routes.onboarding import router as onboarding_router
 
 
 @asynccontextmanager
@@ -37,6 +41,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Dedicated capability routers (registered before generic catch-all)
+app.include_router(onboarding_router)
 
 
 # ---------------------------------------------------------------------------
@@ -71,14 +78,15 @@ async def tenant_public_config(request: Request):
     Unauthenticated — used by the login screen to show tenant logo/colors.
     Reads from SM Tenant Config based on subdomain or VITE_TENANT_SUBDOMAIN.
     """
-    # TODO: Read SM Tenant Config from Frappe based on subdomain header
+    # POC: Hardcoded Willow Center config
     return {
         "data": {
-            "tenant_name": os.getenv("VITE_APP_NAME", "Spark Mojo"),
+            "tenant_name": "Willow Center",
             "primary_color": "#006666",
             "accent_color": "#FF6F61",
-            "logo_url": None,
+            "background_type": "color",
             "background_color": "#1e293b",
+            "logo_url": None,
             "powered_by_visible": True,
         }
     }
@@ -92,10 +100,19 @@ async def tenant_public_config(request: Request):
 async def desktop_mojos(user: dict = Depends(get_current_user)):
     """
     Returns the Mojo registry for the current user.
-    Filters SM Mojo Definition records by user roles and tenant module config.
+    For POC: hardcoded Onboarding Mojo definition.
     """
-    # TODO: Query SM Mojo Definition filtered by user roles + SM Connector Config
-    return {"data": []}
+    return {"data": [
+        {
+            "id": "onboarding",
+            "title": "Onboarding",
+            "icon": "UserCheck",
+            "color": "from-teal-500/20 to-teal-600/20",
+            "component": "OnboardingMojo",
+            "defaultWidth": 900,
+            "defaultHeight": 600,
+        }
+    ]}
 
 
 @app.get("/api/modules/desktop/me")

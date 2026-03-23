@@ -1,8 +1,9 @@
-import React, { useState, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { motion } from 'framer-motion';
-import { 
-  Clock, Cloud, StickyNote, Calculator, Calendar, 
-  CheckSquare, Timer, Quote, Music, Plus, FolderPlus, Globe, PlusCircle 
+import {
+  Clock, Cloud, StickyNote, Calculator, Calendar,
+  CheckSquare, Timer, Quote, Music, Plus, FolderPlus, Globe, PlusCircle,
+  UserCheck, Loader2,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -21,8 +22,22 @@ import QuoteWidget from '@/components/widgets/QuoteWidget';
 import MusicWidget from '@/components/widgets/MusicWidget';
 import IframeWidget from '@/components/widgets/IframeWidget';
 import IframeCreatorWidget from '@/components/widgets/IframeCreatorWidget';
+import OnboardingMojo from './OnboardingMojo';
 
-const WIDGET_CONFIGS = [
+// Icon lookup map for dynamic Mojo registration
+const ICON_MAP = {
+  UserCheck, Clock, Cloud, StickyNote, Calculator, Calendar,
+  CheckSquare, Timer, Quote, Music, Globe, PlusCircle,
+};
+
+// Component lookup map for dynamic Mojo registration
+const MOJO_COMPONENT_MAP = {
+  OnboardingMojo,
+  // Future mojos registered here
+};
+
+// Built-in utility widgets (always available)
+const UTILITY_WIDGETS = [
   { id: 'clock', title: 'Clock', icon: Clock, color: 'from-slate-500/20 to-slate-600/20', component: ClockWidget },
   { id: 'weather', title: 'Weather', icon: Cloud, color: 'from-sky-500/20 to-cyan-500/20', component: WeatherWidget },
   { id: 'notes', title: 'Notes', icon: StickyNote, color: 'from-amber-500/20 to-orange-500/20', component: NotesWidget },
@@ -36,20 +51,68 @@ const WIDGET_CONFIGS = [
   { id: 'iframe-creator', title: 'Add Website', icon: PlusCircle, color: 'from-cyan-500/20 to-blue-500/20', component: IframeCreatorWidget, isCreator: true },
 ];
 
+// Fallback Mojo config if API fetch fails
+const FALLBACK_MOJOS = [
+  {
+    id: 'onboarding',
+    title: 'Onboarding',
+    icon: UserCheck,
+    color: 'from-teal-500/20 to-teal-600/20',
+    component: OnboardingMojo,
+    defaultWidth: 900,
+    defaultHeight: 600,
+  },
+];
+
 export default function Desktop() {
-  const [widgets, setWidgets] = useState(
-    WIDGET_CONFIGS.map((config, i) => ({
-      ...config,
-      isMinimized: false,
-      isMaximized: false,
-      position: { 
-        x: 50 + (i % 4) * 320, 
-        y: 50 + Math.floor(i / 4) * 280 
-      },
-      size: { width: 300, height: 250 },
-      folderId: null,
-    }))
-  );
+  const [mojosLoaded, setMojosLoaded] = useState(false);
+  const [mojoConfigs, setMojoConfigs] = useState([]);
+
+  // Fetch Mojos from abstraction layer on mount
+  useEffect(() => {
+    const API_URL = import.meta.env.VITE_FRAPPE_URL || 'http://localhost:8000';
+    fetch(`${API_URL}/api/modules/desktop/mojos`, { credentials: 'include' })
+      .then(r => r.json())
+      .then(json => {
+        const mojos = (json.data || []).map(m => ({
+          id: m.id,
+          title: m.title,
+          icon: ICON_MAP[m.icon] || UserCheck,
+          color: m.color || 'from-teal-500/20 to-teal-600/20',
+          component: MOJO_COMPONENT_MAP[m.component],
+          defaultWidth: m.defaultWidth || 800,
+          defaultHeight: m.defaultHeight || 600,
+        })).filter(m => m.component);
+        setMojoConfigs(mojos.length > 0 ? mojos : FALLBACK_MOJOS);
+      })
+      .catch(() => setMojoConfigs(FALLBACK_MOJOS))
+      .finally(() => setMojosLoaded(true));
+  }, []);
+
+  const WIDGET_CONFIGS = [...mojoConfigs, ...UTILITY_WIDGETS];
+
+  const [widgets, setWidgets] = useState([]);
+
+  // Initialize widgets once mojos are loaded
+  useEffect(() => {
+    if (!mojosLoaded) return;
+    setWidgets(
+      WIDGET_CONFIGS.map((config, i) => ({
+        ...config,
+        isMinimized: i >= mojoConfigs.length, // Utility widgets start minimized
+        isMaximized: false,
+        position: {
+          x: i < mojoConfigs.length ? 50 + i * 50 : 50 + ((i - mojoConfigs.length) % 4) * 320,
+          y: i < mojoConfigs.length ? 50 + i * 50 : 50 + Math.floor((i - mojoConfigs.length) / 4) * 280,
+        },
+        size: {
+          width: config.defaultWidth || 300,
+          height: config.defaultHeight || 250,
+        },
+        folderId: null,
+      }))
+    );
+  }, [mojosLoaded, mojoConfigs.length]);
 
   const [folders, setFolders] = useState([
     { id: 'folder-1', name: 'Productivity', position: { x: 50, y: 50 }, isOpen: false },
