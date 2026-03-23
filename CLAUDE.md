@@ -130,6 +130,8 @@ For Willow Center specifically: the onboarding tracker Google Sheet is
 the reference spec. See WILLOW_FIELD_MAPPING.md for the exact column
 mapping from Erin's actual spreadsheet.
 
+See also: FRONTEND_PRD.md Section 1.3.1 for the full philosophy statement.
+
 ---
 
 ## Frappe Enforcement Checklist
@@ -178,6 +180,9 @@ Building the Willow Center Onboarding POC on the existing VPS
 with anonymized data. No real PHI until Digital Ocean HIPAA VPS
 is provisioned.
 
+**Reference WILLOW_FIELD_MAPPING.md before building the Onboarding
+Mojo — it documents exact field mappings from Erin's actual spreadsheet.**
+
 Key reference files:
 - `platform/architecture/WILLOW_FIELD_MAPPING.md` — exact field mapping
   from Erin's actual spreadsheet (analysis of anonymized data)
@@ -200,7 +205,7 @@ SSH: `ssh sparkmojo`, then use Docker commands from FRAPPE_POC_NOTES.md.
 - Do NOT hardcode tenant colors — CSS variables only
 - Do NOT modify Desktop.jsx structure
 - Do NOT create signUp() — user creation is admin-only
-- Do NOT redesign a client's workflow — replicate and elevate
+- Do NOT redesign a client's workflow — replicate their mental model and add automation on top. The client's vocabulary, status names, and process steps are the spec. See FRONTEND_PRD.md Section 1.3.1 and sparkmojo-internal/platform/architecture/WILLOW_FIELD_MAPPING.md.
 - Do NOT write import statements in Server Scripts — they will fail silently
 
 ---
