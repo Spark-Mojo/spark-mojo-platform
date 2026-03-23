@@ -289,3 +289,228 @@ async def onboarding_outreach_log(
         updated = update_resp.json().get("data", {})
 
     return {"data": updated}
+
+
+# ─── Default checklist items for new clients ───
+DEFAULT_CHECKLIST = [
+    {"item_name": "Collect Paperwork", "category": "Paperwork", "is_required": 1, "is_complete": 0, "applies_to_self_pay_only": 0},
+    {"item_name": "Insurance Card Uploaded", "category": "Insurance", "is_required": 1, "is_complete": 0, "applies_to_self_pay_only": 0},
+    {"item_name": "Verify Primary Insurance", "category": "Insurance", "is_required": 1, "is_complete": 0, "applies_to_self_pay_only": 0},
+    {"item_name": "Enter Insurance in SimplePractice", "category": "Administrative", "is_required": 1, "is_complete": 0, "applies_to_self_pay_only": 0},
+    {"item_name": "SP Note Added", "category": "Administrative", "is_required": 1, "is_complete": 0, "applies_to_self_pay_only": 0},
+    {"item_name": "Confirm First Appointment", "category": "Administrative", "is_required": 1, "is_complete": 0, "applies_to_self_pay_only": 0},
+    {"item_name": "Send Welcome Email", "category": "Administrative", "is_required": 0, "is_complete": 0, "applies_to_self_pay_only": 0},
+    {"item_name": "GFE Sent", "category": "Administrative", "is_required": 0, "is_complete": 0, "applies_to_self_pay_only": 1},
+    {"item_name": "Custody Agreement Collected", "category": "Paperwork", "is_required": 0, "is_complete": 0, "applies_to_self_pay_only": 0},
+]
+
+
+@router.post("/create")
+async def onboarding_create(
+    request: Request,
+    user: dict = Depends(get_current_user),
+):
+    """Create a new SM Client with default onboarding checklist."""
+    body = await request.json()
+
+    client_name = body.get("client_name", "").strip()
+    clinician = body.get("clinician", "").strip()
+    first_appointment_date = body.get("first_appointment_date")
+
+    if not client_name or not clinician or not first_appointment_date:
+        raise HTTPException(status_code=400, detail="client_name, clinician, and first_appointment_date are required")
+
+    client_data = {
+        "client_name": client_name,
+        "assigned_clinician": clinician,
+        "first_appointment_date": first_appointment_date,
+        "date_added": datetime.now().strftime("%Y-%m-%d"),
+        "onboarding_status": "New",
+        "insurance_primary": body.get("insurance_primary", ""),
+        "insurance_secondary": body.get("insurance_secondary", ""),
+        "self_pay": 1 if body.get("self_pay") else 0,
+        "gfe_sent": 1 if body.get("gfe_sent") else 0,
+        "custody_agreement_required": 1 if body.get("custody_agreement_required") else 0,
+        "assigned_staff": body.get("staff_initials", ""),
+        "notes": body.get("notes", ""),
+        "onboarding_checklist": DEFAULT_CHECKLIST,
+    }
+
+    async with httpx.AsyncClient(base_url=FRAPPE_URL, headers=_headers()) as client:
+        resp = await client.post(
+            "/api/resource/SM Client",
+            json=client_data,
+            timeout=15,
+        )
+        if resp.status_code == 409:
+            raise HTTPException(status_code=409, detail="A client with this name already exists")
+        resp.raise_for_status()
+        record = resp.json().get("data", {})
+
+    record = _enrich_client(record)
+    return {"data": record}
+
+
+@router.post("/archive/{client_name}")
+async def onboarding_archive(
+    client_name: str,
+    request: Request,
+    user: dict = Depends(get_current_user),
+):
+    """Archive/cancel a client with a reason."""
+    body = await request.json()
+    reason = body.get("reason", "")
+    notes = body.get("notes", "")
+
+    if not reason:
+        raise HTTPException(status_code=400, detail="reason is required")
+
+    update_data = {
+        "onboarding_status": "Cancelled",
+        "archive_reason": reason,
+        "archived_date": datetime.now().strftime("%Y-%m-%d"),
+        "archived_notes": notes,
+    }
+
+    async with httpx.AsyncClient(base_url=FRAPPE_URL, headers=_headers()) as client:
+        resp = await client.put(
+            f"/api/resource/SM Client/{client_name}",
+            json=update_data,
+            timeout=15,
+        )
+        if resp.status_code == 404:
+            raise HTTPException(status_code=404, detail="Client not found")
+        resp.raise_for_status()
+        record = resp.json().get("data", {})
+
+    record = _enrich_client(record)
+    return {"data": record}
+
+
+@router.post("/reactivate/{client_name}")
+async def onboarding_reactivate(
+    client_name: str,
+    request: Request,
+    user: dict = Depends(get_current_user),
+):
+    """Reactivate a cancelled client."""
+    body = await request.json()
+    first_appointment_date = body.get("first_appointment_date")
+
+    if not first_appointment_date:
+        raise HTTPException(status_code=400, detail="first_appointment_date is required")
+
+    update_data = {
+        "onboarding_status": "New",
+        "first_appointment_date": first_appointment_date,
+        "archive_reason": "",
+        "archived_date": None,
+        "archived_notes": "",
+    }
+
+    async with httpx.AsyncClient(base_url=FRAPPE_URL, headers=_headers()) as client:
+        resp = await client.put(
+            f"/api/resource/SM Client/{client_name}",
+            json=update_data,
+            timeout=15,
+        )
+        if resp.status_code == 404:
+            raise HTTPException(status_code=404, detail="Client not found")
+        resp.raise_for_status()
+        record = resp.json().get("data", {})
+
+    record = _enrich_client(record)
+    return {"data": record}
+
+
+@router.post("/complete/{client_name}")
+async def onboarding_complete(
+    client_name: str,
+    user: dict = Depends(get_current_user),
+):
+    """Mark a client as complete."""
+    update_data = {
+        "onboarding_status": "Ready",
+        "completed_date": datetime.now().strftime("%Y-%m-%d"),
+    }
+
+    async with httpx.AsyncClient(base_url=FRAPPE_URL, headers=_headers()) as client:
+        resp = await client.put(
+            f"/api/resource/SM Client/{client_name}",
+            json=update_data,
+            timeout=15,
+        )
+        if resp.status_code == 404:
+            raise HTTPException(status_code=404, detail="Client not found")
+        resp.raise_for_status()
+        record = resp.json().get("data", {})
+
+    record = _enrich_client(record)
+    return {"data": record}
+
+
+@router.get("/history")
+async def onboarding_history(
+    status_filter: Optional[str] = None,
+    year: Optional[int] = None,
+    clinician: Optional[str] = None,
+    search: Optional[str] = None,
+    page_length: int = 50,
+    page: int = 1,
+    user: dict = Depends(get_current_user),
+):
+    """List completed and cancelled clients for historical view."""
+    filters = []
+
+    if status_filter == "completed":
+        filters.append(["onboarding_status", "=", "Ready"])
+    elif status_filter == "cancelled":
+        filters.append(["onboarding_status", "=", "Cancelled"])
+    else:
+        filters.append(["onboarding_status", "in", ["Ready", "Cancelled"]])
+
+    if clinician:
+        filters.append(["assigned_clinician", "=", clinician])
+
+    fields = [
+        "name", "client_name", "date_added", "assigned_clinician",
+        "assigned_staff", "first_appointment_date", "onboarding_status",
+        "insurance_primary", "insurance_secondary", "self_pay",
+        "archive_reason", "archived_date", "archived_notes", "completed_date",
+    ]
+
+    limit_start = (page - 1) * page_length
+
+    params = {
+        "fields": json.dumps(fields),
+        "filters": json.dumps(filters),
+        "limit_start": limit_start,
+        "limit_page_length": page_length,
+        "order_by": "modified desc",
+    }
+
+    async with httpx.AsyncClient(base_url=FRAPPE_URL, headers=_headers()) as client:
+        resp = await client.get("/api/resource/SM Client", params=params, timeout=15)
+        resp.raise_for_status()
+        clients_list = resp.json().get("data", [])
+
+        if year:
+            year_str = str(year)
+            clients_list = [
+                c for c in clients_list
+                if (c.get("archived_date", "") or "").startswith(year_str)
+                or (c.get("completed_date", "") or "").startswith(year_str)
+                or (c.get("date_added", "") or "").startswith(year_str)
+            ]
+
+        if search:
+            search_lower = search.lower()
+            clients_list = [
+                c for c in clients_list
+                if search_lower in (c.get("client_name", "") or "").lower()
+                or search_lower in (c.get("assigned_clinician", "") or "").lower()
+            ]
+
+        enriched = [_enrich_client(c) for c in clients_list]
+
+    return {"data": enriched}

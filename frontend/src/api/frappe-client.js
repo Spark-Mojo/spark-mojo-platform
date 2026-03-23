@@ -50,7 +50,14 @@ export class FrappeAuth {
     }
   }
 
-  async login(email, password) {
+  async login() {
+    // Redirect to Google OAuth via Frappe Social Login
+    window.location.href =
+      `${FRAPPE_URL}/api/method/` +
+      `frappe.integrations.oauth2_logins.login_via_google`;
+  }
+
+  async loginWithPassword(email, password) {
     return frappeRequest('/api/method/login', {
       method: 'POST',
       body: JSON.stringify({ usr: email, pwd: password }),

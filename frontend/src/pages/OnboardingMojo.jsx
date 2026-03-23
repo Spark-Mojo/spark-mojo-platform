@@ -1,10 +1,11 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import {
   Search, X, UserCheck, Clock, Shield, CheckCircle2,
   AlertTriangle, ChevronRight, Phone, MessageSquare,
   FileText, Plus, Filter, RefreshCw, Loader2,
   CalendarDays, Building2, CreditCard, User,
-  Check, Circle,
+  Check, Circle, Archive, RotateCcw, ArrowUp, ArrowDown,
+  ArrowUpDown, History,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -16,7 +17,12 @@ async function api(path, options = {}) {
     headers: { 'Content-Type': 'application/json', ...options.headers },
     ...options,
   });
-  if (!resp.ok) throw new Error(`API error: ${resp.status}`);
+  if (!resp.ok) {
+    const text = await resp.text().catch(() => '');
+    let detail = `API error: ${resp.status}`;
+    try { detail = JSON.parse(text).detail || detail; } catch {}
+    throw new Error(detail);
+  }
   const json = await resp.json();
   return json.data;
 }
@@ -42,6 +48,51 @@ function StatusBadge({ status }) {
   );
 }
 
+// ─── Animated Progress Bar (Task 10) ───
+function AnimatedProgressBar({ pct, size = 'sm', animate = false, duration = 600 }) {
+  const [displayPct, setDisplayPct] = useState(animate ? 0 : pct);
+  const [displayNum, setDisplayNum] = useState(animate ? 0 : pct);
+  const prevPct = useRef(pct);
+  const rafRef = useRef(null);
+
+  useEffect(() => {
+    const from = animate && prevPct.current === pct ? 0 : prevPct.current;
+    const to = pct;
+    const dur = animate && prevPct.current === pct ? duration : 300;
+    prevPct.current = pct;
+
+    const start = performance.now();
+    const step = (now) => {
+      const elapsed = now - start;
+      const progress = Math.min(elapsed / dur, 1);
+      const eased = 1 - Math.pow(1 - progress, 3); // ease-out cubic
+      const current = from + (to - from) * eased;
+      setDisplayPct(current);
+      setDisplayNum(Math.round(current));
+      if (progress < 1) {
+        rafRef.current = requestAnimationFrame(step);
+      }
+    };
+    rafRef.current = requestAnimationFrame(step);
+    return () => { if (rafRef.current) cancelAnimationFrame(rafRef.current); };
+  }, [pct, animate, duration]);
+
+  const h = size === 'sm' ? 'h-1.5' : 'h-2';
+  return (
+    <div className="flex items-center gap-2 w-full">
+      <div className={cn('flex-1 bg-gray-200 rounded-full', h)}>
+        <div
+          className={cn('rounded-full', h,
+            displayPct >= 100 ? 'bg-emerald-500' : displayPct >= 50 ? 'bg-blue-500' : 'bg-amber-500'
+          )}
+          style={{ width: `${Math.min(displayPct, 100)}%` }}
+        />
+      </div>
+      {size === 'md' && <span className="text-sm font-medium w-10 text-right">{displayNum}%</span>}
+    </div>
+  );
+}
+
 function ProgressBar({ pct, size = 'sm' }) {
   const h = size === 'sm' ? 'h-1.5' : 'h-2';
   return (
@@ -58,6 +109,46 @@ function ProgressBar({ pct, size = 'sm' }) {
 
 function Skeleton({ className }) {
   return <div className={cn('animate-pulse bg-gray-200 rounded', className)} />;
+}
+
+// ─── Toast notification ───
+function Toast({ message, type = 'success', onDismiss }) {
+  useEffect(() => {
+    const t = setTimeout(onDismiss, 3000);
+    return () => clearTimeout(t);
+  }, [onDismiss]);
+
+  return (
+    <div className={cn(
+      'fixed bottom-4 right-4 z-[100] px-4 py-2.5 rounded-lg shadow-lg text-sm font-medium text-white transition-all',
+      type === 'success' ? 'bg-emerald-600' : type === 'error' ? 'bg-red-600' : 'bg-blue-600'
+    )}>
+      {message}
+    </div>
+  );
+}
+
+// ─── Appointment date formatting with color (Task 9) ───
+function AppointmentDate({ date, status }) {
+  if (!date) return <span className="text-gray-400">—</span>;
+
+  const apptDate = new Date(date);
+  const now = new Date();
+  const diffMs = apptDate - now;
+  const diffHours = diffMs / (1000 * 60 * 60);
+  const isActive = !['Ready', 'Cancelled'].includes(status);
+
+  let colorClass = 'text-slate-600';
+  if (isActive) {
+    if (diffHours <= 48) colorClass = 'text-red-500';
+    else if (diffHours <= 168) colorClass = 'text-amber-500'; // 7 days
+  }
+
+  return (
+    <span className={cn('font-mono text-xs', colorClass)}>
+      {apptDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}
+    </span>
+  );
 }
 
 // ─── KPI Card ───
@@ -81,7 +172,390 @@ function KpiCard({ label, value, icon: Icon, color, active, onClick }) {
   );
 }
 
-// ─── OUTREACH LOG MODAL ───
+// ─── Stage Indicator Dots (Task 8) ───
+function StageIndicator({ status }) {
+  const currentIdx = STAGE_ORDER.indexOf(status);
+  const allComplete = status === 'Ready';
+
+  return (
+    <div className="flex items-center gap-1.5 mt-3">
+      {STAGE_LABELS.map((label, i) => {
+        const isComplete = allComplete || i < currentIdx;
+        const isCurrent = !allComplete && i === currentIdx;
+        const isFuture = !allComplete && i > currentIdx;
+
+        return (
+          <React.Fragment key={label}>
+            {i > 0 && (
+              <div className={cn('flex-1 h-0.5 rounded-full',
+                isComplete || isCurrent ? 'bg-teal-400' : 'bg-gray-200'
+              )} />
+            )}
+            <div className="flex flex-col items-center gap-0.5">
+              <div className="relative">
+                <div className={cn(
+                  'w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold transition-all',
+                  isComplete ? 'bg-teal-500 text-white' :
+                  isCurrent ? 'bg-teal-500 text-white ring-4 ring-teal-200 animate-pulse' :
+                  'bg-gray-200 text-gray-400'
+                )}>
+                  {isComplete ? <Check className="w-3.5 h-3.5" /> : (i + 1)}
+                </div>
+              </div>
+              <span className={cn('text-[9px] font-medium whitespace-nowrap',
+                isComplete || isCurrent ? 'text-teal-700' : 'text-gray-400'
+              )}>{label}</span>
+            </div>
+          </React.Fragment>
+        );
+      })}
+    </div>
+  );
+}
+
+// ─── ADD CLIENT MODAL (Task 2) ───
+function AddClientModal({ onClose, onCreated }) {
+  const [form, setForm] = useState({
+    client_name: '', clinician: '', first_appointment_date: '',
+    insurance_primary: '', insurance_secondary: '',
+    self_pay: false, gfe_sent: false, custody_agreement_required: false,
+    staff_initials: '', notes: '',
+  });
+  const [errors, setErrors] = useState({});
+  const [submitting, setSubmitting] = useState(false);
+
+  const validate = () => {
+    const errs = {};
+    if (!form.client_name.trim()) errs.client_name = 'Client name is required';
+    if (!form.clinician.trim()) errs.clinician = 'Clinician is required';
+    if (!form.first_appointment_date) errs.first_appointment_date = 'First appointment is required';
+    setErrors(errs);
+    return Object.keys(errs).length === 0;
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!validate()) return;
+    setSubmitting(true);
+    try {
+      await api('/create', {
+        method: 'POST',
+        body: JSON.stringify(form),
+      });
+      onCreated();
+    } catch (err) {
+      setErrors({ submit: err.message });
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const set = (field, value) => {
+    setForm(prev => ({ ...prev, [field]: value }));
+    if (errors[field]) setErrors(prev => ({ ...prev, [field]: undefined }));
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-[60]" onClick={onClose}>
+      <div className="bg-white rounded-xl shadow-xl w-[480px] max-h-[85vh] overflow-y-auto p-5" onClick={e => e.stopPropagation()}>
+        <div className="flex justify-between items-center mb-4">
+          <h3 className="text-lg font-semibold">Add Client</h3>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600"><X className="w-5 h-5" /></button>
+        </div>
+        <form onSubmit={handleSubmit} className="space-y-3">
+          {/* Client Name */}
+          <div>
+            <label className="text-sm font-medium text-gray-700 block mb-1">Client Name *</label>
+            <input type="text" value={form.client_name} onChange={e => set('client_name', e.target.value)}
+              className={cn('w-full border rounded-lg px-3 py-2 text-sm', errors.client_name && 'border-red-400')} />
+            {errors.client_name && <p className="text-xs text-red-500 mt-0.5">{errors.client_name}</p>}
+          </div>
+          {/* Clinician */}
+          <div>
+            <label className="text-sm font-medium text-gray-700 block mb-1">Clinician *</label>
+            <input type="text" value={form.clinician} onChange={e => set('clinician', e.target.value)}
+              className={cn('w-full border rounded-lg px-3 py-2 text-sm', errors.clinician && 'border-red-400')} />
+            {errors.clinician && <p className="text-xs text-red-500 mt-0.5">{errors.clinician}</p>}
+          </div>
+          {/* First Appointment */}
+          <div>
+            <label className="text-sm font-medium text-gray-700 block mb-1">First Appointment Date & Time *</label>
+            <input type="datetime-local" value={form.first_appointment_date} onChange={e => set('first_appointment_date', e.target.value)}
+              className={cn('w-full border rounded-lg px-3 py-2 text-sm', errors.first_appointment_date && 'border-red-400')} />
+            {errors.first_appointment_date && <p className="text-xs text-red-500 mt-0.5">{errors.first_appointment_date}</p>}
+          </div>
+          {/* Insurance */}
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-sm font-medium text-gray-700 block mb-1">Primary Insurance</label>
+              <input type="text" value={form.insurance_primary} onChange={e => set('insurance_primary', e.target.value)}
+                className="w-full border rounded-lg px-3 py-2 text-sm" />
+            </div>
+            <div>
+              <label className="text-sm font-medium text-gray-700 block mb-1">Secondary Insurance</label>
+              <input type="text" value={form.insurance_secondary} onChange={e => set('insurance_secondary', e.target.value)}
+                className="w-full border rounded-lg px-3 py-2 text-sm" />
+            </div>
+          </div>
+          {/* Checkboxes */}
+          <div className="space-y-2">
+            <label className="flex items-center gap-2 text-sm">
+              <input type="checkbox" checked={form.self_pay} onChange={e => set('self_pay', e.target.checked)}
+                className="rounded border-gray-300" />
+              Self Pay
+            </label>
+            {form.self_pay && (
+              <label className="flex items-center gap-2 text-sm ml-6">
+                <input type="checkbox" checked={form.gfe_sent} onChange={e => set('gfe_sent', e.target.checked)}
+                  className="rounded border-gray-300" />
+                GFE Sent
+              </label>
+            )}
+            <label className="flex items-center gap-2 text-sm">
+              <input type="checkbox" checked={form.custody_agreement_required} onChange={e => set('custody_agreement_required', e.target.checked)}
+                className="rounded border-gray-300" />
+              Custody Agreement Required
+            </label>
+          </div>
+          {/* Staff Initials */}
+          <div>
+            <label className="text-sm font-medium text-gray-700 block mb-1">Staff Initials</label>
+            <input type="text" value={form.staff_initials} onChange={e => set('staff_initials', e.target.value)}
+              className="w-full border rounded-lg px-3 py-2 text-sm" maxLength={5} />
+          </div>
+          {/* Notes */}
+          <div>
+            <label className="text-sm font-medium text-gray-700 block mb-1">Notes</label>
+            <textarea value={form.notes} onChange={e => set('notes', e.target.value)}
+              rows={3} className="w-full border rounded-lg px-3 py-2 text-sm" placeholder="Optional notes..." />
+          </div>
+          {errors.submit && <p className="text-sm text-red-600 bg-red-50 p-2 rounded">{errors.submit}</p>}
+          <button type="submit" disabled={submitting}
+            className="w-full bg-[#FF6F61] text-white rounded-lg py-2.5 text-sm font-medium hover:bg-[#e5635a] disabled:opacity-50 flex items-center justify-center gap-2">
+            {submitting && <Loader2 className="w-4 h-4 animate-spin" />}
+            Add Client
+          </button>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+// ─── ARCHIVE MODAL (Task 3) ───
+const ARCHIVE_REASONS = [
+  'Client decided not to proceed',
+  'Insurance not accepted',
+  'Unable to contact client',
+  'Client found another provider',
+  'Financial concerns',
+  'Scheduling conflicts',
+  'Other',
+];
+
+function ArchiveModal({ clientName, onClose, onArchived }) {
+  const [reason, setReason] = useState('');
+  const [notes, setNotes] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState(null);
+
+  const handleSubmit = async () => {
+    if (!reason) return;
+    setSubmitting(true);
+    setError(null);
+    try {
+      await api(`/archive/${encodeURIComponent(clientName)}`, {
+        method: 'POST',
+        body: JSON.stringify({ reason, notes }),
+      });
+      onArchived();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-[70]" onClick={onClose}>
+      <div className="bg-white rounded-xl shadow-xl w-96 p-5" onClick={e => e.stopPropagation()}>
+        <h3 className="text-lg font-semibold mb-1">Archive Client</h3>
+        <p className="text-sm text-gray-500 mb-4">Select a reason for archiving {clientName}</p>
+        <div className="space-y-3">
+          <select value={reason} onChange={e => setReason(e.target.value)}
+            className="w-full border rounded-lg px-3 py-2 text-sm">
+            <option value="">Select a reason...</option>
+            {ARCHIVE_REASONS.map(r => <option key={r} value={r}>{r}</option>)}
+          </select>
+          {reason === 'Other' && (
+            <textarea value={notes} onChange={e => setNotes(e.target.value)}
+              rows={3} className="w-full border rounded-lg px-3 py-2 text-sm" placeholder="Additional notes..." />
+          )}
+          {error && <p className="text-sm text-red-600">{error}</p>}
+          <div className="flex gap-2">
+            <button onClick={onClose} className="flex-1 px-4 py-2 text-sm text-gray-600 border rounded-lg hover:bg-gray-50">Cancel</button>
+            <button onClick={handleSubmit} disabled={!reason || submitting}
+              className="flex-1 px-4 py-2 text-sm text-white bg-red-600 rounded-lg hover:bg-red-700 disabled:opacity-50 flex items-center justify-center gap-2">
+              {submitting && <Loader2 className="w-4 h-4 animate-spin" />}
+              Archive Client
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── REACTIVATE MODAL (Task 4) ───
+function ReactivateModal({ clientName, onClose, onReactivated }) {
+  const [appointmentDate, setAppointmentDate] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState(null);
+
+  const handleSubmit = async () => {
+    if (!appointmentDate) return;
+    setSubmitting(true);
+    setError(null);
+    try {
+      await api(`/reactivate/${encodeURIComponent(clientName)}`, {
+        method: 'POST',
+        body: JSON.stringify({ first_appointment_date: appointmentDate }),
+      });
+      onReactivated();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-[70]" onClick={onClose}>
+      <div className="bg-white rounded-xl shadow-xl w-96 p-5" onClick={e => e.stopPropagation()}>
+        <h3 className="text-lg font-semibold mb-1">Reactivate Client</h3>
+        <p className="text-sm text-gray-500 mb-4">Return {clientName} to the active onboarding queue?</p>
+        <div className="space-y-3">
+          <div>
+            <label className="text-sm font-medium text-gray-700 block mb-1">First Appointment Date *</label>
+            <input type="datetime-local" value={appointmentDate} onChange={e => setAppointmentDate(e.target.value)}
+              className="w-full border rounded-lg px-3 py-2 text-sm" />
+          </div>
+          {error && <p className="text-sm text-red-600">{error}</p>}
+          <div className="flex gap-2">
+            <button onClick={onClose} className="flex-1 px-4 py-2 text-sm text-gray-600 border rounded-lg hover:bg-gray-50">Cancel</button>
+            <button onClick={handleSubmit} disabled={!appointmentDate || submitting}
+              className="flex-1 px-4 py-2 text-sm text-white bg-emerald-600 rounded-lg hover:bg-emerald-700 disabled:opacity-50 flex items-center justify-center gap-2">
+              {submitting && <Loader2 className="w-4 h-4 animate-spin" />}
+              Reactivate
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── COMPLETE MODAL (Task 5) ───
+function CompleteModal({ clientName, onClose, onCompleted }) {
+  const [submitting, setSubmitting] = useState(false);
+
+  const handleSubmit = async () => {
+    setSubmitting(true);
+    try {
+      await api(`/complete/${encodeURIComponent(clientName)}`, { method: 'POST' });
+      onCompleted();
+    } catch (err) {
+      alert('Failed: ' + err.message);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-[70]" onClick={onClose}>
+      <div className="bg-white rounded-xl shadow-xl w-96 p-5" onClick={e => e.stopPropagation()}>
+        <h3 className="text-lg font-semibold mb-1">Mark Complete</h3>
+        <p className="text-sm text-gray-500 mb-4">Mark {clientName} as complete? This will move them to the completed clients history.</p>
+        <div className="flex gap-2">
+          <button onClick={onClose} className="flex-1 px-4 py-2 text-sm text-gray-600 border rounded-lg hover:bg-gray-50">Cancel</button>
+          <button onClick={handleSubmit} disabled={submitting}
+            className="flex-1 px-4 py-2 text-sm text-white bg-emerald-600 rounded-lg hover:bg-emerald-700 disabled:opacity-50 flex items-center justify-center gap-2">
+            {submitting && <Loader2 className="w-4 h-4 animate-spin" />}
+            Mark Complete
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── OUTREACH POPOVER (Task 7) ───
+function OutreachPopover({ clientName, anchorRef, onClose, onSubmit }) {
+  const [method, setMethod] = useState('SP Reminder');
+  const [notes, setNotes] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  const [success, setSuccess] = useState(false);
+  const popoverRef = useRef(null);
+
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (popoverRef.current && !popoverRef.current.contains(e.target)) onClose();
+    };
+    const handleEsc = (e) => { if (e.key === 'Escape') onClose(); };
+    document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener('keydown', handleEsc);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('keydown', handleEsc);
+    };
+  }, [onClose]);
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setSubmitting(true);
+    try {
+      await onSubmit({ client_name: clientName, method, notes });
+      setSuccess(true);
+      setTimeout(onClose, 800);
+    } catch (err) {
+      alert('Failed: ' + err.message);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  if (success) {
+    return (
+      <div ref={popoverRef} className="absolute right-0 top-full mt-1 bg-white rounded-lg shadow-xl border border-gray-200 p-3 z-50 w-72">
+        <div className="flex items-center gap-2 text-emerald-600">
+          <CheckCircle2 className="w-4 h-4" />
+          <span className="text-sm font-medium">Outreach logged</span>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div ref={popoverRef} className="absolute right-0 top-full mt-1 bg-white rounded-lg shadow-xl border border-gray-200 p-3 z-50 w-72">
+      <p className="text-xs font-semibold text-gray-700 mb-2">Log Outreach — {clientName}</p>
+      <form onSubmit={handleSubmit} className="space-y-2">
+        <select value={method} onChange={e => setMethod(e.target.value)}
+          className="w-full border rounded px-2 py-1.5 text-xs">
+          {['SP Reminder', 'Google Text', 'LVM', 'EMW', 'Final Reminder', 'Other'].map(m => (
+            <option key={m} value={m}>{m}</option>
+          ))}
+        </select>
+        <input type="text" value={notes} onChange={e => setNotes(e.target.value)}
+          className="w-full border rounded px-2 py-1.5 text-xs" placeholder="Optional notes" />
+        <button type="submit" disabled={submitting}
+          className="w-full bg-teal-600 text-white rounded py-1.5 text-xs font-medium hover:bg-teal-700 disabled:opacity-50">
+          {submitting ? 'Saving...' : 'Submit'}
+        </button>
+      </form>
+    </div>
+  );
+}
+
+// ─── OUTREACH LOG MODAL (existing, kept for drawer) ───
 function OutreachModal({ clientName, onClose, onSubmit }) {
   const [method, setMethod] = useState('SP Reminder');
   const [notes, setNotes] = useState('');
@@ -111,11 +585,8 @@ function OutreachModal({ clientName, onClose, onSubmit }) {
         <form onSubmit={handleSubmit} className="space-y-3">
           <div>
             <label className="text-sm font-medium text-gray-700 block mb-1">Method</label>
-            <select
-              value={method}
-              onChange={e => setMethod(e.target.value)}
-              className="w-full border rounded-lg px-3 py-2 text-sm"
-            >
+            <select value={method} onChange={e => setMethod(e.target.value)}
+              className="w-full border rounded-lg px-3 py-2 text-sm">
               {['SP Reminder', 'Google Text', 'LVM', 'EMW', 'Final Reminder', 'Other'].map(m => (
                 <option key={m} value={m}>{m}</option>
               ))}
@@ -123,19 +594,11 @@ function OutreachModal({ clientName, onClose, onSubmit }) {
           </div>
           <div>
             <label className="text-sm font-medium text-gray-700 block mb-1">Notes</label>
-            <textarea
-              value={notes}
-              onChange={e => setNotes(e.target.value)}
-              rows={3}
-              className="w-full border rounded-lg px-3 py-2 text-sm"
-              placeholder="Optional notes..."
-            />
+            <textarea value={notes} onChange={e => setNotes(e.target.value)} rows={3}
+              className="w-full border rounded-lg px-3 py-2 text-sm" placeholder="Optional notes..." />
           </div>
-          <button
-            type="submit"
-            disabled={submitting}
-            className="w-full bg-teal-600 text-white rounded-lg py-2 text-sm font-medium hover:bg-teal-700 disabled:opacity-50 flex items-center justify-center gap-2"
-          >
+          <button type="submit" disabled={submitting}
+            className="w-full bg-teal-600 text-white rounded-lg py-2 text-sm font-medium hover:bg-teal-700 disabled:opacity-50 flex items-center justify-center gap-2">
             {submitting && <Loader2 className="w-4 h-4 animate-spin" />}
             Log Outreach
           </button>
@@ -146,7 +609,7 @@ function OutreachModal({ clientName, onClose, onSubmit }) {
 }
 
 // ─── CLIENT DRAWER ───
-function ClientDrawer({ clientName, onClose, onRefresh }) {
+function ClientDrawer({ clientName, onClose, onRefresh, isHistorical }) {
   const [client, setClient] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -162,6 +625,11 @@ function ClientDrawer({ clientName, onClose, onRefresh }) {
   const [outreachMethod, setOutreachMethod] = useState('SP Reminder');
   const [outreachNotes, setOutreachNotes] = useState('');
   const [outreachSubmitting, setOutreachSubmitting] = useState(false);
+
+  // Action modals
+  const [showArchive, setShowArchive] = useState(false);
+  const [showReactivate, setShowReactivate] = useState(false);
+  const [showComplete, setShowComplete] = useState(false);
 
   const fetchClient = useCallback(async () => {
     setLoading(true);
@@ -201,7 +669,6 @@ function ClientDrawer({ clientName, onClose, onRefresh }) {
   // Toggle checklist item
   const handleToggle = async (item) => {
     const newComplete = !item.is_complete;
-    // Optimistic update
     setClient(prev => ({
       ...prev,
       onboarding_checklist: prev.onboarding_checklist.map(i =>
@@ -221,7 +688,6 @@ function ClientDrawer({ clientName, onClose, onRefresh }) {
       setClient(updated);
       if (onRefresh) onRefresh();
     } catch (err) {
-      // Revert
       fetchClient();
     }
   };
@@ -288,7 +754,6 @@ function ClientDrawer({ clientName, onClose, onRefresh }) {
     );
   }
 
-  const stageIndex = STAGE_ORDER.indexOf(client.onboarding_status);
   const checklist = client.onboarding_checklist || [];
   const visibleChecklist = checklist.filter(item =>
     !(item.applies_to_self_pay_only && !client.self_pay)
@@ -309,35 +774,59 @@ function ClientDrawer({ clientName, onClose, onRefresh }) {
     'Other': 'bg-gray-500',
   };
 
+  const canArchive = !['Cancelled', 'Ready'].includes(client.onboarding_status);
+  const canReactivate = client.onboarding_status === 'Cancelled';
+  const canComplete = client.onboarding_status === 'Ready';
+
   return (
     <div className="fixed top-0 right-0 w-[480px] h-full bg-white shadow-2xl z-50 border-l border-gray-200 flex flex-col">
       {/* Header */}
       <div className="p-4 border-b border-gray-200 flex-shrink-0">
-        <button onClick={onClose} className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 z-10">
-          <X className="w-5 h-5" />
-        </button>
-        <h2 className="text-xl font-bold text-gray-900 pr-8">{client.client_name}</h2>
-        <div className="flex items-center gap-2 mt-1">
-          <StatusBadge status={client.onboarding_status} />
-          <span className="text-xs text-gray-500">
-            {client.assigned_clinician} | {client.assigned_staff} | Added {client.date_added}
-          </span>
+        <div className="flex items-start justify-between">
+          <div className="flex-1 pr-2">
+            <h2 className="text-xl font-bold text-gray-900">{client.client_name}</h2>
+            <div className="flex items-center gap-2 mt-1">
+              <StatusBadge status={client.onboarding_status} />
+              <span className="text-xs text-gray-500">
+                {client.assigned_clinician} | {client.assigned_staff} | Added {client.date_added}
+              </span>
+            </div>
+            {/* Appointment date with color */}
+            {client.first_appointment_date && (
+              <div className="mt-1">
+                <span className="text-xs text-gray-400">Appt: </span>
+                <AppointmentDate date={client.first_appointment_date} status={client.onboarding_status} />
+              </div>
+            )}
+          </div>
+          <div className="flex items-center gap-1 flex-shrink-0">
+            {/* Action buttons in drawer header */}
+            {canArchive && (
+              <button onClick={() => setShowArchive(true)}
+                className="px-2 py-1 text-xs font-medium text-red-600 hover:bg-red-50 rounded flex items-center gap-1">
+                <Archive className="w-3.5 h-3.5" /> Archive
+              </button>
+            )}
+            {canReactivate && (
+              <button onClick={() => setShowReactivate(true)}
+                className="px-2 py-1 text-xs font-medium text-emerald-600 hover:bg-emerald-50 rounded flex items-center gap-1">
+                <RotateCcw className="w-3.5 h-3.5" /> Reactivate
+              </button>
+            )}
+            {canComplete && (
+              <button onClick={() => setShowComplete(true)}
+                className="px-2 py-1 text-xs font-medium text-emerald-600 hover:bg-emerald-50 rounded flex items-center gap-1">
+                <CheckCircle2 className="w-3.5 h-3.5" /> Mark Complete
+              </button>
+            )}
+            <button onClick={onClose} className="text-gray-400 hover:text-gray-600 ml-1">
+              <X className="w-5 h-5" />
+            </button>
+          </div>
         </div>
 
-        {/* Stage progress bar */}
-        <div className="flex items-center gap-1 mt-3">
-          {STAGE_LABELS.map((label, i) => (
-            <div key={label} className="flex-1 flex flex-col items-center">
-              <div className={cn(
-                'w-full h-1.5 rounded-full',
-                i <= stageIndex ? 'bg-teal-500' : 'bg-gray-200'
-              )} />
-              <span className={cn('text-[10px] mt-0.5',
-                i <= stageIndex ? 'text-teal-700 font-medium' : 'text-gray-400'
-              )}>{label}</span>
-            </div>
-          ))}
-        </div>
+        {/* Stage Indicator Dots (Task 8) */}
+        <StageIndicator status={client.onboarding_status} />
       </div>
 
       {/* Tabs */}
@@ -366,9 +855,8 @@ function ClientDrawer({ clientName, onClose, onRefresh }) {
             <div className="mb-4">
               <div className="flex justify-between text-sm mb-1">
                 <span className="text-gray-600">{requiredDone} of {requiredItems.length} required items</span>
-                <span className="font-medium">{client.completion_pct || 0}%</span>
               </div>
-              <ProgressBar pct={client.completion_pct || 0} size="md" />
+              <AnimatedProgressBar pct={client.completion_pct || 0} size="md" animate={true} duration={600} />
             </div>
             <div className="space-y-1">
               {visibleChecklist.map(item => (
@@ -422,35 +910,21 @@ function ClientDrawer({ clientName, onClose, onRefresh }) {
 
             {showOutreachForm && (
               <form onSubmit={handleOutreachSubmit} className="mb-4 p-3 bg-gray-50 rounded-lg space-y-2">
-                <select
-                  value={outreachMethod}
-                  onChange={e => setOutreachMethod(e.target.value)}
-                  className="w-full border rounded px-2 py-1.5 text-sm"
-                >
+                <select value={outreachMethod} onChange={e => setOutreachMethod(e.target.value)}
+                  className="w-full border rounded px-2 py-1.5 text-sm">
                   {['SP Reminder', 'Google Text', 'LVM', 'EMW', 'Final Reminder', 'Other'].map(m => (
                     <option key={m} value={m}>{m}</option>
                   ))}
                 </select>
-                <textarea
-                  value={outreachNotes}
-                  onChange={e => setOutreachNotes(e.target.value)}
-                  rows={2}
-                  className="w-full border rounded px-2 py-1.5 text-sm"
-                  placeholder="Notes..."
-                />
+                <textarea value={outreachNotes} onChange={e => setOutreachNotes(e.target.value)}
+                  rows={2} className="w-full border rounded px-2 py-1.5 text-sm" placeholder="Notes..." />
                 <div className="flex gap-2">
-                  <button
-                    type="submit"
-                    disabled={outreachSubmitting}
-                    className="flex-1 bg-teal-600 text-white rounded py-1.5 text-sm hover:bg-teal-700 disabled:opacity-50"
-                  >
+                  <button type="submit" disabled={outreachSubmitting}
+                    className="flex-1 bg-teal-600 text-white rounded py-1.5 text-sm hover:bg-teal-700 disabled:opacity-50">
                     {outreachSubmitting ? 'Saving...' : 'Save'}
                   </button>
-                  <button
-                    type="button"
-                    onClick={() => setShowOutreachForm(false)}
-                    className="px-3 text-sm text-gray-500 hover:text-gray-700"
-                  >
+                  <button type="button" onClick={() => setShowOutreachForm(false)}
+                    className="px-3 text-sm text-gray-500 hover:text-gray-700">
                     Cancel
                   </button>
                 </div>
@@ -469,10 +943,7 @@ function ClientDrawer({ clientName, onClose, onRefresh }) {
                     </div>
                     <div className="flex-1 pb-3">
                       <div className="flex items-center gap-2">
-                        <span className={cn(
-                          'text-xs font-medium px-1.5 py-0.5 rounded',
-                          'bg-gray-100 text-gray-700'
-                        )}>{entry.method}</span>
+                        <span className={cn('text-xs font-medium px-1.5 py-0.5 rounded', 'bg-gray-100 text-gray-700')}>{entry.method}</span>
                         <span className="text-xs text-gray-400">{entry.staff_initials}</span>
                       </div>
                       <p className="text-xs text-gray-500 mt-0.5">
@@ -558,6 +1029,29 @@ function ClientDrawer({ clientName, onClose, onRefresh }) {
           </div>
         )}
       </div>
+
+      {/* Action modals */}
+      {showArchive && (
+        <ArchiveModal
+          clientName={client.client_name}
+          onClose={() => setShowArchive(false)}
+          onArchived={() => { setShowArchive(false); onClose(); if (onRefresh) onRefresh(); }}
+        />
+      )}
+      {showReactivate && (
+        <ReactivateModal
+          clientName={client.client_name}
+          onClose={() => setShowReactivate(false)}
+          onReactivated={() => { setShowReactivate(false); onClose(); if (onRefresh) onRefresh(); }}
+        />
+      )}
+      {showComplete && (
+        <CompleteModal
+          clientName={client.client_name}
+          onClose={() => setShowComplete(false)}
+          onCompleted={() => { setShowComplete(false); onClose(); if (onRefresh) onRefresh(); }}
+        />
+      )}
     </div>
   );
 }
@@ -598,15 +1092,13 @@ function MyTasksView({ clients, onViewClient }) {
                 <div className="flex items-center gap-2 text-xs text-gray-500">
                   <span>{c.assigned_clinician}</span>
                   <span>·</span>
-                  <span>{c.first_appointment_date ? new Date(c.first_appointment_date).toLocaleDateString() : '—'}</span>
+                  <AppointmentDate date={c.first_appointment_date} status={c.onboarding_status} />
                 </div>
               </div>
               <div className="flex items-center gap-2">
                 <StatusBadge status={c.onboarding_status} />
-                <button
-                  onClick={() => onViewClient(c.client_name)}
-                  className="text-xs text-teal-600 hover:text-teal-800 font-medium"
-                >
+                <button onClick={() => onViewClient(c.client_name)}
+                  className="text-xs text-teal-600 hover:text-teal-800 font-medium">
                   View
                 </button>
               </div>
@@ -626,16 +1118,187 @@ function MyTasksView({ clients, onViewClient }) {
   );
 }
 
+// ─── HISTORICAL VIEW (Task 6) ───
+function HistoricalView({ onViewClient, onReactivate }) {
+  const [history, setHistory] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [yearFilter, setYearFilter] = useState('all');
+  const [clinicianFilter, setClinicianFilter] = useState('all');
+  const [search, setSearch] = useState('');
+
+  const fetchHistory = useCallback(async () => {
+    setLoading(true);
+    try {
+      const params = new URLSearchParams();
+      if (statusFilter !== 'all') params.set('status_filter', statusFilter);
+      if (yearFilter !== 'all') params.set('year', yearFilter);
+      if (clinicianFilter !== 'all') params.set('clinician', clinicianFilter);
+      if (search) params.set('search', search);
+      const data = await api(`/history?${params.toString()}`);
+      setHistory(data);
+    } catch (err) {
+      console.error('Failed to fetch history:', err);
+    } finally {
+      setLoading(false);
+    }
+  }, [statusFilter, yearFilter, clinicianFilter, search]);
+
+  useEffect(() => { fetchHistory(); }, [fetchHistory]);
+
+  const clinicians = useMemo(() => {
+    const set = new Set(history.map(c => c.assigned_clinician).filter(Boolean));
+    return [...set].sort();
+  }, [history]);
+
+  return (
+    <div className="flex-1 overflow-y-auto">
+      {/* Filters */}
+      <div className="p-4 pb-3 space-y-3">
+        <div className="flex items-center gap-2 flex-wrap">
+          {[
+            { key: 'all', label: 'All History' },
+            { key: 'completed', label: 'Completed' },
+            { key: 'cancelled', label: 'Cancelled' },
+          ].map(f => (
+            <button key={f.key} onClick={() => setStatusFilter(f.key)}
+              className={cn(
+                'px-2.5 py-1 rounded-full text-xs font-medium transition-colors',
+                statusFilter === f.key
+                  ? 'bg-teal-600 text-white'
+                  : 'bg-white text-gray-600 border border-gray-200 hover:border-gray-300'
+              )}>
+              {f.label}
+            </button>
+          ))}
+          <div className="flex-1" />
+          <select value={yearFilter} onChange={e => setYearFilter(e.target.value)}
+            className="border rounded-lg px-2 py-1 text-xs">
+            <option value="all">All Years</option>
+            {[2026, 2025, 2024, 2023, 2022].map(y => <option key={y} value={y}>{y}</option>)}
+          </select>
+          <select value={clinicianFilter} onChange={e => setClinicianFilter(e.target.value)}
+            className="border rounded-lg px-2 py-1 text-xs">
+            <option value="all">All Clinicians</option>
+            {clinicians.map(c => <option key={c} value={c}>{c}</option>)}
+          </select>
+          <div className="relative">
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
+            <input type="text" placeholder="Search..." value={search} onChange={e => setSearch(e.target.value)}
+              className="pl-8 pr-3 py-1.5 text-xs border border-gray-200 rounded-lg w-40 focus:outline-none focus:border-teal-400" />
+          </div>
+        </div>
+      </div>
+
+      {/* Table */}
+      <div className="px-4 pb-4">
+        {loading ? (
+          <div className="space-y-2">
+            {[...Array(5)].map((_, i) => <Skeleton key={i} className="h-12 w-full" />)}
+          </div>
+        ) : history.length === 0 ? (
+          <div className="text-center py-12">
+            <History className="w-8 h-8 text-gray-300 mx-auto mb-2" />
+            <p className="text-gray-500 text-sm">No historical records found</p>
+          </div>
+        ) : (
+          <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="bg-gray-50 text-gray-500 text-xs uppercase">
+                  <th className="text-left py-2.5 px-3 font-medium">Client</th>
+                  <th className="text-left py-2.5 px-2 font-medium">Clinician</th>
+                  <th className="text-left py-2.5 px-2 font-medium">First Appt</th>
+                  <th className="text-left py-2.5 px-2 font-medium">Status</th>
+                  <th className="text-left py-2.5 px-2 font-medium">Date</th>
+                  <th className="text-left py-2.5 px-2 font-medium">Reason</th>
+                  <th className="text-right py-2.5 px-3 font-medium">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {history.map(c => (
+                  <tr key={c.name} className="hover:bg-gray-50 transition-colors">
+                    <td className="py-2.5 px-3 font-medium text-gray-900">{c.client_name}</td>
+                    <td className="py-2.5 px-2 text-gray-600">{c.assigned_clinician}</td>
+                    <td className="py-2.5 px-2">
+                      <AppointmentDate date={c.first_appointment_date} status={c.onboarding_status} />
+                    </td>
+                    <td className="py-2.5 px-2"><StatusBadge status={c.onboarding_status} /></td>
+                    <td className="py-2.5 px-2 text-xs text-gray-600 font-mono">
+                      {c.onboarding_status === 'Ready'
+                        ? (c.completed_date || '—')
+                        : (c.archived_date || '—')}
+                    </td>
+                    <td className="py-2.5 px-2 text-xs text-gray-500 max-w-[150px] truncate">
+                      {c.archive_reason || '—'}
+                    </td>
+                    <td className="py-2.5 px-3 text-right">
+                      <div className="flex items-center justify-end gap-1">
+                        <button onClick={() => onViewClient(c.client_name)}
+                          className="text-xs text-teal-600 hover:text-teal-800 font-medium px-2 py-1 rounded hover:bg-teal-50">
+                          View
+                        </button>
+                        {c.onboarding_status === 'Cancelled' && (
+                          <button onClick={() => onReactivate(c.client_name)}
+                            className="text-xs text-emerald-600 hover:text-emerald-800 font-medium px-2 py-1 rounded hover:bg-emerald-50 flex items-center gap-1">
+                            <RotateCcw className="w-3 h-3" /> Reactivate
+                          </button>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ─── SORTABLE COLUMN HEADER (Task 9) ───
+function SortHeader({ label, field, sortField, sortDir, onSort, className }) {
+  const isActive = sortField === field;
+  return (
+    <th
+      className={cn('py-2.5 px-2 font-medium cursor-pointer select-none hover:bg-gray-100 transition-colors', className)}
+      onClick={() => onSort(field)}
+    >
+      <div className="flex items-center gap-1">
+        {label}
+        {isActive ? (
+          sortDir === 'asc' ? <ArrowUp className="w-3 h-3 text-teal-600" /> : <ArrowDown className="w-3 h-3 text-teal-600" />
+        ) : (
+          <ArrowUpDown className="w-3 h-3 text-gray-300" />
+        )}
+      </div>
+    </th>
+  );
+}
+
 // ─── MAIN COMPONENT ───
 export default function OnboardingMojo({ isMaximized }) {
   const [clients, setClients] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [activeView, setActiveView] = useState('queue'); // queue | tasks
+  const [activeView, setActiveView] = useState('queue'); // queue | tasks | history
   const [filter, setFilter] = useState('all');
   const [search, setSearch] = useState('');
   const [drawerClient, setDrawerClient] = useState(null);
   const [outreachModal, setOutreachModal] = useState(null);
+  const [showAddClient, setShowAddClient] = useState(false);
+  const [toast, setToast] = useState(null);
+
+  // Popover state (Task 7)
+  const [outreachPopover, setOutreachPopover] = useState(null);
+
+  // Reactivate modal (from history)
+  const [reactivateClient, setReactivateClient] = useState(null);
+
+  // Sort state (Task 9)
+  const [sortField, setSortField] = useState('first_appointment_date');
+  const [sortDir, setSortDir] = useState('asc');
 
   const fetchClients = useCallback(async () => {
     setLoading(true);
@@ -652,18 +1315,61 @@ export default function OnboardingMojo({ isMaximized }) {
 
   useEffect(() => { fetchClients(); }, [fetchClients]);
 
-  // Filter logic
-  const filtered = clients.filter(c => {
-    if (filter === 'urgent') return c.urgency_level === 'urgent';
-    if (filter === 'insurance') return c.onboarding_status === 'Insurance Pending';
-    if (filter === 'paperwork') return c.onboarding_status === 'Paperwork Pending';
-    if (filter === 'ready') return c.onboarding_status === 'Ready';
-    return true;
-  }).filter(c => {
-    if (!search) return true;
-    const s = search.toLowerCase();
-    return c.client_name?.toLowerCase().includes(s) || c.assigned_clinician?.toLowerCase().includes(s);
-  });
+  const showToast = (message, type = 'success') => setToast({ message, type });
+
+  // Filter + sort logic
+  const filtered = useMemo(() => {
+    let result = clients.filter(c => {
+      // Active queue excludes Ready and Cancelled
+      if (!['Ready', 'Cancelled'].includes(c.onboarding_status)) {
+        if (filter === 'urgent') return c.urgency_level === 'urgent';
+        if (filter === 'insurance') return c.onboarding_status === 'Insurance Pending';
+        if (filter === 'paperwork') return c.onboarding_status === 'Paperwork Pending';
+        if (filter === 'ready') return false; // Ready clients are in history
+        return true;
+      }
+      if (filter === 'ready') return c.onboarding_status === 'Ready';
+      return false;
+    }).filter(c => {
+      if (!search) return true;
+      const s = search.toLowerCase();
+      return c.client_name?.toLowerCase().includes(s) || c.assigned_clinician?.toLowerCase().includes(s);
+    });
+
+    // Sort (Task 9)
+    result.sort((a, b) => {
+      let aVal, bVal;
+      if (sortField === 'first_appointment_date') {
+        aVal = a.first_appointment_date ? new Date(a.first_appointment_date).getTime() : Infinity;
+        bVal = b.first_appointment_date ? new Date(b.first_appointment_date).getTime() : Infinity;
+      } else if (sortField === 'client_name') {
+        aVal = (a.client_name || '').toLowerCase();
+        bVal = (b.client_name || '').toLowerCase();
+      } else if (sortField === 'onboarding_status') {
+        const ORDER = { 'New': 0, 'Paperwork Pending': 1, 'Insurance Pending': 2, 'Verified': 3, 'Ready': 4, 'Cancelled': 5 };
+        aVal = ORDER[a.onboarding_status] ?? 99;
+        bVal = ORDER[b.onboarding_status] ?? 99;
+      } else if (sortField === 'completion_pct') {
+        aVal = a.completion_pct || 0;
+        bVal = b.completion_pct || 0;
+      }
+
+      if (aVal < bVal) return sortDir === 'asc' ? -1 : 1;
+      if (aVal > bVal) return sortDir === 'asc' ? 1 : -1;
+      return 0;
+    });
+
+    return result;
+  }, [clients, filter, search, sortField, sortDir]);
+
+  const handleSort = (field) => {
+    if (sortField === field) {
+      setSortDir(prev => prev === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortField(field);
+      setSortDir('asc');
+    }
+  };
 
   // KPI computations
   const activeQueue = clients.filter(c => !['Ready', 'Cancelled'].includes(c.onboarding_status)).length;
@@ -701,24 +1407,18 @@ export default function OnboardingMojo({ isMaximized }) {
           <h1 className="text-base font-semibold">Onboarding</h1>
         </div>
         <div className="flex items-center gap-1">
-          <button
-            onClick={() => setActiveView('queue')}
-            className={cn(
-              'px-3 py-1.5 rounded text-sm font-medium transition-colors',
-              activeView === 'queue' ? 'bg-teal-100 text-teal-700' : 'text-gray-500 hover:text-gray-700'
-            )}
-          >
-            Queue
-          </button>
-          <button
-            onClick={() => setActiveView('tasks')}
-            className={cn(
-              'px-3 py-1.5 rounded text-sm font-medium transition-colors',
-              activeView === 'tasks' ? 'bg-teal-100 text-teal-700' : 'text-gray-500 hover:text-gray-700'
-            )}
-          >
-            My Tasks
-          </button>
+          {['queue', 'tasks', 'history'].map(view => (
+            <button
+              key={view}
+              onClick={() => setActiveView(view)}
+              className={cn(
+                'px-3 py-1.5 rounded text-sm font-medium transition-colors capitalize',
+                activeView === view ? 'bg-teal-100 text-teal-700' : 'text-gray-500 hover:text-gray-700'
+              )}
+            >
+              {view === 'tasks' ? 'My Tasks' : view === 'history' ? 'History' : 'Queue'}
+            </button>
+          ))}
           <button
             onClick={fetchClients}
             className="ml-2 p-1.5 text-gray-400 hover:text-gray-600 rounded"
@@ -731,6 +1431,11 @@ export default function OnboardingMojo({ isMaximized }) {
 
       {activeView === 'tasks' ? (
         <MyTasksView clients={clients} onViewClient={setDrawerClient} />
+      ) : activeView === 'history' ? (
+        <HistoricalView
+          onViewClient={(name) => setDrawerClient(name)}
+          onReactivate={(name) => setReactivateClient(name)}
+        />
       ) : (
         <div className="flex-1 overflow-y-auto">
           {/* KPI Cards */}
@@ -759,7 +1464,7 @@ export default function OnboardingMojo({ isMaximized }) {
             </div>
           </div>
 
-          {/* Filter chips + search */}
+          {/* Filter chips + search + Add Client button */}
           <div className="px-4 pb-3 flex items-center gap-2">
             {[
               { key: 'all', label: 'All' },
@@ -792,6 +1497,13 @@ export default function OnboardingMojo({ isMaximized }) {
                 className="pl-8 pr-3 py-1.5 text-xs border border-gray-200 rounded-lg w-48 focus:outline-none focus:border-teal-400"
               />
             </div>
+            {/* Add Client button (Task 2) */}
+            <button
+              onClick={() => setShowAddClient(true)}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-[#FF6F61] text-white text-xs font-medium rounded-lg hover:bg-[#e5635a] transition-colors"
+            >
+              <Plus className="w-3.5 h-3.5" /> Add Client
+            </button>
           </div>
 
           {/* Table */}
@@ -813,12 +1525,12 @@ export default function OnboardingMojo({ isMaximized }) {
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="bg-gray-50 text-gray-500 text-xs uppercase">
-                      <th className="text-left py-2.5 px-3 font-medium">Client</th>
+                      <SortHeader label="Client" field="client_name" sortField={sortField} sortDir={sortDir} onSort={handleSort} className="text-left px-3" />
                       <th className="text-left py-2.5 px-2 font-medium">Clinician</th>
-                      <th className="text-left py-2.5 px-2 font-medium">Appointment</th>
-                      <th className="text-left py-2.5 px-2 font-medium w-24">Progress</th>
+                      <SortHeader label="Appointment" field="first_appointment_date" sortField={sortField} sortDir={sortDir} onSort={handleSort} className="text-left" />
+                      <SortHeader label="Progress" field="completion_pct" sortField={sortField} sortDir={sortDir} onSort={handleSort} className="text-left w-24" />
                       <th className="text-left py-2.5 px-2 font-medium">Insurance</th>
-                      <th className="text-left py-2.5 px-2 font-medium">Status</th>
+                      <SortHeader label="Status" field="onboarding_status" sortField={sortField} sortDir={sortDir} onSort={handleSort} className="text-left" />
                       <th className="text-right py-2.5 px-3 font-medium">Actions</th>
                     </tr>
                   </thead>
@@ -836,10 +1548,8 @@ export default function OnboardingMojo({ isMaximized }) {
                           <span className="font-medium text-gray-900">{c.client_name}</span>
                         </td>
                         <td className="py-2.5 px-2 text-gray-600">{c.assigned_clinician}</td>
-                        <td className="py-2.5 px-2 text-gray-600 text-xs">
-                          {c.first_appointment_date
-                            ? new Date(c.first_appointment_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })
-                            : '—'}
+                        <td className="py-2.5 px-2">
+                          <AppointmentDate date={c.first_appointment_date} status={c.onboarding_status} />
                         </td>
                         <td className="py-2.5 px-2">
                           <div className="flex items-center gap-2">
@@ -850,19 +1560,33 @@ export default function OnboardingMojo({ isMaximized }) {
                         <td className="py-2.5 px-2 text-xs text-gray-600">{c.insurance_primary || '—'}</td>
                         <td className="py-2.5 px-2"><StatusBadge status={c.onboarding_status} /></td>
                         <td className="py-2.5 px-3 text-right">
-                          <div className="flex items-center justify-end gap-1">
+                          <div className="flex items-center justify-end gap-1 relative">
                             <button
                               onClick={() => setDrawerClient(c.client_name)}
                               className="text-xs text-teal-600 hover:text-teal-800 font-medium px-2 py-1 rounded hover:bg-teal-50"
                             >
                               View
                             </button>
-                            <button
-                              onClick={() => setOutreachModal(c.client_name)}
-                              className="text-xs text-gray-500 hover:text-gray-700 px-2 py-1 rounded hover:bg-gray-100"
-                            >
-                              <Phone className="w-3.5 h-3.5" />
-                            </button>
+                            {/* Outreach popover trigger (Task 7) */}
+                            <div className="relative">
+                              <button
+                                onClick={() => setOutreachPopover(outreachPopover === c.name ? null : c.name)}
+                                className="text-xs text-gray-500 hover:text-gray-700 px-2 py-1 rounded hover:bg-gray-100"
+                                title="Log outreach"
+                              >
+                                <MessageSquare className="w-3.5 h-3.5" />
+                              </button>
+                              {outreachPopover === c.name && (
+                                <OutreachPopover
+                                  clientName={c.client_name}
+                                  onClose={() => setOutreachPopover(null)}
+                                  onSubmit={async (data) => {
+                                    await handleOutreachSubmit(data);
+                                    showToast('Outreach logged');
+                                  }}
+                                />
+                              )}
+                            </div>
                           </div>
                         </td>
                       </tr>
@@ -880,17 +1604,51 @@ export default function OnboardingMojo({ isMaximized }) {
         <ClientDrawer
           clientName={drawerClient}
           onClose={() => setDrawerClient(null)}
-          onRefresh={fetchClients}
+          onRefresh={() => {
+            fetchClients();
+          }}
+          isHistorical={activeView === 'history'}
         />
       )}
 
-      {/* Outreach Modal */}
+      {/* Outreach Modal (legacy, kept for compat) */}
       {outreachModal && (
         <OutreachModal
           clientName={outreachModal}
           onClose={() => setOutreachModal(null)}
           onSubmit={handleOutreachSubmit}
         />
+      )}
+
+      {/* Add Client Modal (Task 2) */}
+      {showAddClient && (
+        <AddClientModal
+          onClose={() => setShowAddClient(false)}
+          onCreated={() => {
+            setShowAddClient(false);
+            fetchClients();
+            showToast('Client added to queue');
+          }}
+        />
+      )}
+
+      {/* Reactivate from History (Task 4) */}
+      {reactivateClient && (
+        <ReactivateModal
+          clientName={reactivateClient}
+          onClose={() => setReactivateClient(null)}
+          onReactivated={() => {
+            setReactivateClient(null);
+            setActiveView('queue');
+            fetchClients();
+            showToast('Client reactivated and returned to queue');
+          }}
+        />
+      )}
+
+      {/* Toast (shared) */}
+      {toast && (
+        <Toast message={toast.message} type={toast.type} onDismiss={() => setToast(null)} />
       )}
     </div>
   );
