@@ -1,74 +1,61 @@
 # CLAUDE.md — Spark Mojo Platform
 
-This file is the primary context document for any Claude Code session
-working in this repository. Read it completely before taking any action.
+This file is the primary context document for any Claude Code session working
+in this repository. Read it completely before taking any action.
 
 ---
 
-## MANDATORY FIRST STEP — Load the Frappe Skill
+## What This Repo Is
 
-**Before writing any code, before reading any other file, load this:**
+`spark-mojo-platform` is the production codebase for the Spark Mojo Platform
+— a unified business OS for small and mid-sized businesses. The frontend is a
+desktop OS paradigm (draggable, resizable Mojo windows on a freeform canvas).
+The backend is Frappe/ERPNext with custom apps. Automation runs through n8n.
 
-```
-sparkmojo-internal/skills/platform/frappe/SKILL.md
-sparkmojo-internal/skills/platform/frappe/references/sm-doctypes.md
-sparkmojo-internal/skills/platform/frappe/references/api-endpoints.md
-```
-
-These encode production-hardened Frappe patterns that prevent silent
-failures. An AI agent that skips this will make the same mistakes every
-time — import statements in Server Scripts, db.set_value() bypassing
-hooks, calling Frappe directly from React.
-
-**Critical sections to internalize before writing any Frappe code:**
-- Section 1: Critical Failure Patterns (the top AI mistakes)
-- Section 2: Spark Mojo Architecture Rules (non-negotiable decisions)
-- Section 9: Docker-Specific Patterns (this platform runs in Docker)
-- Section 15: Enforcement Checklist (run before every commit)
-
-Do not write a single line of Frappe code until the skill is loaded.
+This is NOT a greenfield build. The frontend is migrated from a working
+prototype (`sm-platform-experimental-platform`). The architecture is fully
+designed and documented. Your job is to execute against that design — not
+to make architectural decisions.
 
 ---
 
-## Governance Repo — Read After the Skill
+## Governance Repo — Read This First
 
 All architecture decisions, PRDs, and project plans live in:
 `Spark-Mojo/sparkmojo-internal`
 
-Read these files for context:
+Before doing any substantive work, read these files from sparkmojo-internal:
 
 | File | What it is |
 |------|-----------|
-| `platform/prd/FRONTEND_PRD.md` | Complete frontend requirements — authoritative spec |
+| `platform/prd/FRONTEND_PRD.md` | Complete frontend product requirements — authoritative spec |
 | `platform/JAMES_PROJECT_PLAN.md` | Master project plan — what to build, in what order |
 | `platform/decisions/FRONTEND_DECISIONS.md` | All locked frontend architecture decisions |
 | `platform/architecture/PLATFORM_ARCHITECTURE.md` | Full system architecture |
 | `platform/architecture/FRAPPE_POC_NOTES.md` | Frappe POC results — what works, exact commands |
 | `platform/architecture/TASK_MANAGEMENT_POC_NOTES.md` | Task management POC results |
-| `platform/architecture/WILLOW_FIELD_MAPPING.md` | Willow Center field mapping from real data |
-| `platform/architecture/SP_FIELD_MAPPING.md` | SimplePractice billing field mapping |
+| `skills/platform/frappe/SKILL.md` | Frappe golden rules — read before any Frappe work |
 
-To access sparkmojo-internal, clone it adjacent to this repo:
+To read these, clone sparkmojo-internal adjacent to this repo:
 `git clone git@github.com:Spark-Mojo/sparkmojo-internal.git ../sparkmojo-internal`
 
 ---
 
 ## Repo Structure
-
 ```
 spark-mojo-platform/
 ├── frontend/                 # React app — migrated from sm-platform-experimental-platform
 │   ├── src/
 │   │   ├── api/
-│   │   │   ├── frappe-client.js    # Frappe REST client
+│   │   │   ├── frappe-client.js    # Frappe REST client (replaces custom-sdk.js)
 │   │   │   ├── base44Client.js     # Exports FrappeAuth + FrappeEntities
 │   │   │   ├── entities.js         # SM DocType entity classes
-│   │   │   └── integrations.js     # Integration functions
+│   │   │   └── integrations.js     # Frappe + n8n integration functions
 │   │   ├── components/             # Shared UI components (Radix/shadcn)
 │   │   ├── pages/
 │   │   │   ├── Desktop.jsx         # The desktop canvas — DO NOT MODIFY STRUCTURE
 │   │   │   ├── Layout.jsx          # App shell
-│   │   │   └── [Mojo pages]        # OnboardingMojo.jsx etc.
+│   │   │   └── [other pages]
 │   └── ...
 ├── frappe-apps/
 │   ├── sm_connectors/        # Canonical DocTypes — install first
@@ -77,7 +64,7 @@ spark-mojo-platform/
 │   └── sm_provisioning/      # Tenant configuration
 ├── abstraction-layer/        # Mojo Abstraction Layer (Python FastAPI)
 ├── scripts/
-└── CLAUDE.md                 # This file
+└── CLAUDE.md
 ```
 
 ---
@@ -97,8 +84,8 @@ These decisions are final. Do not re-litigate them.
 | Auth | Frappe session cookie (credentials: include on every request) |
 | Task management | ERPNext Task extended with SM custom fields |
 
-**CRITICAL — DECISION-003:** The React frontend NEVER calls Frappe
-directly. It always calls the Mojo Abstraction Layer. This is immutable.
+**CRITICAL:** The React frontend NEVER calls Frappe directly. It always
+calls the Mojo Abstraction Layer. This is DECISION-003 and it is immutable.
 
 ---
 
@@ -115,98 +102,116 @@ directly. It always calls the Mojo Abstraction Layer. This is immutable.
 
 ---
 
-## Client Workflow Philosophy
+## Frappe Golden Rules
 
-**Meet them where they are. Then elevate.**
+Read `sparkmojo-internal/skills/platform/frappe/SKILL.md` before any Frappe
+work. Key rules:
 
-When building Mojos for specific clients:
-- REPLICATE their mental model — don't redesign their workflow
-- IMPORT their data as-is — don't ask them to reclassify records
-- OPTIMIZE without asking — automate what they did manually
-- ASK before changing the workflow itself
-- PRESERVE their vocabulary — status names, method names, column names
-
-For Willow Center specifically: the onboarding tracker Google Sheet is
-the reference spec. See WILLOW_FIELD_MAPPING.md for the exact column
-mapping from Erin's actual spreadsheet.
-
-See also: FRONTEND_PRD.md Section 1.3.1 for the full philosophy statement.
-
----
-
-## Frappe Enforcement Checklist
-
-Run this before committing ANY Frappe code (from SKILL.md Section 15):
-
-**Server Scripts:**
-- [ ] Zero import statements? (Server Scripts are sandboxed — ALL imports fail)
-- [ ] Using get_doc().save() not db.set_value() for updates?
-- [ ] Chose correct hook for intended behavior (validate vs on_update)?
-- [ ] Not calling frappe.db.commit() in Document Event scripts?
-- [ ] Not making HTTP calls to external services in document events?
-
-**Controllers:**
-- [ ] No self.save() inside validate() or on_update()?
-- [ ] Calling super() before custom logic?
-- [ ] has_permission() returns False (not throws) to deny?
-
-**Architecture:**
-- [ ] React code calls /api/modules/ not /api/resource/ directly?
-- [ ] All new DocTypes have SM prefix?
-- [ ] Business logic in SM custom app (not core Frappe)?
-- [ ] n8n not in the hot path of any UI interaction?
-- [ ] bench migrate run after schema changes?
+1. Use `frappe.get_doc("DocType", name).save()` for updates — never `db.set_value()`
+2. Custom logic lives in SM custom apps only — never modify core Frappe
+3. All custom API endpoints use `@frappe.whitelist()` decorator
+4. All SM DocTypes are prefixed SM
+5. The Mojo Abstraction Layer is NEVER bypassed
+6. Run `bench --site [sitename] migrate` after every DocType change
+7. n8n handles all cross-system operations
+8. Background jobs use `frappe.enqueue()`
 
 ---
 
 ## Brand Tokens
 
-| Token | Value | Tailwind |
-|-------|-------|---------|
-| Primary Teal | `#006666` | `sm-teal` |
-| Coral | `#FF6F61` | `sm-coral` |
-| Gold | `#FFB300` | `sm-gold` |
-| Slate | `#34424A` | `sm-slate` |
-| Off-white | `#F8F9FA` | `sm-off-white` |
+| Token | Value |
+|-------|-------|
+| Primary Teal | `#006666` (Tailwind: `sm-teal`) |
+| Coral | `#FF6F61` (Tailwind: `sm-coral`) |
+| Gold | `#FFB300` (Tailwind: `sm-gold`) |
+| Slate | `#34424A` (Tailwind: `sm-slate`) |
+| Off-white | `#F8F9FA` (Tailwind: `sm-off-white`) |
 
 For runtime tenant theming: use CSS variables `var(--color-primary)` etc.
 Never hardcode colors — always use tokens or CSS variables.
 
 ---
 
-## Phase 3 Build Context (Current Work)
+## Phase 2 Task Sequence
 
-Building the Willow Center Onboarding POC on the existing VPS
-with anonymized data. No real PHI until Digital Ocean HIPAA VPS
-is provisioned.
+### Task 2.3 — Frontend Migration
+**Full spec:** FRONTEND_PRD.md Section 8
 
-**Reference WILLOW_FIELD_MAPPING.md before building the Onboarding
-Mojo — it documents exact field mappings from Erin's actual spreadsheet.**
+The 4 gateway files to replace (everything else is untouched):
+- `lib/custom-sdk.js` → DELETE, create `src/api/frappe-client.js`
+- `src/api/base44Client.js` → REWRITE
+- `src/api/entities.js` → REWRITE
+- `src/api/integrations.js` → REWRITE (stub with console.warn)
 
-Key reference files:
-- `platform/architecture/WILLOW_FIELD_MAPPING.md` — exact field mapping
-  from Erin's actual spreadsheet (analysis of anonymized data)
-- `platform/prd/FRONTEND_PRD.md` Section 9.2 — Onboarding Mojo spec
-- `platform/architecture/FRAPPE_POC_NOTES.md` — Docker commands that work
+Pages to DELETE:
+POS.jsx, Inventory.jsx, Orders.jsx, OrdersMobile.jsx, Recharges.jsx,
+TimeTracking.jsx, Technicians.jsx, Events.jsx, Expenses.jsx,
+Financial.jsx, FinancialReports.jsx, Customers.jsx, CustomerPortal.jsx,
+PinAccess.jsx, PinLogin.jsx
 
-The Frappe POC containers from Session 3b are on the existing VPS.
-SSH: `ssh sparkmojo`, then use Docker commands from FRAPPE_POC_NOTES.md.
+Infrastructure to DELETE:
+src/Functions/, lib/supabase-client.js, lib/custom-sdk.js,
+lib/unified-custom-sdk.js, start-functions-server.sh, stop-functions-server.sh
+
+**KEY CONSTRAINT:** Desktop.jsx carries forward UNCHANGED. Zero Base44
+dependencies. Do not touch its structure.
+
+### Task 2.4 — Mojo Abstraction Layer
+**Full spec:** FRONTEND_PRD.md Section 3.2
+
+Required endpoints:
+- GET  /api/modules/desktop/mojos
+- GET  /api/modules/tenant/public-config (unauthenticated)
+- GET  /api/modules/automations/contextual
+- POST /api/modules/automations/run
+- GET/POST/PUT/DELETE /api/modules/{capability}/{action}
+- GET  /health
+
+### Task 2.5 — SM Custom Frappe App Shells
+Install order: sm_connectors FIRST
+
+sm_connectors DocTypes:
+SM Client, SM Appointment, SM Task (extended), SM Invoice, SM Document,
+SM Employee, SM Connector Config, SM Desktop State, SM Tenant Config,
+SM Mojo Definition, SM Sync Log
+
+ERPNext Task custom fields (in sm_connectors):
+sm_linked_doctype, sm_linked_docname, sm_assigned_role,
+sm_source_template, sm_due_date
+
+sm_widgets DocTypes:
+SM Automation Template, SM Client Automation, SM Automation Log
+
+---
+
+## Verification Checklist
+
+**After 2.3:**
+- `pnpm install && pnpm run dev` starts without errors
+- Desktop.jsx renders (login screen visible, auth errors expected)
+- No missing import errors in console
+
+**After 2.4:**
+- `uvicorn main:app --reload` starts
+- GET /health returns `{ "status": "ok", "frappe_connected": false }`
+
+**After 2.5:**
+- Each app passes `bench --check`
+- install_apps.sh runs without errors
 
 ---
 
 ## What NOT to Do
 
-- Do NOT load the skill AFTER starting to write code — load it FIRST
 - Do NOT make architectural decisions — all locked in sparkmojo-internal
-- Do NOT build Mojo content before Phase 3 spec (Onboarding, Billing AR)
+- Do NOT build Mojo content (Onboarding, Billing AR) — that is Phase 3
 - Do NOT deploy to HIPAA VPS — waits for Digital Ocean BAA
 - Do NOT call Frappe directly from React — always through abstraction layer
 - Do NOT use localStorage for auth — Frappe session cookies only
 - Do NOT hardcode tenant colors — CSS variables only
 - Do NOT modify Desktop.jsx structure
 - Do NOT create signUp() — user creation is admin-only
-- Do NOT redesign a client's workflow — replicate their mental model and add automation on top. The client's vocabulary, status names, and process steps are the spec. See FRONTEND_PRD.md Section 1.3.1 and sparkmojo-internal/platform/architecture/WILLOW_FIELD_MAPPING.md.
-- Do NOT write import statements in Server Scripts — they will fail silently
 
 ---
 
@@ -221,11 +226,10 @@ SSH: `ssh sparkmojo`, then use Docker commands from FRAPPE_POC_NOTES.md.
 
 ## When in Doubt
 
-1. Check SKILL.md Section 12 for common error messages and fixes
-2. Check FRAPPE_POC_NOTES.md for Docker-specific patterns
-3. Run the enforcement checklist before committing
-4. STOP and document in WILLOW_POC_STATUS.md rather than improvise
+Check FRAPPE_POC_NOTES.md for Frappe quirks.
+Check SKILL.md for Frappe patterns.
+STOP and report rather than improvise architectural decisions.
 
 ---
 
-*Last updated: March 23, 2026 — Session 3c*
+*Last updated: March 22, 2026 — Session 3c*
