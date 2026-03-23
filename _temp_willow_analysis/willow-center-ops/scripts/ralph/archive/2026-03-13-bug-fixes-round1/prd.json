@@ -1,0 +1,186 @@
+{
+  "projectName": "Willow Ops — Bug Fixes Round 1",
+  "branchName": "fix/bug-fixes-round1",
+  "description": "10 bug fixes, UI polish, and small features for Willow Ops. Ordered: bugs first (US-001–005), UI polish (US-006–007), features (US-008–010). Read CLAUDE.md before starting any story.",
+  "userStories": [
+    {
+      "id": "US-001",
+      "title": "Login persistence via localStorage",
+      "priority": 1,
+      "passes": true,
+      "description": "Token is stored in React state only — lost on refresh or back navigation. Save auth state to localStorage and restore on app load.",
+      "acceptanceCriteria": [
+        "On successful OAuth login, save accessToken, name, email, and picture to localStorage",
+        "On app load (before rendering login screen), check localStorage for a saved session and restore it into auth state",
+        "On logout, clear all auth keys from localStorage",
+        "If a restored token results in a 401 from Google Sheets API, clear localStorage and show the login screen",
+        "Session persists across tabs and browser restarts",
+        "npm run build passes",
+        "npm run lint passes"
+      ],
+      "notes": "Added localStorage auth persistence with 401 auto-logout via AuthExpiredError"
+    },
+    {
+      "id": "US-002",
+      "title": "Drawer stays open on checkbox toggle",
+      "priority": 2,
+      "passes": true,
+      "description": "When a checklist item is toggled, the drawer abruptly closes because the data refresh callback clears selectedClient. The drawer should remain open with the updated checkbox state.",
+      "acceptanceCriteria": [
+        "Toggling any checklist checkbox writes to the sheet and updates the client record in local state",
+        "The drawer remains open with the same client selected after the write completes",
+        "The progress bar and checklist UI re-render with the updated value (animation re-triggers)",
+        "No flash, flicker, or momentary close/reopen of the drawer",
+        "The data refresh callback updates the selected client in-place (match by composite ID) rather than setting selectedClient to null",
+        "npm run build passes",
+        "npm run lint passes"
+      ],
+      "notes": "Replaced selectedClient state with selectedClientId + useMemo derivation; added optimistic local update via onFieldUpdate"
+    },
+    {
+      "id": "US-003",
+      "title": "Populate staff dropdown in Add Client modal",
+      "priority": 3,
+      "passes": true,
+      "description": "The Staff Assigned dropdown in Add Client only shows Unassigned. It should list real staff names from the Staff tab or derived from sheet data.",
+      "acceptanceCriteria": [
+        "The dropdown shows all active staff members from the Staff tab (name + initials format)",
+        "If the Staff tab doesn't exist or is empty, fall back to unique clinician values from the Need to Check sheet",
+        "Unassigned remains as the default/first option",
+        "Selected staff value is saved correctly when the client is added",
+        "Verify the staff prop is being fetched and passed through correctly from useSheets/App.jsx to AddClientModal",
+        "npm run build passes",
+        "npm run lint passes"
+      ],
+      "notes": "Added clinician fallback when Staff tab is empty; passed clients prop to AddClientModal"
+    },
+    {
+      "id": "US-004",
+      "title": "Style Kanban cards to match design system",
+      "priority": 4,
+      "passes": true,
+      "description": "Kanban cards look like plain list rows with no visual card treatment. Add white background, border, shadow, rounded corners, and hover state.",
+      "acceptanceCriteria": [
+        "Each card has: white background (--surface), 1px border (--border), border-radius 8px, padding 12-16px horizontal / 10-12px vertical",
+        "Cards have a subtle box shadow (e.g. 0 1px 3px rgba(0,0,0,0.08))",
+        "Cards are visually separated from the column background with 8px gap between cards",
+        "Hover state: slightly elevated shadow or border color change",
+        "Cards retain existing content: client name, clinician, progress bar, checklist pills",
+        "Column backgrounds use a muted tone (--bg or light gray) so cards stand out",
+        "npm run build passes",
+        "npm run lint passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "notes": "Added white bg, border, box-shadow, hover elevation to Kanban ClientCard"
+    },
+    {
+      "id": "US-005",
+      "title": "Flag missing/invalid appointment dates as urgent",
+      "priority": 5,
+      "passes": true,
+      "description": "Clients with non-date values in firstAppt (blank, 'need insurance', etc.) are not flagged as urgent. deriveStatus must treat missing/invalid dates as urgent.",
+      "acceptanceCriteria": [
+        "If firstAppt is null, undefined, empty string, or 'n/a', the client is flagged as urgent",
+        "If firstAppt is a non-empty string that fails Date.parse() (returns NaN), the client is flagged as urgent",
+        "Urgent status from missing/invalid dates appears consistently in Queue, Kanban, and My Tasks views",
+        "Clients with valid future dates beyond the threshold are NOT incorrectly flagged",
+        "npm run build passes",
+        "npm run lint passes"
+      ],
+      "notes": "Added isValidDate check — missing/unparseable firstAppt now flags urgent"
+    },
+    {
+      "id": "US-006",
+      "title": "Login page — dark background, centered, large logo",
+      "priority": 6,
+      "passes": true,
+      "description": "Login page is left-aligned with light background and small logo. Center everything, use dark navy background, and make the logo large and prominent.",
+      "acceptanceCriteria": [
+        "Background color is dark navy (#161D2E, matching the sidebar)",
+        "All content (logo, app name, sign-in button) is centered vertically and horizontally",
+        "Logo is large — hero treatment, at least h-32 (128px) or larger",
+        "App name 'Willow Ops' text is white or light-colored for contrast on dark background",
+        "Sign in with Google button is clearly visible on dark background (white or light button style)",
+        "Existing leaf particle animation still works on dark background",
+        "npm run build passes",
+        "npm run lint passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "notes": "Dark navy bg, h-32 logo, white text, white button on dark background"
+    },
+    {
+      "id": "US-007",
+      "title": "Increase sidebar logo size",
+      "priority": 7,
+      "passes": true,
+      "description": "The Willow logo in the sidebar header is too small (h-8 / 32px). Increase to clearly readable size.",
+      "acceptanceCriteria": [
+        "Logo height increased from h-8 (32px) to h-12 (48px) or similar appropriate size",
+        "Logo remains in the sidebar header area, properly aligned",
+        "No layout overflow or clipping issues in the sidebar",
+        "npm run build passes",
+        "npm run lint passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "notes": "Increased sidebar logo from h-8 (32px) to h-12 (48px)"
+    },
+    {
+      "id": "US-008",
+      "title": "My Tasks defaults to logged-in user",
+      "priority": 8,
+      "passes": true,
+      "description": "My Tasks doesn't pre-filter to the logged-in user. Default the staff filter using the OAuth name with case-insensitive partial matching.",
+      "acceptanceCriteria": [
+        "On load, the staff filter defaults to the logged-in user's name (from Google OAuth name or given_name)",
+        "Matching is case-insensitive and supports partial match (e.g. 'James' matches 'James Ilsley')",
+        "Match is attempted against both the clinician/staff name fields and initials",
+        "If no match is found, show all tasks unfiltered (no empty state due to bad match)",
+        "User can still manually switch to All Staff or another staff member",
+        "npm run build passes",
+        "npm run lint passes"
+      ],
+      "notes": "Added findDefaultStaff with email/name/clinician cascading match"
+    },
+    {
+      "id": "US-009",
+      "title": "Open historical records in read-only drawer",
+      "priority": 9,
+      "passes": true,
+      "description": "Historical client records are not clickable. Make rows openable in ClientDrawer in read-only mode, sourced from both Completed and Cancellation tabs.",
+      "acceptanceCriteria": [
+        "Clicking a row in HistoricalView opens the ClientDrawer with that client's data",
+        "Historical records are sourced from both Completed YYYY and Cancellation YYYY tabs",
+        "The drawer opens in read-only mode: all checkboxes are disabled, no edit/toggle actions fire",
+        "A visible 'Historical Record' badge or banner is shown at the top of the drawer to indicate read-only state",
+        "All existing drawer tabs (Checklist, Outreach, Notes, Details) display data but inputs are disabled",
+        "Close/back button works normally",
+        "npm run build passes",
+        "npm run lint passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "notes": "Clickable historical rows open read-only ClientDrawer with all tabs disabled"
+    },
+    {
+      "id": "US-010",
+      "title": "Edit Client tab in drawer",
+      "priority": 10,
+      "passes": true,
+      "description": "No way to edit client data after creation. Add a 5th tab to the drawer with editable form inputs for all client fields, saving back to the sheet.",
+      "acceptanceCriteria": [
+        "A 5th tab labeled 'Edit' appears in the ClientDrawer tab bar",
+        "The tab shows all client fields as editable form inputs: Client Name, Clinician (dropdown from staff list), Date Added, First Appt (date picker), DOB (date picker), Primary Insurance, Secondary Insurance, Member ID, Employer, Notes",
+        "Date fields use input type date for consistent formatting",
+        "Clinician dropdown is populated from the same staff source as Add Client modal",
+        "A Save Changes button at the bottom is disabled until at least one field is modified",
+        "On save, each changed field is written to the sheet via updateClientField()",
+        "A success toast is shown after save completes",
+        "If save fails, an error toast is shown and no fields are cleared",
+        "The Edit tab is hidden when the drawer is in read-only mode (historical records)",
+        "npm run build passes",
+        "npm run lint passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "notes": "Created EditTab with editable form for all client fields, hidden in readOnly mode"
+    }
+  ]
+}

@@ -1,0 +1,131 @@
+{
+  "project": "Willow Ops — Emergency Bug Fixes",
+  "branchName": "ralph/emergency-bugs-pre-presentation",
+  "description": "Seven emergency bug fixes before presentation: $0 KPI values, swapped fields, empty states, horizontal scrolling, and missing task data.",
+  "userStories": [
+    {
+      "id": "US-001",
+      "title": "Fix Command Center AR Total showing $0",
+      "description": "As a staff member, I want the Command Center 'Total AR Unpaid' KPI card to show the correct AR total so the dashboard is trustworthy at a glance.",
+      "acceptanceCriteria": [
+        "Command Center KPI card for 'Total AR Unpaid' displays the same value as the AR Dashboard page (over $700K from current data)",
+        "The card reads from the same derived total that AR Dashboard already computes correctly in BillingContext",
+        "While billing data is loading, the KPI card shows a spinner or loading skeleton — never $0",
+        "If billing data fails to load, the card shows an error state — never $0",
+        "npm run build passes",
+        "npm run lint passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 1,
+      "passes": true,
+      "notes": "HomeDashboard now triggers fetchFromSheet on mount with loading spinner and error states for the AR KPI card"
+    },
+    {
+      "id": "US-002",
+      "title": "Fix DOB and Member ID swapped in client drawer",
+      "description": "As a staff member, I want DOB and Member ID to display in the correct fields so I'm not reading the wrong data for a client.",
+      "acceptanceCriteria": [
+        "The Details tab in the client drawer shows DOB in the DOB field and Member ID in the Member ID field",
+        "Per the column layout: DOB is column index 12, Member ID is column index 13 — swap the mapping where these two values are read from the sheet row",
+        "Verify with at least one client that has both a DOB and a Member ID populated — both appear in the correct field",
+        "No other field mappings are affected by this change",
+        "npm run build passes",
+        "npm run lint passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 2,
+      "passes": true,
+      "notes": "Swapped ri(12)/ri(13) mapping — actual sheet has Member ID at 12 and DOB at 13"
+    },
+    {
+      "id": "US-003",
+      "title": "Fix Collections client balances all showing $0",
+      "description": "As a staff member, I want each client card in Collections to show their actual outstanding balance so I can prioritize collection efforts.",
+      "acceptanceCriteria": [
+        "Each client card in Collections shows the sum of Billed Amount (column index 5 in 'unpaid at 350pm' tab) for all rows where Client Payment Status = UNPAID, grouped by client name",
+        "The balance displayed is non-zero for clients that have unpaid claims in the sheet",
+        "Grouping by client name is case-insensitive and handles minor whitespace differences",
+        "Dollar amounts are formatted with commas and two decimal places (e.g. $1,234.56)",
+        "npm run build passes",
+        "npm run lint passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 3,
+      "passes": true,
+      "notes": "Sum billedAmount instead of clientUnpaid, case-insensitive client grouping, 2-decimal dollar formatting"
+    },
+    {
+      "id": "US-004",
+      "title": "Fix Staff Registry showing no staff",
+      "description": "As a staff member, I want the Staff Registry page to display all clinicians and their NPI data on load.",
+      "acceptanceCriteria": [
+        "Staff Registry fetches from the 'Clinician NPIs' tab of the onboarding Google Sheet (VITE_ONBOARDING_SHEET_ID)",
+        "The tab name in the API call is exactly 'Clinician NPIs' (capital C, capital N, with space) — URL-encoded as needed",
+        "The sheet ID used is VITE_ONBOARDING_SHEET_ID (not the billing sheet)",
+        "Data renders on page load: Clinician Name, Individual NPI, Supervisor Name, Supervisor NPI, Notes",
+        "If the tab is missing or fetch fails, show an error message — not a blank page",
+        "npm run build passes",
+        "npm run lint passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 4,
+      "passes": true,
+      "notes": "fetchClinicianNPIs now throws errors instead of silently returning []; StaffRegistry shows error UI with retry"
+    },
+    {
+      "id": "US-005",
+      "title": "Fix Billing Reports collected amount showing $0",
+      "description": "As a staff member, I want the Billing Reports 'Collected' figure to reflect actual paid claims so the report is accurate.",
+      "acceptanceCriteria": [
+        "Collected is calculated as the sum of Billed Amount (column index 5) for rows where Insurance Payment Status = PAID in the 'unpaid at 350pm' tab",
+        "The filter uses case-insensitive comparison for the PAID status value",
+        "The collected amount is non-zero when paid claims exist in the sheet",
+        "Uses the same 'unpaid at 350pm' data already loaded in BillingContext — no additional fetch needed",
+        "Dollar amount is formatted consistently with other financial figures in the report",
+        "npm run build passes",
+        "npm run lint passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 5,
+      "passes": true,
+      "notes": "Added Collected KPI card summing billedAmount for PAID insurance claims"
+    },
+    {
+      "id": "US-006",
+      "title": "Fix AR Dashboard horizontal scrolling",
+      "description": "As a staff member, I want the AR Dashboard to fit within the viewport without horizontal scrolling.",
+      "acceptanceCriteria": [
+        "AR Dashboard page does not cause horizontal scrolling at any viewport width >= 1024px",
+        "All filter dropdowns are constrained with max-width: 100% and overflow: hidden / text-overflow: ellipsis for long option text",
+        "All chart containers are constrained to their parent's width — no chart overflows its card",
+        "Long clinician names, payer names, or chart labels are truncated with ellipsis rather than expanding the container",
+        "Truncated text has a title attribute showing the full value",
+        "No content is clipped or inaccessible after the fix",
+        "npm run build passes",
+        "npm run lint passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 6,
+      "passes": true,
+      "notes": "Constrained dropdowns, chart, and table with overflow hidden, text truncation with title tooltips"
+    },
+    {
+      "id": "US-007",
+      "title": "Fix My Tasks showing no tasks",
+      "description": "As a staff member, I want the task board to show all tasks when 'All Staff' is selected, including unassigned tasks, so the board is functional.",
+      "acceptanceCriteria": [
+        "When 'All Staff' is selected, ALL tasks are shown regardless of assignee value — including tasks where assignee is null, undefined, or empty string",
+        "The 12 diagnostic seed tasks from the spec are present in the task context on app start — verify seed initialization runs",
+        "If seed tasks are not loading, fix the initialization code so they are populated into task state on app mount",
+        "Individual staff filter still works correctly — shows only tasks assigned to that person",
+        "Task count badge in the top bar reflects the correct number of visible tasks",
+        "npm run build passes",
+        "npm run lint passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 7,
+      "passes": true,
+      "notes": "Default assignee filter to All Staff so seed tasks and unassigned tasks are visible on load"
+    }
+  ]
+}

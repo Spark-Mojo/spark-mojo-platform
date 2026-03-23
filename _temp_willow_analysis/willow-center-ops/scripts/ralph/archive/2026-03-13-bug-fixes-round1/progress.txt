@@ -1,0 +1,213 @@
+# Ralph Progress Log
+Started: Fri Mar 13 03:44:24 EDT 2026
+---
+
+## US-001: Login persistence via localStorage
+Completed: 2026-03-13
+Status: DONE
+- Added localStorage persistence for auth state (save on login, restore on mount, clear on logout)
+- Added AuthExpiredError class in sheets.js — all API helpers now detect 401 responses
+- useSheets exposes authExpired flag; AppShell auto-logs out when detected
+- npm run build passes, npm run lint passes
+
+### Learnings
+- Auth state was purely in React state — initializing useState with a lazy loader (loadSavedAuth) avoids flash of login screen
+- The sheets.js helpers (sheetsGet, sheetsPut, sheetsAppend, getSheetTabs) all needed 401 checks added
+- Used Promise.allSettled in useSheets so one 401 doesn't mask other results — check all for AuthExpiredError
+
+### Files Changed
+- src/App.jsx — localStorage save/restore/clear, authExpired auto-logout
+- src/services/sheets.js — AuthExpiredError class, checkAuth helper on all API functions
+- src/hooks/useSheets.js — authExpired state, AuthExpiredError detection
+
+---
+
+## US-002: Drawer stays open on checkbox toggle
+Completed: 2026-03-13
+Status: DONE
+- Replaced `selectedClient` state with `selectedClientId` + `useMemo` derivation from clients array
+- Added `handleClientFieldUpdate` callback for optimistic local updates (no full refresh needed)
+- ChecklistTab now calls `onFieldUpdate` after sheet write instead of `onUpdate` (full refresh)
+- Drawer stays open with updated data — no flash, flicker, or close/reopen
+- Progress bar animation re-triggers via existing `onToggle` → `animTrigger` mechanism
+- npm run build passes, npm run lint passes
+
+### Learnings
+- Storing full client object in state and syncing via useEffect caused lint errors (setState-in-effect)
+- Storing just the ID and deriving via useMemo is cleaner — auto-syncs on any clients array change
+- Optimistic local update avoids the full refresh cycle entirely for single-field changes
+- The `onUpdate` (full refresh) is still used by other tabs (Outreach, Notes, Details, Archive)
+
+### Files Changed
+- src/App.jsx — selectedClientId + useMemo derivation, handleClientFieldUpdate callback
+- src/components/onboarding/ClientDrawer.jsx — pass onFieldUpdate to ChecklistTab
+- src/components/onboarding/ChecklistTab.jsx — use onFieldUpdate for optimistic update
+
+---
+
+## US-003: Populate staff dropdown in Add Client modal
+Completed: 2026-03-13
+Status: DONE
+- Added fallback logic: if Staff tab is empty, derive unique clinician names from Need to Check clients
+- Passed `clients` prop from AppShell to AddClientModal for fallback data
+- Active staff from Staff tab takes priority; fallback sorts alphabetically
+- Dropdown still shows "name (initials)" format; Unassigned remains default
+- npm run build passes, npm run lint passes
+
+### Learnings
+- The Staff tab may legitimately be empty (new deployment) — fallback to clinician column ensures dropdown is never blank
+- Used useMemo to avoid recomputing fallback on every render
+- staffInitials from client data provides initials for fallback entries; substring(0,2) as last resort
+
+### Files Changed
+- src/App.jsx — pass clients prop to AddClientModal
+- src/components/onboarding/AddClientModal.jsx — useMemo fallback logic for staff dropdown
+
+---
+
+## US-004: Style Kanban cards to match design system
+Completed: 2026-03-13
+Status: DONE
+- Added white background (--surface), 1px border (--border), subtle box-shadow to ClientCard
+- Updated padding to px-4 py-3 (16px horizontal, 12px vertical)
+- Added hover:shadow-md for elevated hover state with 150ms transition
+- Removed redundant backgroundColor on inner name row
+- Column backgrounds already use muted col.bg + '40' so cards stand out
+- Cards retain all existing content: name, clinician, progress bar, checklist pills
+- npm run build passes, npm run lint passes
+
+### Learnings
+- Cards already had rounded-lg (8px) and mb-2 (8px gap) — only needed bg, border, shadow
+- The inner name div had an orphaned backgroundColor: var(--surface) that was only on the header row, not the whole card
+- Tailwind CDN hover:shadow-md works fine for hover elevation effect
+
+### Files Changed
+- src/components/onboarding/KanbanView.jsx — card styling updates
+
+---
+
+## US-005: Flag missing/invalid appointment dates as urgent
+Completed: 2026-03-13
+Status: DONE
+- Added isValidDate helper in status.js to check for null, empty, 'n/a', and unparseable dates
+- When firstAppt is missing or invalid, client is always flagged as urgent
+- Clients with valid future dates beyond threshold are NOT incorrectly flagged
+- npm run build passes, npm run lint passes
+
+### Learnings
+- daysBetween returns NaN when given invalid dates, and NaN <= threshold is false — so invalid dates silently passed through
+- Setting daysUntil = -1 for invalid dates as fallback, but the !hasValidAppt check catches it first
+- Values like "need insurance" in the firstAppt field will now correctly trigger urgent status
+
+### Files Changed
+- src/utils/status.js — added isValidDate helper, updated deriveStatus logic
+
+---
+
+## US-006: Login page — dark background, centered, large logo
+Completed: 2026-03-13
+Status: DONE
+- Changed login page background from var(--bg) to #161D2E (dark navy, matching sidebar)
+- Increased logo from h-20 (80px) to h-32 (128px) for hero treatment
+- Changed "Willow Ops" text color to white for contrast on dark background
+- Button already white/light — hardcoded to #FFFFFF bg with #1A1A1A text
+- Leaf particles still visible on dark background (green on navy)
+- npm run build passes, npm run lint passes
+
+### Learnings
+- The page was already centered (flex items-center justify-center) — just needed bg/size/color updates
+- Particles use rgba green which contrasts nicely against dark navy
+
+### Files Changed
+- src/components/LoginPage.jsx — background, logo size, text color, button color updates
+
+---
+
+## US-007: Increase sidebar logo size
+Completed: 2026-03-13
+Status: DONE
+- Changed sidebar logo from h-8 (32px) to h-12 (48px)
+- No layout overflow issues — sidebar width (220px) accommodates larger logo
+- npm run build passes, npm run lint passes
+
+### Learnings
+- Simple one-line change, no side effects
+
+### Files Changed
+- src/components/shell/Sidebar.jsx — logo height class update
+
+---
+
+## US-008: My Tasks defaults to logged-in user
+Completed: 2026-03-13
+Status: DONE
+- Added findDefaultStaff() helper with cascading match: email → partial name → clinician name
+- Passed userName prop from App.jsx to MyTasksView
+- Default filter is set on mount via lazy useState initializer
+- If no match found, defaults to '' (All Staff) — no empty state
+- User can still manually switch to All Staff or another staff member
+- npm run build passes, npm run lint passes
+
+### Learnings
+- Staff list may not have email populated — name matching provides better UX
+- Case-insensitive partial match handles "James" matching "James Ilsley"
+- Using lazy useState initializer avoids re-running match logic on every render
+
+### Files Changed
+- src/App.jsx — pass userName prop to MyTasksView
+- src/components/onboarding/MyTasksView.jsx — findDefaultStaff helper, userName prop
+
+---
+
+## US-009: Open historical records in read-only drawer
+Completed: 2026-03-13
+Status: DONE
+- Made HistoricalView rows clickable with hover effect and onClientClick callback
+- Added historicalClient state in App.jsx, renders ClientDrawer with readOnly prop
+- ClientDrawer: readOnly prop, "Historical Record — Read Only" banner, hide archive button
+- ChecklistTab: disabled checkboxes when readOnly
+- OutreachTab: hidden "Log Attempt" panel when readOnly
+- NotesTab: hidden "Add note" input when readOnly
+- DetailsTab: disabled SP sync toggle buttons when readOnly
+- npm run build passes, npm run lint passes
+
+### Learnings
+- Historical clients live in HistoricalView state, not in main clients array
+- Needed separate historicalClient state since selectedClient derives from active clients only
+- readOnly prop cascades through drawer to all tab components
+
+### Files Changed
+- src/App.jsx — historicalClient state, onClientClick for HistoricalView, read-only drawer
+- src/components/onboarding/HistoricalView.jsx — clickable rows with onClientClick
+- src/components/onboarding/ClientDrawer.jsx — readOnly prop, banner, hide archive
+- src/components/onboarding/ChecklistTab.jsx — disabled when readOnly
+- src/components/onboarding/OutreachTab.jsx — hide log panel when readOnly
+- src/components/onboarding/NotesTab.jsx — hide add note when readOnly
+- src/components/onboarding/DetailsTab.jsx — disable SP toggles when readOnly
+
+---
+
+## US-010: Edit Client tab in drawer
+Completed: 2026-03-13
+Status: DONE
+- Created EditTab.jsx with editable form inputs for all client fields
+- Fields: Client Name, Clinician (dropdown), Date Added, First Appt, DOB, Primary/Secondary Insurance, Member ID, Employer, Notes
+- Date fields use input type="date" with IBM Plex Mono font
+- Clinician dropdown populated from staff list with fallback to unique clinician names
+- Save Changes button disabled until at least one field is modified
+- Uses updateClientField() with column name mapping for each changed field
+- Success/error toasts on save
+- Edit tab hidden when drawer is in readOnly mode (historical records)
+- npm run build passes, npm run lint passes
+
+### Learnings
+- updateClientField supports both fixed index and column name lookup — used column names for Edit tab fields
+- toInputDate helper converts various date formats to YYYY-MM-DD for input[type=date]
+- Passed clients prop through to EditTab for clinician fallback dropdown
+
+### Files Changed
+- src/components/onboarding/EditTab.jsx — NEW, editable form for all client fields
+- src/components/onboarding/ClientDrawer.jsx — import EditTab, add Edit tab, pass staff/clients props
+- src/App.jsx — pass clients prop to ClientDrawer
+
+---

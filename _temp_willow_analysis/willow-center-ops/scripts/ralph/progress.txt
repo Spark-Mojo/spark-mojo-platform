@@ -1,0 +1,126 @@
+# Ralph Progress Log
+Started: Fri Mar 13 12:28:09 EDT 2026
+---
+
+## US-001: Fix Command Center AR Total showing $0
+Completed: 2026-03-13
+Status: DONE
+- HomeDashboard was reading billing data from context but never triggering fetchFromSheet
+- Added useEffect to call fetchFromSheet(accessToken) when billing data isn't loaded
+- Added loading spinner state (Loader icon with animate-spin) while billing data loads
+- Added error state showing em-dash when fetch fails
+- KPICard now accepts loading and error props
+
+### Learnings
+- Billing data is lazily loaded — only fetched when a billing page component mounts
+- HomeDashboard needs to trigger its own fetch since it's the landing page
+- The totalUnpaid value was set to 0 when billingLoaded was false, making it look like real data
+
+### Files Changed
+- src/components/dashboard/HomeDashboard.jsx
+
+---
+
+## US-002: Fix DOB and Member ID swapped in client drawer
+Completed: 2026-03-13
+Status: DONE
+- Swapped ri(12) and ri(13) in mapRowToClient — actual sheet has Member ID at index 12 and DOB at index 13
+- Updated column index comments to match actual sheet layout
+
+### Learnings
+- The column comments were wrong — they didn't match the actual sheet column order
+- Member ID is at index 12, DOB is at index 13 in the actual "Need to Check" tab
+
+### Files Changed
+- src/services/sheets.js
+
+---
+
+## US-003: Fix Collections client balances all showing $0
+Completed: 2026-03-13
+Status: DONE
+- Added billedAmount field to parseUnpaidClaims (maps to 'Billed Amount' column header)
+- Changed ClientBalanceWorklist grouping to sum billedAmount instead of clientUnpaid
+- Made client grouping case-insensitive with whitespace trimming
+- Updated formatDollar to show 2 decimal places ($1,234.56 format)
+
+### Learnings
+- clientUnpaid was returning 0 for all claims — the 'Client Unpaid' column likely doesn't exist or is empty
+- The correct column for client balances is 'Billed Amount' (column index 5 in the unpaid tab)
+- Client name grouping needed normalization for case and whitespace differences
+
+### Files Changed
+- src/services/billing.js
+- src/components/billing/ClientBalanceWorklist.jsx
+
+---
+
+## US-004: Fix Staff Registry showing no staff
+Completed: 2026-03-13
+Status: DONE
+- fetchClinicianNPIs was silently catching errors and returning [], hiding the real problem
+- Changed catch block to re-throw errors so the component can display them
+- Added fetchError state and error UI with retry button to StaffRegistry
+
+### Learnings
+- Silent catch blocks in service layer hide data loading failures
+- The function already used the correct sheet ID (ONBOARDING_SHEET_ID) and tab name ('Clinician NPIs')
+- The header matching is flexible with fallbacks (Name/Clinician/Provider etc.)
+
+### Files Changed
+- src/services/sheets.js
+- src/components/staff/StaffRegistry.jsx
+
+---
+
+## US-005: Fix Billing Reports collected amount showing $0
+Completed: 2026-03-13
+Status: DONE
+- Added collectedTotal calculation: sum of billedAmount where insurancePaymentStatus = PAID
+- Added "Collected" KPI card with CheckCircle icon to Billing Reports
+- Expanded KPI grid from 4 to 5 columns to accommodate the new card
+
+### Learnings
+- The billedAmount field added in US-003 was needed here too for the PAID filter
+- insurancePaymentStatus comparison is case-insensitive (toUpperCase === 'PAID')
+
+### Files Changed
+- src/components/reports/BillingReports.jsx
+
+---
+
+## US-006: Fix AR Dashboard horizontal scrolling
+Completed: 2026-03-13
+Status: DONE
+- Added overflow:hidden and minWidth:0 to outer page container
+- Constrained filter dropdowns with maxWidth:200px and text-overflow:ellipsis
+- Constrained chart container with overflow:hidden
+- Added text truncation with ellipsis on client, clinician, and primary insurance table columns
+- Added title attributes on truncated cells for full-value hover
+- Set table-layout:fixed to prevent table from expanding beyond container
+
+### Learnings
+- Multiple unconstrained elements contributed to overflow: dropdowns, chart, and table
+- table-layout:fixed combined with maxWidth on cells gives reliable truncation
+- minWidth:0 on flex children is essential to prevent flex items from forcing overflow
+
+### Files Changed
+- src/components/billing/ARDashboard.jsx
+
+---
+
+## US-007: Fix My Tasks showing no tasks
+Completed: 2026-03-13
+Status: DONE
+- Changed default assignee filter from userEmail to '' (All Staff)
+- Seed tasks have name-based assignees ('Erin', 'Erin + Kate') not email addresses, so the email-based filter was hiding all tasks
+
+### Learnings
+- The seed tasks use human names for assignedTo, not email addresses
+- Defaulting to the current user's email filtered out all seed tasks
+- The 'All Staff' filter (empty string) correctly shows all tasks including unassigned
+
+### Files Changed
+- src/components/tasks/TaskBoard.jsx
+
+---
