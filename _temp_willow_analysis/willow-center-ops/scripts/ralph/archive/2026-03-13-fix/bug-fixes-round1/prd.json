@@ -1,0 +1,393 @@
+{
+  "project": "Willow Ops — Round 2 Features",
+  "branchName": "ralph/round2-features",
+  "description": "Round 2 feature build: sidebar restructure, home dashboard, revenue cycle (AR dashboard, unbilled worklist, client balance worklist), voicemail triage, global task board, reporting (billing + onboarding), staff NPI registry, and spreadsheet upload.",
+  "userStories": [
+    {
+      "id": "US-001",
+      "title": "Sidebar restructure and route scaffolding",
+      "description": "As a user, I need the sidebar updated to reflect Round 2 modules with real routes instead of Phase 2 stubs.",
+      "acceptanceCriteria": [
+        "Sidebar matches exact structure from handoff: Command Center (top, links to /), Onboarding (with count badge), Revenue Cycle (no Phase 2 tag), Voicemail (no Phase 2 tag), Reports section with Onboarding + Billing sub-items, Admin with Manage Staff + Config, My Tasks as persistent global item with task count badge at bottom",
+        "All 'Phase 2' and 'Round 2' tags/labels are removed from sidebar items",
+        "Clicking Revenue Cycle, Voicemail, Reports, or My Tasks no longer shows a toast — they navigate to real routes",
+        "Revenue Cycle has sub-routes: /billing, /billing/unbilled, /billing/collections",
+        "Reports has sub-routes: /reports/onboarding, /reports/billing",
+        "Voicemail route: /voicemail",
+        "My Tasks route: /tasks",
+        "Command Center navigates to / (home dashboard route)",
+        "All new routes render placeholder components with the route name (will be built in later stories)",
+        "Sidebar logo fills ~95% of sidebar width",
+        "App.jsx routing updated with all new routes",
+        "npm run build passes",
+        "npm run lint passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 1,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-002",
+      "title": "Spreadsheet upload UI with SheetJS parsing",
+      "description": "As an admin, I need to upload onboarding and billing xlsx files so the app can parse and use the data in-browser.",
+      "acceptanceCriteria": [
+        "Install xlsx (SheetJS) package as a dependency",
+        "New SpreadsheetUpload.jsx component in admin section, accessible from Config route",
+        "Two upload zones: one for onboarding xlsx, one for billing xlsx",
+        "On file select, parse xlsx in-browser using SheetJS — no data sent to external servers",
+        "Validate expected columns/tabs before accepting: billing must have 'unpaid at 350pm' and 'ins unbilled' tabs; onboarding must have 'Need to Check' tab",
+        "Show validation errors if columns don't match expected schema",
+        "After successful parse, show: last upload timestamp, row count, file name for each upload",
+        "Store parsed data in React context (BillingDataContext) so other components can consume it",
+        "BillingDataContext provides: unpaidClaims array, unbilledClaims array, isLoaded boolean, uploadTimestamp",
+        "npm run build passes",
+        "npm run lint passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 2,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-003",
+      "title": "Billing data service — parse xlsx into structured records",
+      "description": "As a developer, I need billing xlsx data parsed into structured JavaScript objects for use across billing components.",
+      "acceptanceCriteria": [
+        "Create src/services/billing.js with parsing functions for both billing tabs",
+        "parseUnpaidClaims(sheetData) parses 'unpaid at 350pm' tab rows into objects with fields: dateOfService, client, clinician, billingCode, primaryInsurance, secondaryInsurance, ratePerUnit, units, totalFee, clientPaymentStatus, clientCharge, clientUninvoiced, clientPaid, clientUnpaid, insurancePaymentStatus, insuranceCharge, insurancePaid, writeOff, totalUnpaid",
+        "parseUnbilledClaims(sheetData) parses 'ins unbilled' tab rows into objects with fields: dateOfService, client, clinician, billingCode, payer, amountOwed, status (default 'Unbilled'), outreachAttempts array, notes",
+        "Dollar values parsed as numbers (strip $ and commas)",
+        "Date values parsed into consistent format",
+        "Filter out empty/header rows automatically",
+        "Helper functions: calcARAgingBuckets(claims), calcKPIs(claims), filterClaims(claims, filters)",
+        "calcARAgingBuckets groups by Date of Service into 0-30, 31-60, 61-90, 91-120, 120+ day buckets with dollar totals",
+        "SpreadsheetUpload.jsx uses these parsers when processing uploaded files",
+        "npm run build passes",
+        "npm run lint passes"
+      ],
+      "priority": 3,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-004",
+      "title": "Voicemail data service — read VM tab from onboarding sheet",
+      "description": "As a developer, I need voicemail data read from the VM tab of the onboarding Google Sheet.",
+      "acceptanceCriteria": [
+        "Add fetchVoicemails(accessToken, sheetId) function to sheets.js that reads the VM tab",
+        "VM tab actual columns (0-indexed): [0] Date, [1] Time, [2] Number, [3] Name, [4] About The Message, [5] TYPE, [6] ACTION, [7] Notes, [8] Location, [9] Insurance, [10] Task Complete, [11-20] Outreach attempts (Date/Method pairs x5), [21] Notes (second notes column), [22] FWD, [23] Called Back",
+        "Parse VM tab columns into structured objects: date, time, number, name, aboutMessage, type, action, notes, location, insurance, taskComplete (bool), outreachAttempts (5 date/method pairs from cols 11-20), forwarded (FWD col 22, bool), calledBack (col 23, bool)",
+        "Derive voicemail status from existing fields: taskComplete=true → 'Closed', forwarded=true → 'Forwarded to Clinician', calledBack=true → 'Called Back — Reached', action contains relevant keyword → map accordingly, else 'New / Unreviewed'",
+        "Generate a unique ID for each voicemail (name + date + time composite)",
+        "Shift dates to within last 7 days for demo purposes (add offset from original date to current date)",
+        "useSheets hook updated to fetch voicemails alongside other data",
+        "npm run build passes",
+        "npm run lint passes"
+      ],
+      "priority": 4,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-005",
+      "title": "Home Dashboard — greeting, KPI cards, and quick nav",
+      "description": "As a user, I want a home dashboard as my landing page after login with KPIs and quick navigation to all modules.",
+      "acceptanceCriteria": [
+        "HomeDashboard.jsx renders at / route (Command Center)",
+        "Personalized greeting: 'Good morning/afternoon/evening, James' — hardcode 'James' for demo, use time-of-day logic",
+        "4 KPI cards: Active Onboarding Queue (count from clients), Total AR Unpaid (dollar from billing data, show $0 if no billing data uploaded), Open Voicemails (count unresolved), Urgent Items (count across all workflows)",
+        "KPI cards use IBM Plex Mono for numbers, Sora for labels",
+        "KPI numbers animate with count-up effect on mount",
+        "My Tasks summary strip: count of open tasks by category (Onboarding, Billing, Voicemail, General) — show 0 counts gracefully",
+        "Quick nav tiles: large clickable cards linking to Onboarding (/onboarding), Revenue Cycle (/billing), Voicemail (/voicemail), Reports (/reports/onboarding), Staff (/admin/staff), Config (/admin/config)",
+        "Nav tiles have icons (lucide-react), hover effect with subtle shadow elevation",
+        "Design uses --bg background, --surface card backgrounds, --accent highlights",
+        "npm run build passes",
+        "npm run lint passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 5,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-006",
+      "title": "AR Dashboard — KPI cards and claims data table",
+      "description": "As a billing staff member, I want to see AR summary KPIs and a filterable table of all unpaid claims.",
+      "acceptanceCriteria": [
+        "ARDashboard.jsx renders at /billing route",
+        "4 KPI cards: Total Unpaid (sum of totalUnpaid), Insurance Unpaid (count where insurancePaymentStatus=UNPAID), Client Unpaid (count where clientPaymentStatus=UNPAID), Unbilled to Insurance (count where insurancePaymentStatus=UNBILLED)",
+        "KPI numbers use IBM Plex Mono, animate with count-up on mount",
+        "Dollar amounts formatted with $ and commas (e.g. $765,821)",
+        "Data table below KPIs showing all unpaid claims: Date of Service, Client, Clinician, Billing Code, Primary Insurance, Total Fee, Total Unpaid, Client Status, Insurance Status",
+        "Table rows use alternating background for readability",
+        "Table is scrollable with sticky header if more than ~20 rows visible",
+        "If no billing data uploaded yet, show a friendly empty state: 'Upload billing data in Config to view AR dashboard' with link to config",
+        "npm run build passes",
+        "npm run lint passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 6,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-007",
+      "title": "AR Dashboard — aging chart and filters",
+      "description": "As a billing staff member, I want to see AR aging as a visual chart and filter claims by clinician, payer, status, and date range.",
+      "acceptanceCriteria": [
+        "Install recharts package as a dependency",
+        "AR Aging stacked bar chart using recharts: 5 buckets (0-30, 31-60, 61-90, 91-120, 120+ days) calculated from Date of Service",
+        "Chart uses navy/teal/mint/amber color palette, has tooltips showing dollar amounts on hover",
+        "Filter bar above the table with dropdowns: Clinician (from unique clinician values), Primary Insurance (from unique payer values), Client Payment Status, Insurance Payment Status, Date Range (from/to date pickers)",
+        "Filters apply to both the data table AND the aging chart",
+        "Filters are additive (AND logic) — selecting clinician + payer shows only matching rows",
+        "Clear Filters button resets all filters",
+        "Chart and table update reactively when filters change",
+        "npm run build passes",
+        "npm run lint passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 7,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-008",
+      "title": "Unbilled Claims Worklist — list view with claim cards",
+      "description": "As a billing staff member, I want to see all unbilled insurance claims as a worklist to track recovery.",
+      "acceptanceCriteria": [
+        "UnbilledWorklist.jsx renders at /billing/unbilled route",
+        "Summary KPI at top: total unbilled count and total dollar amount",
+        "Each claim rendered as a card showing: Client, Clinician, Date of Service, Billing Code, Payer, Amount Owed",
+        "Cards have white background, border, shadow, rounded corners (same card styling as Kanban)",
+        "Claim status badge on each card: Unbilled (default), Submitted — Awaiting Response, Resubmitting, Blocked — No Appointment in SP, Written Off, Resolved / Paid",
+        "Status badge colors follow design system pattern (similar to onboarding status badges)",
+        "Cards are sortable by Date of Service (oldest first default) and filterable by Clinician and Payer",
+        "If no billing data uploaded, show empty state with link to Config",
+        "npm run build passes",
+        "npm run lint passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 8,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-009",
+      "title": "Unbilled Claims — outreach tracking and action buttons",
+      "description": "As a billing staff member, I want to log outreach attempts and take actions on unbilled claims.",
+      "acceptanceCriteria": [
+        "Clicking a claim card opens a ClaimDrawer (slide-in from right, same pattern as ClientDrawer)",
+        "ClaimDrawer shows full claim details + outreach log + action buttons",
+        "Outreach tracking: up to 5 attempts, each with date + method (Phone Call, Text, Email, Left VM, Sent to Julia) — same pattern as onboarding outreach",
+        "Log Attempt button adds new outreach entry with current date and selected method",
+        "Action buttons: Mark Submitted, Add Note, Resubmit, Write Off (requires reason text input), Block — No SP Appt",
+        "Each action updates the claim status accordingly",
+        "Write Off action requires a written reason before submission — show text input modal/inline",
+        "Claim status changes persist in BillingDataContext (in-memory for now)",
+        "Success toast shown after each action",
+        "npm run build passes",
+        "npm run lint passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 9,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-010",
+      "title": "Client Balance Collection Worklist",
+      "description": "As a billing staff member, I want a worklist of clients with unpaid balances to track collection outreach.",
+      "acceptanceCriteria": [
+        "ClientBalanceWorklist.jsx renders at /billing/collections route",
+        "Filters unpaid claims data to Client Payment Status = UNPAID",
+        "Summary KPI: total client count and total unpaid dollar amount",
+        "Each client rendered as a card: Client name, total unpaid amount, clinician, most recent date of service",
+        "Outreach tracking: up to 5 attempts with date + method (Text, Phone Call, Email, Left Voicemail)",
+        "Resolution statuses: Pending Outreach, In Progress, Paid in Full, Payment Plan Established, Written Off, Blocked from Scheduling in SP, Unresolvable / Referred Out",
+        "Payment Plan requires note with amount and schedule ($25/mo minimum)",
+        "Written Off requires authorization + reason note",
+        "Blocked from Scheduling requires a note — manual flag only",
+        "All non-'Paid in Full' resolutions require a note before saving",
+        "Status changes persist in BillingDataContext (in-memory)",
+        "npm run build passes",
+        "npm run lint passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 10,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-011",
+      "title": "Voicemail Triage — list view with filters",
+      "description": "As a staff member, I want to see all voicemails in a filterable list to triage and manage callbacks.",
+      "acceptanceCriteria": [
+        "VoicemailView.jsx renders at /voicemail route",
+        "Summary KPIs at top: total VMs, unreviewed count, in progress count, resolved count",
+        "Each voicemail rendered as a card: caller name, phone number, date/time, message summary (About The Message field), type, current status, assigned to",
+        "Status badge on each card with color coding: New/Unreviewed (red bg), In Progress (amber), Answered/Resolved (green), Needs Followup (blue), etc.",
+        "Filter bar: by Type, Location, Status, Date range",
+        "Cards sorted by date (newest first default)",
+        "If no voicemail data available, show empty state",
+        "npm run build passes",
+        "npm run lint passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 11,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-012",
+      "title": "Voicemail Drawer — status management and outreach",
+      "description": "As a staff member, I want to open a voicemail detail drawer to update status, assign staff, and log outreach.",
+      "acceptanceCriteria": [
+        "Clicking a voicemail card opens VoicemailDrawer (slide-in from right)",
+        "Drawer shows all VM fields: caller name, number, date/time, full message, type, location, insurance, assigned to, current status",
+        "Status dropdown with all voicemail statuses: New/Unreviewed, In Progress, Answered — Resolved, Needs Followup, Forwarded to Clinician, Called Back — Reached, Called Back — Left VM, Sent Text, No Answer — Retry, Closed",
+        "Needs Followup status requires a note and assigned staff member before saving",
+        "Outreach log: up to 5 attempts with date + method, same pattern as onboarding",
+        "Log Attempt button adds new outreach with current date",
+        "Notes field for adding notes to the voicemail",
+        "Status changes write back to the VM tab in the onboarding Google Sheet — map status to actual columns: Task Complete (col 10), FWD (col 22), Called Back (col 23), ACTION (col 6), Notes (col 7)",
+        "Success/error toasts on save",
+        "npm run build passes",
+        "npm run lint passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 12,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-013",
+      "title": "Global Task Board — restructure with categories",
+      "description": "As a user, I want My Tasks as a global feature with workflow categories and enhanced task fields.",
+      "acceptanceCriteria": [
+        "TaskBoard.jsx renders at /tasks route — replaces the old onboarding-nested MyTasksView.jsx entirely (remove or repurpose MyTasksView.jsx, update all imports/references)",
+        "My Tasks sidebar item navigates to /tasks, not nested under onboarding",
+        "Task fields: Title, Description, Assigned To (staff dropdown), Due Date, Priority (Low/Medium/High/Urgent), Workflow Category (Onboarding/Billing/Voicemail/General), Status (To Do/In Progress/Done), Linked Record (optional free text — client name, claim ID, VM ID)",
+        "Filter tabs at top: All / Onboarding / Billing / Voicemail / General",
+        "List view (default): tasks grouped by status, showing priority badge, due date, assigned to, category tag",
+        "Priority badges: Low=gray, Medium=blue, High=amber, Urgent=red",
+        "Tasks still read from/write to Tasks tab in onboarding Google Sheet",
+        "My Tasks sidebar badge shows count of open tasks assigned to logged-in user",
+        "Default filter to logged-in user (preserve existing behavior from Round 1)",
+        "npm run build passes",
+        "npm run lint passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 13,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-014",
+      "title": "Task Board — Kanban view and seed tasks",
+      "description": "As a user, I want a Kanban view of tasks and pre-seeded diagnostic blocker tasks.",
+      "acceptanceCriteria": [
+        "Toggle between List view and Kanban view on the task board",
+        "Kanban columns: To Do, In Progress, Done",
+        "Cards show: title, priority badge, due date, assigned to, category tag",
+        "Drag and drop between columns updates task status (use @dnd-kit)",
+        "Seed tasks pre-populated from diagnostic blockers in handoff doc: B1 (SP contact form, Onboarding), B3 (clearinghouse access, Billing), B4 (48hr co-sign SLA, Billing), B5 (direct clearinghouse access, Billing), B6 (notes attached to claims, Billing), B7 (secondary insurance audit, Billing), B8 (unified balance threshold, Billing), B9 (deductible billing logic, Billing), B10 (write-off authorization, Billing), plus 3 open questions (custody module, GFE workflow, supervisor co-sign)",
+        "Seed tasks are only created if Tasks tab is empty (avoid duplicates on reload)",
+        "All seed tasks default to: Status=To Do, Priority=High, Assigned To=unassigned",
+        "npm run build passes",
+        "npm run lint passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 14,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-015",
+      "title": "Staff Registry with NPI data",
+      "description": "As an admin, I want to manage staff records including NPI numbers and supervisor relationships.",
+      "acceptanceCriteria": [
+        "Extend existing ManageStaff.jsx with NPI fields",
+        "Read 'Clinician NPIs' tab from onboarding sheet on load",
+        "Staff record fields: Name, NPI, Supervisor, Supervisor NPI, Supervision Notes, Role, Email, Active/Inactive status",
+        "Display org-level info at top: Org Name (Willow Center), TIN (812069415), Billing NPI (1336596550)",
+        "Pre-seed staff records from Clinician NPIs tab data on first load (if Staff tab is empty)",
+        "Editable inline or via edit form — changes write back to Staff tab",
+        "Active/Inactive toggle — inactive staff hidden from dropdowns across the app by default",
+        "Staff list is the authoritative source for clinician dropdowns in onboarding, billing, voicemail, and tasks",
+        "npm run build passes",
+        "npm run lint passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 15,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-016",
+      "title": "Billing Reports — AR summary and charts",
+      "description": "As a manager, I want billing reports with charts showing AR aging, collections, and revenue metrics.",
+      "acceptanceCriteria": [
+        "BillingReports.jsx renders at /reports/billing route",
+        "AR Summary KPIs at top: total outstanding, insurance vs client split, unbilled total",
+        "AR Aging waterfall chart (stacked bar): 0-30 / 31-60 / 61-90 / 91-120 / 120+ days",
+        "Collections rate by payer (horizontal bar chart): BCBS, Medical Mutual, Paramount, FrontPath, Aetna, UMR, Cigna, UHC — calculated from insurance paid vs charged",
+        "Revenue by clinician (bar chart): total billed per clinician from totalFee column",
+        "Billing code distribution (donut/pie chart): 90837 therapy vs 90791 intake vs NP codes 99214+90833",
+        "All charts use recharts with navy/teal/mint/amber palette",
+        "Charts have interactive tooltips showing values on hover",
+        "If no billing data uploaded, show empty state with link to Config upload",
+        "npm run build passes",
+        "npm run lint passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 16,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-017",
+      "title": "Onboarding Reports — volume, cancellation, and payer mix charts",
+      "description": "As a manager, I want onboarding reports showing client volume trends, cancellation rates, and payer mix over time.",
+      "acceptanceCriteria": [
+        "OnboardingReports.jsx renders at /reports/onboarding route",
+        "Read historical data from Completed 2022-2026 and Cancellation 2022-2026 tabs",
+        "New client volume by month chart (bar): trend from 2022 to present, grouped by month",
+        "Cancellation rate by month chart (line): cancellations / (completions + cancellations) per month",
+        "Payer mix over time chart (stacked area): how insurance company distribution has shifted year over year",
+        "Clinician caseload growth over time (multi-line chart): one line per clinician showing completed onboardings per month",
+        "Time to completion histogram: days from dateAdded to verified date, binned into 1-week buckets",
+        "All charts use recharts with navy/teal/mint/amber palette and interactive tooltips",
+        "Gracefully handle missing tabs (not all years may exist) — show data for available years only",
+        "npm run build passes",
+        "npm run lint passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 17,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-018",
+      "title": "Onboarding Reports — outreach analysis and advanced metrics",
+      "description": "As a manager, I want advanced onboarding metrics including outreach effectiveness and cancellation reasons.",
+      "acceptanceCriteria": [
+        "Add to existing OnboardingReports.jsx (below the charts from US-017)",
+        "Outreach attempts comparison chart (grouped bar): avg attempts needed for completions vs cancellations",
+        "Cancellation reason analysis (horizontal bar or table): categorize cancellation reasons from final notes text — group by common keywords (insurance issue, no response, changed provider, etc.)",
+        "Monthly billed vs collected trend if billing data is available (dual line chart — optional, only show if billing data uploaded)",
+        "Write-off rate over time (line chart — only show if billing data uploaded)",
+        "Unbilled claims by clinician (bar chart — only show if billing data uploaded)",
+        "All charts consistent with navy/teal/mint/amber palette",
+        "npm run build passes",
+        "npm run lint passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 18,
+      "passes": false,
+      "notes": ""
+    }
+  ]
+}

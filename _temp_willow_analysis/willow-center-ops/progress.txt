@@ -1,0 +1,11 @@
+# Willow Ops — Ralph Progress Log
+# Append learnings after each story. Do not delete old entries.
+# Format: [S-ID] [date] — notes
+
+# Project initialized. CLAUDE.md and prd.json committed.
+# Stack: Vite + React 18, Tailwind CDN, @react-oauth/google, @dnd-kit, lucide-react
+# Data layer: Google Sheets API v4 via OAuth access token (no backend)
+# Auth domain: sparkmojo.com (env var VITE_ALLOWED_DOMAIN)
+# Design: Sora + IBM Plex Mono, #161D2E sidebar, #2A7A65 accent
+# 23 stories total. Run in order S01-S23.
+# Read CLAUDE.md before starting any story — it has all context.

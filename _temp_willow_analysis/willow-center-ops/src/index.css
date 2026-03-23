@@ -1,0 +1,36 @@
+:root {
+  --accent: #2A7A65;
+  --accent-mid: #3D9B82;
+  --accent-light: #EAF4F1;
+  --bg: #F5F3EF;
+  --surface: #FFFFFF;
+  --sidebar: #161D2E;
+  --text: #1A1A1A;
+  --muted: #6B7280;
+  --border: #E4E1D8;
+  --red: #C94040;
+  --amber: #C47B1A;
+  --blue: #2065B8;
+  --green: #2A7A65;
+
+  font-family: 'Sora', sans-serif;
+  color: var(--text);
+  background: var(--bg);
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  margin: 0;
+}
+
+#root {
+  min-height: 100vh;
+  display: flex;
+}
+
+.font-mono {
+  font-family: 'IBM Plex Mono', monospace;
+}

@@ -1,0 +1,196 @@
+{
+  "project": "Willow Ops — Round 3 Fixes",
+  "branchName": "ralph/round3-billing-tasks-reports",
+  "description": "Billing data from Google Sheets (remove upload gate), My Tasks to top bar, Staff Registry split, task board fixes (seed data + module statuses), reporting enhancements (time windows + expand modals + payer mix bug).",
+  "userStories": [
+    {
+      "id": "US-001",
+      "title": "Fetch billing data from Google Sheets API",
+      "description": "As a developer, I need BillingDataProvider to fetch billing data from the Google Sheet instead of requiring an xlsx upload.",
+      "acceptanceCriteria": [
+        "Add fetchBillingFromSheet(accessToken, sheetId) function to sheets.js that reads two tabs: 'unpaid at 350pm' and 'ins unbilled' from VITE_BILLING_SHEET_ID",
+        "URL-encode tab names for Sheets API calls (same pattern as 'Need to Check')",
+        "Read header row first to confirm column positions, then use fixed indices for data rows",
+        "Column mapping for 'unpaid at 350pm': [0] Date of Service, [1] Client Name, [2] Clinician, [3] Billing Code, [4] Payer, [5] Billed Amount, [6] Insurance Payment Status, [7] Client Payment Status, [8] Date Billed, [9] Notes",
+        "Column mapping for 'ins unbilled': same header-confirmation pattern, key fields are Date of Service, Client Name, Clinician, Billing Code, Payer, Billed Amount",
+        "Reuse existing parseUnpaidClaims() and parseUnbilledClaims() from billing.js for row-to-object mapping — adapt if needed for Sheets API row format (array of arrays vs xlsx format)",
+        "Update BillingDataProvider in contexts/billing.jsx: add a fetchFromSheet(accessToken) method that calls fetchBillingFromSheet, parses results, and sets unpaidClaims + unbilledClaims + isLoaded",
+        "Expose fetchFromSheet via BillingDataContext so billing views can trigger it",
+        "npm run build passes",
+        "npm run lint passes"
+      ],
+      "priority": 1,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-002",
+      "title": "Remove upload gate from all billing views",
+      "description": "As a staff member, I want billing views to auto-fetch from the sheet on navigation, never showing an upload prompt.",
+      "acceptanceCriteria": [
+        "ARDashboard.jsx: remove the isLoaded check that shows upload prompt — instead, call fetchFromSheet on mount if not already loaded, show loading spinner while fetching",
+        "UnbilledWorklist.jsx: same — remove upload gate, auto-fetch on mount",
+        "ClientBalanceWorklist.jsx: same — remove upload gate, auto-fetch on mount",
+        "BillingReports.jsx: same — remove upload gate, auto-fetch on mount",
+        "If sheet fetch fails, show an error state with a retry button — NOT an upload prompt",
+        "Config page (/admin/config) keeps SpreadsheetUpload as a manual refresh option but it is not a prerequisite for any view",
+        "Data re-fetches when navigating to a billing view if not already loaded in current session",
+        "The accessToken must be available to billing views — pass from AuthContext or App.jsx props",
+        "npm run build passes",
+        "npm run lint passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 2,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-003",
+      "title": "Make TopBar a global shell component with My Tasks button",
+      "description": "As a staff member, I want a persistent top bar on every page with a My Tasks button showing my open task count.",
+      "acceptanceCriteria": [
+        "Refactor TopBar.jsx to be a global shell component mounted in App.jsx (alongside Sidebar), not just in the onboarding module",
+        "TopBar shows the current page title based on route (Onboarding, Revenue Cycle, Voicemail, Reports, etc.)",
+        "Add a task button to TopBar using a checklist icon from lucide-react (e.g. ListTodo or CheckSquare)",
+        "Button shows a count badge of open tasks assigned to the logged-in user (status !== 'Done')",
+        "Badge uses accent color (#2A7A65) when count > 0, muted/gray when 0",
+        "Clicking the button navigates to /tasks",
+        "Remove 'My Tasks' item from Sidebar.jsx entirely (including the badge)",
+        "Onboarding-specific controls (search, view switcher, Add Client button) only appear when on onboarding routes",
+        "TopBar is visible on every page in the app",
+        "npm run build passes",
+        "npm run lint passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 3,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-004",
+      "title": "Create Staff Registry view and sidebar item",
+      "description": "As a staff member, I want a Staff Registry view that shows clinician NPI data as an operational reference, separate from the admin Manage Staff view.",
+      "acceptanceCriteria": [
+        "New component: src/components/staff/StaffRegistry.jsx",
+        "New route: /staff",
+        "New sidebar item 'Staff Registry' between Voicemail and Reports section",
+        "Header card shows org info: Practice Name (Willow Center), TIN (812069415), Billing NPI (1336596550)",
+        "Reads from 'Clinician NPIs' tab of onboarding sheet (VITE_ONBOARDING_SHEET_ID) using fetchClinicianNPIs from sheets.js",
+        "Displays table: Clinician Name, Individual NPI, Supervisor Name, Supervisor NPI, Notes/Supervision Details",
+        "Column positions confirmed via header row (0-indexed: [0] Clinician name, [1] Individual NPI, [2] Supervisor name, [3] Supervisor NPI, [4] Notes)",
+        "Add and edit capabilities with write-back to the Clinician NPIs tab",
+        "Remove org info card (Willow Center, TIN, Billing NPI) from ManageStaff.jsx to avoid duplication",
+        "ManageStaff.jsx stays under Admin — handles app-level access, roles, assignments only",
+        "npm run build passes",
+        "npm run lint passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 4,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-005",
+      "title": "Replace task seed data with 12 diagnostic blockers",
+      "description": "As a staff member, I want the task board pre-loaded with the 12 real diagnostic action items from the Willow Center assessment.",
+      "acceptanceCriteria": [
+        "Remove existing SEED_TASKS array content from sheets.js",
+        "Replace with exactly 12 tasks, all status 'To Do': (1) 'Define unified balance threshold across all service lines' / Erin / Billing, (2) 'Clarify deductible billing decision logic — who pays what, when' / Erin + Kate / Billing, (3) 'Define write-off authorization criteria and approval chain' / Erin / Billing, (4) 'Confirm secondary insurance audit scope and assign owner' / Erin + Lisa / Claims, (5) 'Resolve Sarah's clearinghouse access — is this an ESI contract issue?' / Erin + Sarah / Operations, (6) 'Define supervisor co-sign SLA — 48 hours non-negotiable?' / Lisa / Clinical, (7) 'Configure SimplePractice inquiry form — 15-minute fix, assign owner' / Sarah / Operations, (8) 'Clarify FMLA billing — patient-pay, not insurance' / Julia / Erin / Billing, (9) 'Confirm Google Workspace BAA scope — which services are covered' / Erin / Compliance, (10) 'Define Julia transition timeline and billing handoff plan' / Erin / Operations, (11) 'Discovery: custody agreement workflow — documents, custody types, who reviews' / Lisa / Clinical, (12) 'Discovery: age-18 transition — which documents require re-execution at 18' / Lisa / Clinical",
+        "Tasks are in-memory — reset on refresh is acceptable. Do NOT write seed tasks to Google Sheets",
+        "Task creation and status changes are also in-memory only (remove any writeToSheet calls for tasks if present)",
+        "Do NOT pull onboarding clients into the task board as tasks",
+        "Add 'Claims', 'Operations', 'Clinical', 'Compliance' to the task category options if not already present",
+        "npm run build passes",
+        "npm run lint passes"
+      ],
+      "priority": 5,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-006",
+      "title": "Module-specific task statuses in task board",
+      "description": "As a staff member, I want tasks grouped by category with statuses appropriate to each module instead of generic To Do/In Progress/Done.",
+      "acceptanceCriteria": [
+        "Define status sets per category: General = ['To Do', 'In Progress', 'Done'], Billing + Claims = ['Unbilled', 'Submitted', 'Resubmitting', 'Blocked', 'Written Off', 'Resolved'], Voicemail = ['New', 'In Progress', 'Needs Followup', 'Closed'], Onboarding = ['Urgent', 'Needs Paperwork', 'Pending Insurance', 'Ready'], Operations + Clinical + Compliance = same as General",
+        "Kanban view groups by category first, then shows columns for that category's status set",
+        "When category filter is set to a specific category, kanban columns match that category's statuses",
+        "When 'All' category filter is active, use the General statuses (To Do / In Progress / Done) as columns",
+        "Status dropdown in list view shows only valid statuses for the task's category",
+        "Drag-and-drop in kanban updates status to the target column's status value",
+        "Seed tasks from US-005 all start with their category's first status (e.g. Billing tasks start as 'Unbilled', General as 'To Do')",
+        "npm run build passes",
+        "npm run lint passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 6,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-007",
+      "title": "Add time window toggles to onboarding report charts",
+      "description": "As a staff member, I want to filter onboarding report charts by time window to focus on recent trends or see the full picture.",
+      "acceptanceCriteria": [
+        "Create a reusable TimeWindowToggle component: small pill toggle (e.g. '3mo / 12mo / All') rendered in the top-right corner of each chart card",
+        "Each chart's toggle state is local (not global)",
+        "New Client Volume by Month: default 12mo, options 3mo / 12mo / All",
+        "Cancellation Rate by Month: default 12mo, options 3mo / 12mo / All",
+        "Cancel Rate KPI card: default 'This month', options 'This month' / 'This quarter' / 'All' — show selected window as muted text label beneath the number",
+        "Payer Mix Over Time: default 12mo, options 12mo / All",
+        "Clinician Caseload Growth: default 12mo, options 12mo / All",
+        "Time to Completion: default 12mo, options 12mo / All",
+        "Avg Outreach Attempts: default 12mo, options 12mo / All",
+        "Cancellation Reason Analysis: default 12mo, options 12mo / All",
+        "Data re-aggregates when window changes (not just CSS hiding)",
+        "npm run build passes",
+        "npm run lint passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 7,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-008",
+      "title": "Click-to-expand chart modals for all reports",
+      "description": "As a staff member, I want to click any chart to see it full-screen in a modal overlay.",
+      "acceptanceCriteria": [
+        "Create a reusable ChartExpandModal component that renders a full-screen modal overlay",
+        "Every chart card in OnboardingReports and BillingReports is clickable (cursor pointer, subtle hover shadow)",
+        "Clicking opens the modal showing just that chart at full viewport size",
+        "Chart re-renders at modal dimensions using ResponsiveContainer (not CSS-scaled from small)",
+        "Time window toggles from US-007 are available in the modal",
+        "Close with Escape key or X button in top-right corner",
+        "Semi-transparent dark backdrop behind modal",
+        "Smooth open/close transition (200ms ease)",
+        "Modal renders via React portal to avoid z-index issues",
+        "npm run build passes",
+        "npm run lint passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 8,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-009",
+      "title": "Fix Payer Mix chart legend showing wrong data",
+      "description": "As a staff member, I want the Payer Mix chart legend to show actual insurance payer names, not raw outreach notes text.",
+      "acceptanceCriteria": [
+        "In OnboardingReports.jsx, fix the Payer Mix Over Time chart data aggregation",
+        "Chart must group completed + cancelled clients by their Primary Insurance field (not notes, outreach, or any other field)",
+        "Legend shows payer names (e.g. 'Aetna', 'UHC', 'Self Pay', 'Medical Mutual')",
+        "Show top 8 payers by volume; remaining grouped as 'Other'",
+        "Each payer has a distinguishable color in the stacked area chart",
+        "Tooltip on hover shows payer name and count/percentage",
+        "npm run build passes",
+        "npm run lint passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 9,
+      "passes": false,
+      "notes": ""
+    }
+  ]
+}

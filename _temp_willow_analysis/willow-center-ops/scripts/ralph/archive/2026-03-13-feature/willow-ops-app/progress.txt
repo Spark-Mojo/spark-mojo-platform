@@ -1,0 +1,13 @@
+# Willow Ops — Ralph Progress Log (Bug Fixes Round 1)
+# Started: 2026-03-13
+# Branch: fix/bug-fixes-round1
+# Stories: US-001 through US-010 (10 stories)
+# Order: Bugs (001-005) → UI polish (006-007) → Features (008-010)
+#
+# Previous run (feature/willow-ops-app): 23 stories completed, all passed.
+# This run fixes bugs and adds small features discovered during testing.
+#
+# ALWAYS read CLAUDE.md before starting a story.
+# ALWAYS follow the Story Completion Protocol after each story.
+# ALWAYS run npm run build && npm run lint before committing.
+---

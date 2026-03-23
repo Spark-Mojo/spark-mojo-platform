@@ -1,0 +1,441 @@
+{
+  "projectName": "Willow Ops",
+  "branchName": "feature/willow-ops-app",
+  "description": "Modular operations platform for Willow Center therapy practice. React + Vite + Google Sheets API. Read CLAUDE.md before starting any story.",
+  "userStories": [
+    {
+      "id": "S01",
+      "title": "Project scaffold",
+      "priority": 1,
+      "passes": true,
+      "description": "Initialize the Vite + React project with all dependencies installed and a passing build.",
+      "acceptanceCriteria": [
+        "Vite + React 18 project created",
+        "Dependencies installed: @react-oauth/google, @dnd-kit/core, @dnd-kit/sortable, lucide-react, recharts",
+        "Tailwind CSS loaded via CDN in index.html",
+        "Sora and IBM Plex Mono loaded from Google Fonts in index.html",
+        "CSS custom properties defined in index.css matching design system colors in CLAUDE.md",
+        ".env.example created with all 4 required env vars documented",
+        "vercel.json created with SPA routing (all routes -> index.html)",
+        ".gitignore includes .env",
+        "npm run build passes with no errors"
+      ],
+      "notes": ""
+    },
+    {
+      "id": "S02",
+      "title": "App shell and routing",
+      "priority": 2,
+      "passes": true,
+      "description": "App shell with sidebar, top bar, and basic routing between modules. No auth yet — use a mock user for now.",
+      "acceptanceCriteria": [
+        "App renders with sidebar (220px) and main content area",
+        "Sidebar matches spec in CLAUDE.md exactly: logo area, module nav, Reports stub, Admin section, user footer",
+        "Sidebar background #161D2E, active item #2A7A65",
+        "Onboarding is the default active module",
+        "Revenue Cycle, Voicemail, Command Center show 'Phase 2' label and toast on click",
+        "Reports shows 'Round 2' label",
+        "Top bar renders with placeholder title, view switcher (Queue/Kanban/My Tasks), search input, Add Client button",
+        "Toast system works globally (success and error variants)",
+        "npm run build passes"
+      ],
+      "notes": ""
+    },
+    {
+      "id": "S03",
+      "title": "Google OAuth login page",
+      "priority": 3,
+      "passes": true,
+      "description": "Login page with Google OAuth, domain restriction, and logo animation.",
+      "acceptanceCriteria": [
+        "If user is not authenticated, show login page (not the app shell)",
+        "Login page shows Willow Center logo with botanical leaf particle entrance animation",
+        "App name 'Willow Ops' fades up beneath logo after animation completes",
+        "'Sign in with Google' button centered below name",
+        "After login, validate hd claim matches VITE_ALLOWED_DOMAIN — reject with error toast if not",
+        "OAuth access token stored in React context and available to all components",
+        "User name and email stored in context for display in sidebar",
+        "Logout button in sidebar clears context and returns to login page",
+        "npm run build passes"
+      ],
+      "notes": ""
+    },
+    {
+      "id": "S04",
+      "title": "Google Sheets service layer — read",
+      "priority": 4,
+      "passes": true,
+      "description": "All Google Sheets read functions in src/services/sheets.js. Uses mock data fallback when sheet IDs not configured.",
+      "acceptanceCriteria": [
+        "sheets.js exports: getOnboardingClients(token), getStaff(token), getConfig(token), getBillingRows(token)",
+        "getOnboardingClients reads 'Need to Check' tab, maps rows to client objects using header row for column positions (not hardcoded column indices)",
+        "Client object shape: id, dateAdded, staffInitials, clientName, clinician, firstAppt, custodyAgreement, gfeSent, paperworkComplete, insuranceCard, primaryInsurance, secondaryInsurance, memberId, dob, employer, verified, notes, spNoteAdded, insuranceUpdated, outreachAttempts (array of {date, method}), urgentOverride, archiveReason, archiveDate, clinicianHistory",
+        "getStaff reads 'Staff' tab (creates tab with headers if missing)",
+        "getConfig reads 'Config' tab (creates with defaults if missing)",
+        "Default config values match CLAUDE.md spec",
+        "All functions accept accessToken as first param",
+        "npm run build passes"
+      ],
+      "notes": ""
+    },
+    {
+      "id": "S05",
+      "title": "Google Sheets service layer — write",
+      "priority": 5,
+      "passes": true,
+      "description": "All Google Sheets write functions. Every write appends to Audit_Log.",
+      "acceptanceCriteria": [
+        "sheets.js exports write functions: updateClientField(token, clientId, field, value), appendOutreachAttempt(token, clientId, method, context, staffEmail), appendNote(token, clientId, note, staffInitials), moveClientToArchive(token, clientId, reason, staffEmail), reactivateClient(token, clientId, staffEmail), moveClientToCompleted(token, clientId), addClient(token, clientData), addStaff(token, staffData), deactivateStaff(token, staffInitials), updateConfig(token, key, value), createTask(token, taskData), updateTask(token, taskId, field, value), bulkReassignTasks(token, fromInitials, toInitials)",
+        "updateClientField finds the row by clientId (using Client Name + Date Added as composite key), updates the correct column",
+        "appendOutreachAttempt: attempts 1-5 go to Date_Attempt_N / Method_Attempt_N columns; attempt 6+ appends new row to Outreach_Log tab",
+        "moveClientToArchive: copies row to Cancellation [current year] tab, deletes from Need to Check, writes archive fields",
+        "reactivateClient: copies row back to Need to Check, clears archive fields, writes reactivated_date and reactivated_by",
+        "Every write function appends a row to Audit_Log tab after success",
+        "Audit_Log tab created with headers if missing",
+        "npm run build passes"
+      ],
+      "notes": ""
+    },
+    {
+      "id": "S06",
+      "title": "Status and progress utility functions",
+      "priority": 6,
+      "passes": true,
+      "description": "Pure utility functions for deriving status, calculating progress, and date helpers.",
+      "acceptanceCriteria": [
+        "src/utils/status.js exports deriveStatus(client, config) — returns 'urgent' | 'needs-paperwork' | 'pending-insurance' | 'ready' | 'archived'",
+        "Status derivation logic matches CLAUDE.md exactly",
+        "src/utils/progress.js exports calcProgress(client) — returns {pct: number, requiredItems: array, completedItems: array}",
+        "Progress calculation uses visibility rules from CLAUDE.md checklist table",
+        "src/utils/dates.js exports: daysBetween(a, b), isMinor(dob), daysUntil18(dob), formatApptDate(dateStr)",
+        "isMinor returns null (unknown) when DOB is blank/n/a",
+        "npm run build passes"
+      ],
+      "notes": ""
+    },
+    {
+      "id": "S07",
+      "title": "Onboarding queue — KPI cards and filter chips",
+      "priority": 7,
+      "passes": true,
+      "description": "Top strip of KPI cards and filter chips for the queue view.",
+      "acceptanceCriteria": [
+        "4 KPI cards: Active Queue, Urgent, Pending Insurance, Appts This Week",
+        "Counts derived from client data using deriveStatus and dates utilities",
+        "Urgent card has red left border (#E24B4A) and red number",
+        "Clicking a KPI card activates the corresponding filter chip",
+        "Filter chips: All | Urgent | Pending Insurance | Needs Paperwork | Ready",
+        "Active chip has #2A7A65 background and white text",
+        "Filter chips update the visible rows in the queue table",
+        "npm run build passes"
+      ],
+      "notes": ""
+    },
+    {
+      "id": "S08",
+      "title": "Onboarding queue — client table",
+      "priority": 8,
+      "passes": true,
+      "description": "The main client table in queue view with all columns, sorting, and search.",
+      "acceptanceCriteria": [
+        "Table columns: Client Name | Clinician | First Appt | Progress | Insurance | Status | Actions",
+        "Client Name: colored urgency dot + name text; name is RED (#C94040) only when status = urgent",
+        "First Appt: IBM Plex Mono font; red if ≤2 days, amber if ≤7 days, gray otherwise",
+        "Progress: mini bar (4px height) + percentage; bar color follows thresholds in CLAUDE.md",
+        "Insurance: 'Verified' green badge | 'Self Pay' gray badge | carrier name blue badge (pending)",
+        "Status: colored badge matching status colors in CLAUDE.md",
+        "Actions: only Log Outreach icon button (no View button — row click opens drawer)",
+        "Clicking any row opens the client drawer",
+        "All columns sortable by clicking header; sort direction indicator shown",
+        "Default sort: urgent first, then appt date ascending",
+        "Search input filters by client name AND clinician name in real time",
+        "npm run build passes"
+      ],
+      "notes": ""
+    },
+    {
+      "id": "S09",
+      "title": "Client drawer — shell, header, and progress bar",
+      "priority": 9,
+      "passes": true,
+      "description": "The slide-in client drawer shell with animated progress bar and tab navigation.",
+      "acceptanceCriteria": [
+        "Drawer slides in from right (200ms ease) when a client row is clicked",
+        "Background overlay dims the main content",
+        "Header: client name, status badge, clinician, staff assigned (editable dropdown sourced from Staff tab), date added",
+        "Archive button in header (opens confirmation modal)",
+        "Staff assigned dropdown updates the sheet on selection",
+        "Progress bar animates from 0% to actual value (ease-out 600ms) on drawer open",
+        "Progress number counts up from 0 to actual value in sync with bar",
+        "Animation re-triggers every time a checklist item is toggled",
+        "Bar color: red <50%, amber 50-79%, green ≥80%",
+        "Stage labels below bar: Scheduled → Paperwork → Insurance → Verified → Ready",
+        "Done stages: green; current stage: #2A7A65 with glow pip; future: gray",
+        "Age-18 banner shown above tabs when client turns 18 within 90 days (amber, dismissable)",
+        "Four tabs: Checklist | Outreach | Notes | Details",
+        "Close button (X) closes drawer",
+        "npm run build passes"
+      ],
+      "notes": ""
+    },
+    {
+      "id": "S10",
+      "title": "Client drawer — checklist tab",
+      "priority": 10,
+      "passes": true,
+      "description": "Interactive checklist with visibility rules, sheet writes, and progress updates.",
+      "acceptanceCriteria": [
+        "Renders checklist items per visibility rules in CLAUDE.md",
+        "Each item: toggle checkbox, label, Required/Optional tag",
+        "Toggling an item writes to the corresponding column in the sheet immediately",
+        "Toggling re-triggers the progress bar animation",
+        "When all required items are complete, client status updates to 'ready' and writes to sheet",
+        "Appointment info section below checklist: first appt date/time, clinician, days until appt (countdown)",
+        "Self-pay: items 2 and 3 hidden, item 5 shown",
+        "Minor: item 4 shown (per CLAUDE.md minor detection logic)",
+        "npm run build passes"
+      ],
+      "notes": ""
+    },
+    {
+      "id": "S11",
+      "title": "Client drawer — outreach tab",
+      "priority": 11,
+      "passes": true,
+      "description": "Outreach timeline and log attempt panel.",
+      "acceptanceCriteria": [
+        "Timeline shows all outreach attempts: date, method badge, staff initials, context note",
+        "Visual connector line between timeline entries",
+        "Total attempt count shown (no '5 attempt' cap)",
+        "Log attempt panel: optional free-text context field + method buttons",
+        "Method buttons sourced from Config tab 'outreach_methods' key (not hardcoded)",
+        "Default methods: SP Reminders | Google Text | LVM | EMW | Final Reminder",
+        "Clicking a method button saves: timestamp + method + context + staff email to sheet",
+        "Attempts 1-5: write to Date_Attempt_N / Method_Attempt_N in Need to Check",
+        "Attempts 6+: append row to Outreach_Log tab",
+        "Context note always written to Outreach_Log",
+        "Toast confirms after each log",
+        "npm run build passes"
+      ],
+      "notes": ""
+    },
+    {
+      "id": "S12",
+      "title": "Client drawer — notes tab",
+      "priority": 12,
+      "passes": true,
+      "description": "Threaded notes display and add note functionality.",
+      "acceptanceCriteria": [
+        "Notes parsed from Notes column (format: '[INITIALS] [DATE]: [text]' separated by ' | ')",
+        "Displayed as thread: avatar initials circle, date, text — oldest first",
+        "Text input + Add Note button",
+        "New note appended to Notes column in sheet with staff initials and timestamp",
+        "Note appears in thread immediately after save",
+        "Toast confirms",
+        "npm run build passes"
+      ],
+      "notes": ""
+    },
+    {
+      "id": "S13",
+      "title": "Client drawer — details tab",
+      "priority": 13,
+      "passes": true,
+      "description": "Client details grid, clinician history, and SP sync checkboxes.",
+      "acceptanceCriteria": [
+        "Info grid: DOB, Employer, Primary Insurance, Member ID, Secondary Insurance, Verification Status, Staff",
+        "Clinician history section: 'Current: [name]' then prior assignments as '[date range]: [name]' reverse chronological",
+        "Clinician_History sourced from JSON column; graceful fallback if column empty",
+        "SP sync section: two checkboxes — 'SP note added' and 'Insurance updated in SP'",
+        "SP checkboxes are toggleable and write to sheet immediately",
+        "SP checkbox state stays in sync with checklist tab items 6 and 7",
+        "npm run build passes"
+      ],
+      "notes": ""
+    },
+    {
+      "id": "S14",
+      "title": "Add client modal",
+      "priority": 14,
+      "passes": true,
+      "description": "Modal to create a new client row in the sheet.",
+      "acceptanceCriteria": [
+        "Opens from Add Client button in top bar",
+        "Required fields: client name, clinician (dropdown from Staff tab), first appt date/time, primary insurance (text OR 'Self Pay' option)",
+        "Optional fields: DOB, member ID, employer, staff assigned",
+        "Clinician dropdown sourced from Clinician NPIs tab in sheet",
+        "On save: writes new row to 'Need to Check' tab with all provided fields",
+        "New client appears in queue immediately",
+        "Toast confirms",
+        "Modal closes after save",
+        "npm run build passes"
+      ],
+      "notes": ""
+    },
+    {
+      "id": "S15",
+      "title": "Archive and reactivate workflow",
+      "priority": 15,
+      "passes": true,
+      "description": "Archive a client with reason, and reactivate archived clients.",
+      "acceptanceCriteria": [
+        "Archive button in drawer header opens confirmation modal",
+        "Modal has reason dropdown: Client changed mind | Insurance issue | Incomplete paperwork — client unresponsive | Distance / location | Clinician not available | Other (free text)",
+        "On confirm: row moves to Cancellation [current year] tab, archive fields written",
+        "Client disappears from active queue",
+        "Reactivate button visible on archived rows in Historical view",
+        "Reactivation confirm modal: 'Reactivate [name]'s onboarding?'",
+        "On reactivate: row moves back to Need to Check, archive fields cleared, reactivated_date and reactivated_by written",
+        "Client reappears in active queue with previous checklist state intact",
+        "Toast confirms both actions",
+        "npm run build passes"
+      ],
+      "notes": ""
+    },
+    {
+      "id": "S16",
+      "title": "Historical / completed clients view",
+      "priority": 16,
+      "passes": true,
+      "description": "Read-only view of completed and archived clients with reactivation.",
+      "acceptanceCriteria": [
+        "Accessible via tab/link above the active queue",
+        "Reads from Completed [year] and Cancellation [year] tabs",
+        "Same table columns as active queue but read-only (no drawer checklist toggling)",
+        "Reactivate button shown on archived rows (opens reactivation flow from S15)",
+        "Filters: year | status (Completed / Archived) | clinician",
+        "Search by client name",
+        "npm run build passes"
+      ],
+      "notes": ""
+    },
+    {
+      "id": "S17",
+      "title": "Kanban view",
+      "priority": 17,
+      "passes": true,
+      "description": "Kanban board with drag-and-drop between columns.",
+      "acceptanceCriteria": [
+        "4 columns: Paperwork | Insurance | Ready | Urgent",
+        "Column logic matches CLAUDE.md exactly",
+        "Client cards show: name (red if urgent), clinician, appt date, mini progress bar, checklist pills (Paperwork/Ins Card/Verified/SP Note — green check or red X)",
+        "@dnd-kit used for drag and drop",
+        "Dragging a card to a new column updates the underlying boolean fields to match that column's logic",
+        "Dragging to Urgent sets urgent_override = true in sheet",
+        "Dragging out of Urgent sets urgent_override = false in sheet",
+        "Column headers show count badges",
+        "Toast confirms every drag-and-drop move",
+        "npm run build passes"
+      ],
+      "notes": ""
+    },
+    {
+      "id": "S18",
+      "title": "My Tasks view",
+      "priority": 18,
+      "passes": true,
+      "description": "Personalized task list with staff toggle and clinician filter.",
+      "acceptanceCriteria": [
+        "Default: shows tasks for logged-in user (match by email)",
+        "Staff toggle dropdown: switch to see any other staff member's tasks",
+        "Tasks auto-generated from client data per task type rules in CLAUDE.md",
+        "Grouped by: Overdue (red) | Today (amber) | Upcoming (blue)",
+        "Count summary row at top with 3 colored numbers",
+        "Each task: description, client name (clickable — opens drawer), clinician, due date badge",
+        "Clinician filter dropdown/chip above task list",
+        "Clicking a task opens the client drawer",
+        "npm run build passes"
+      ],
+      "notes": ""
+    },
+    {
+      "id": "S19",
+      "title": "Admin — Manage Staff",
+      "priority": 19,
+      "passes": true,
+      "description": "Staff management UI: view, add, and deactivate staff members.",
+      "acceptanceCriteria": [
+        "Staff list table: name, initials, email, role, status (Active/Inactive)",
+        "Add Staff button opens modal: name, initials (auto-suggested from name), email, role",
+        "On add: writes new row to Staff tab, staff appears in list immediately",
+        "Deactivate button on active staff rows",
+        "Deactivation confirm modal",
+        "On deactivate: sets status = Inactive in Staff tab (row preserved)",
+        "Scans Need to Check for clients assigned to deactivated staff",
+        "Auto-creates a 'Reassign client' task in Tasks tab for each affected client",
+        "Toast: '[N] clients were assigned to [name]. Reassignment tasks created.'",
+        "npm run build passes"
+      ],
+      "notes": ""
+    },
+    {
+      "id": "S20",
+      "title": "Admin — Reassign All Tasks",
+      "priority": 20,
+      "passes": true,
+      "description": "Bulk reassign all tasks from one staff member to another.",
+      "acceptanceCriteria": [
+        "Two dropdowns: From (staff) → To (staff), both sourced from Staff tab",
+        "Scope selector: All tasks | Onboarding only",
+        "Preview count: 'This will reassign [N] tasks and [M] clients' before confirming",
+        "On confirm: updates assigned_to in Tasks tab + Initials in Need to Check for all matches",
+        "Audit_Log entry written",
+        "Toast confirms with count",
+        "npm run build passes"
+      ],
+      "notes": ""
+    },
+    {
+      "id": "S21",
+      "title": "Admin — Automation Config",
+      "priority": 21,
+      "passes": true,
+      "description": "Config UI for all automation timing settings and outreach methods.",
+      "acceptanceCriteria": [
+        "Settings form sourced from Config tab (reads key/value pairs)",
+        "Editable settings: outreach_followup_days, urgent_threshold_days, admin_default_assignee, age18_warning_days, age18_task_due_days",
+        "Each setting shows its description (from Config tab description column)",
+        "Save button writes updated values to Config tab",
+        "Outreach methods section: list of current methods with drag-to-reorder and remove buttons",
+        "Add method: text input + Add button, writes to Config outreach_methods key",
+        "Removing a method removes from Config (existing logged attempts retain their label)",
+        "npm run build passes"
+      ],
+      "notes": ""
+    },
+    {
+      "id": "S22",
+      "title": "Log Outreach quick action from queue row",
+      "priority": 22,
+      "passes": true,
+      "description": "The Log Outreach icon button in the queue table opens a quick-log popover without opening the full drawer.",
+      "acceptanceCriteria": [
+        "Clicking Log Outreach button in queue row opens a small popover (not the full drawer)",
+        "Popover: optional context text field + method buttons (from Config)",
+        "Clicking a method button logs the attempt (same logic as outreach tab in drawer)",
+        "Popover closes after logging",
+        "Toast confirms",
+        "Sheet writes are identical to the outreach tab behavior",
+        "npm run build passes"
+      ],
+      "notes": ""
+    },
+    {
+      "id": "S23",
+      "title": "Vercel deployment config and env wiring",
+      "priority": 23,
+      "passes": true,
+      "description": "Final deployment check: build passes, env vars documented, vercel.json correct.",
+      "acceptanceCriteria": [
+        "npm run build produces dist/ with no errors or warnings",
+        "vercel.json routes all paths to index.html for SPA routing",
+        ".env.example has all required vars with descriptions",
+        "README.md updated with: setup instructions, env var list, how to run locally, how to deploy to Vercel",
+        "All imports resolve — no missing modules",
+        "No hardcoded Sheet IDs, client IDs, or domain names anywhere in source",
+        "npm run build passes"
+      ],
+      "notes": ""
+    }
+  ]
+}
