@@ -18,6 +18,7 @@ from auth import validate_frappe_session, get_current_user
 from registry import ConnectorRegistry
 from connectors import frappe_native, simplepractice, valant, plane
 from routes.onboarding import router as onboarding_router
+from google_auth import router as google_auth_router
 
 
 @asynccontextmanager
@@ -44,6 +45,7 @@ app.add_middleware(
 
 # Dedicated capability routers (registered before generic catch-all)
 app.include_router(onboarding_router)
+app.include_router(google_auth_router)
 
 
 # ---------------------------------------------------------------------------

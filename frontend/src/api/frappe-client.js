@@ -42,6 +42,14 @@ export class FrappeAuth {
         roles: data.roles || [],
       };
     } catch {
+      // Try the abstraction layer's own session (Google OAuth)
+      try {
+        const resp = await fetch(`${FRAPPE_URL}/auth/me`, { credentials: 'include' });
+        if (resp.ok) {
+          const user = await resp.json();
+          return { email: user.email, full_name: user.full_name, roles: [] };
+        }
+      } catch {}
       // In development, return mock user so desktop renders
       if (import.meta.env.VITE_ENVIRONMENT === 'development') {
         return DEV_USER;
@@ -51,10 +59,8 @@ export class FrappeAuth {
   }
 
   async login() {
-    // Redirect to Google OAuth via Frappe Social Login
-    window.location.href =
-      `${FRAPPE_URL}/api/method/` +
-      `frappe.integrations.oauth2_logins.login_via_google`;
+    // Redirect to abstraction layer's Google OAuth endpoint
+    window.location.href = `${FRAPPE_URL}/auth/google`;
   }
 
   async loginWithPassword(email, password) {
@@ -65,7 +71,13 @@ export class FrappeAuth {
   }
 
   async logout() {
-    return frappeRequest('/api/method/logout');
+    // Clear both abstraction layer and Frappe sessions
+    try {
+      await fetch(`${FRAPPE_URL}/auth/logout`, { method: 'POST', credentials: 'include' });
+    } catch {}
+    try {
+      await frappeRequest('/api/method/logout');
+    } catch {}
   }
 }
 
