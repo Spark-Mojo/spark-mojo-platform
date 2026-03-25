@@ -7,8 +7,9 @@
 
 ## What Was Completed
 
-- **Step 1 (partial):** `frappe-react-sdk` installed successfully. `frappe-types` is NOT an npm package — it's a Frappe bench app that generates TypeScript interfaces server-side. It cannot be `pnpm add`'d.
-- **Step 2:** `FrappeProvider` added to `App.jsx`, wrapping the app. This enables future use of the SDK's socket/realtime features without breaking anything today.
+- **Step 1:** `frappe-react-sdk` installed. `frappe-types` installed on VPS via `bench get-app` (it's a bench app, not npm package — original story spec error).
+- **Step 2:** `FrappeProvider` added to `App.jsx`, wrapping the app. Session context available to all components.
+- **Step 5 (resolved):** TypeScript interfaces generated for all 4 SM DocTypes (SM Client, SM Onboarding Item, SM Outreach Attempt, SM Invoice) in `frontend/src/types/`. frappe-types cannot auto-generate for custom DocTypes (only app-bundled), so interfaces were generated from live schema metadata via `bench execute`. When SM DocTypes move into the `sm_connectors` app, frappe-types can auto-generate via `bench generate-types-for-doctype`.
 
 ## What Is Blocked and Why
 
