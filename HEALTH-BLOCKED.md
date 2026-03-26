@@ -1,32 +1,25 @@
 # HEALTH-BLOCKED
 
-## Date: 2026-03-26
+## Date: 2026-03-26 (Session 5)
 
-## Failing Gate: `pnpm run lint`
+## Failing Gate: `pnpm run build`
 
-ESLint exits with code 1. Errors are in two folders that should be excluded from linting:
-
-### 1. `src/components/desktop/` (Folder.jsx, Taskbar.jsx, Widget.jsx)
-- `no-unused-vars` (React import, unused icons)
-- `react/prop-types` (all props missing validation)
-
-### 2. `src/components/ui/` (shadcn/Radix UI primitives — many files)
-- `react/prop-types` on all forwarded-ref components
-- `react-refresh/only-export-components` warnings
-
-These folders are not application code — `desktop/` contains pre-migration desktop components and `ui/` contains generated shadcn/Radix primitives. Neither should be linted.
-
-## Fix
-
-Add these two lines to the `ignores` array in `frontend/eslint.config.js`:
-
-```js
-'src/components/desktop/**',
-'src/components/ui/**',
+```
+vite v6.4.1 building for production...
+✗ Build failed in 417ms
+error during build:
+[vite]: Rollup failed to resolve import "frappe-react-sdk" from "frontend/src/App.jsx".
 ```
 
-This matches the pattern already used for other legacy folders (commit 39452d1).
+`App.jsx` imports `frappe-react-sdk` which is not installed as a dependency. This package is typically available when the frontend runs inside a Frappe bench context. The standalone Vite build cannot resolve it.
 
-## Other Gates (not reached)
-- `pnpm run build` — not tested (blocked by lint)
-- Python imports — not tested
+## Suggested Fix
+
+Either:
+1. Add `frappe-react-sdk` to `package.json` devDependencies, or
+2. Add `"frappe-react-sdk"` to `build.rollupOptions.external` in `vite.config.js`
+
+## Passing Gates
+
+- `pnpm run lint` — PASS (0 errors, 0 warnings)
+- Python imports (`fastapi`, `httpx`) — PASS
