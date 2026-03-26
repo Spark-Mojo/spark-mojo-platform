@@ -1,0 +1,974 @@
+/* eslint-disable react/prop-types */
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import { AnimatePresence, motion } from 'framer-motion';
+import * as Collapsible from '@radix-ui/react-collapsible';
+import { Badge } from '@/components/ui/badge';
+import { Skeleton } from '@/components/ui/skeleton';
+import { cn } from '@/lib/utils';
+import { differenceInCalendarDays, parseISO, isToday, isTomorrow, isPast, format } from 'date-fns';
+
+const API_BASE = (import.meta.env.VITE_FRAPPE_URL || 'http://localhost:8000') + '/api/modules/tasks';
+const SORT_STORAGE_KEY = 'workboard_sort_preference';
+const VIEW_STORAGE_KEY = 'workboard_view_preference';
+const KANBAN_COLUMNS = ['New', 'Ready', 'In Progress', 'Waiting', 'Blocked'];
+
+const CANONICAL_STATES = ['New', 'Ready', 'In Progress', 'Waiting', 'Blocked', 'Failed', 'Completed', 'Cancelled'];
+const REASON_REQUIRED_STATES = ['Blocked', 'Failed'];
+
+async function fetchTasks() {
+  const resp = await fetch(`${API_BASE}/list?view=all`, {
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
+  });
+  if (!resp.ok) {
+    const text = await resp.text().catch(() => '');
+    let detail = `API error: ${resp.status}`;
+    try { detail = JSON.parse(text).detail || detail; } catch { /* ignore */ }
+    throw new Error(detail);
+  }
+  const json = await resp.json();
+  return json.tasks || [];
+}
+
+async function postClaim(taskId) {
+  const resp = await fetch(`${API_BASE}/claim`, {
+    method: 'POST',
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ task_id: taskId }),
+  });
+  if (resp.status === 409) {
+    throw Object.assign(new Error('This task was already claimed'), { status: 409 });
+  }
+  if (!resp.ok) {
+    throw new Error('Could not claim task — please try again');
+  }
+  return resp.json();
+}
+
+async function fetchTask(taskId) {
+  const resp = await fetch(`${API_BASE}/get?task_id=${encodeURIComponent(taskId)}`, {
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
+  });
+  if (!resp.ok) {
+    throw new Error(`Failed to load task: ${resp.status}`);
+  }
+  return resp.json();
+}
+
+async function postUpdateState(taskId, canonicalState, statusReason) {
+  const body = { task_id: taskId, canonical_state: canonicalState };
+  if (statusReason) body.status_reason = statusReason;
+  const resp = await fetch(`${API_BASE}/update_state`, {
+    method: 'POST',
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  if (!resp.ok) {
+    throw new Error(`Failed to update state: ${resp.status}`);
+  }
+  return resp.json();
+}
+
+async function postAddComment(taskId, comment) {
+  const resp = await fetch(`${API_BASE}/add_comment`, {
+    method: 'POST',
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ task_id: taskId, comment }),
+  });
+  if (!resp.ok) {
+    throw new Error(`Failed to add comment: ${resp.status}`);
+  }
+  return resp.json();
+}
+
+async function postComplete(taskId, completionNote) {
+  const body = { task_id: taskId };
+  if (completionNote) body.completion_note = completionNote;
+  const resp = await fetch(`${API_BASE}/complete`, {
+    method: 'POST',
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  if (!resp.ok) {
+    throw new Error(`Failed to complete task: ${resp.status}`);
+  }
+  return resp.json();
+}
+
+const TYPE_COLORS = {
+  Action: 'bg-[var(--color-primary,#006666)] text-white',
+  Review: 'bg-[var(--color-gold,#FFB300)] text-slate-900',
+  Approval: 'bg-[var(--color-coral,#FF6F61)] text-white',
+};
+
+const PRIORITY_COLORS = {
+  Urgent: 'bg-red-500',
+  High: 'bg-[var(--color-coral,#FF6F61)]',
+  Medium: 'bg-[var(--color-gold,#FFB300)]',
+  Low: 'bg-[var(--color-slate,#34424A)]',
+};
+
+const PRIORITY_ORDER = { Urgent: 0, High: 1, Medium: 2, Low: 3 };
+
+const SORT_OPTIONS = [
+  { key: 'due_at', label: 'Due Date' },
+  { key: 'priority', label: 'Priority' },
+  { key: 'created_at', label: 'Created Date' },
+  { key: 'canonical_state', label: 'Status' },
+];
+
+function truncateTitle(title, max = 60) {
+  if (!title) return '';
+  return title.length > max ? title.slice(0, max) + '...' : title;
+}
+
+function formatDueDate(dueAt) {
+  if (!dueAt) return null;
+  const date = parseISO(dueAt);
+  if (isToday(date)) return { text: 'Today', overdue: false };
+  if (isTomorrow(date)) return { text: 'Tomorrow', overdue: false };
+  if (isPast(date)) return { text: 'Overdue', overdue: true };
+  const days = differenceInCalendarDays(date, new Date());
+  return { text: `${days} days`, overdue: false };
+}
+
+function formatTimestamp(ts) {
+  if (!ts) return '';
+  try {
+    return format(parseISO(ts), 'MMM d, yyyy h:mm a');
+  } catch {
+    return ts;
+  }
+}
+
+function compareTasks(a, b, field, direction) {
+  const dir = direction === 'asc' ? 1 : -1;
+
+  if (field === 'priority') {
+    const pa = PRIORITY_ORDER[a.priority] ?? 99;
+    const pb = PRIORITY_ORDER[b.priority] ?? 99;
+    if (pa === 99 && pb === 99) return 0;
+    if (pa === 99) return 1;
+    if (pb === 99) return -1;
+    return (pa - pb) * dir;
+  }
+
+  const va = a[field];
+  const vb = b[field];
+
+  if (va == null && vb == null) return 0;
+  if (va == null) return 1;
+  if (vb == null) return -1;
+
+  if (field === 'due_at' || field === 'created_at') {
+    return (new Date(va) - new Date(vb)) * dir;
+  }
+
+  return String(va).localeCompare(String(vb)) * dir;
+}
+
+function sortTasks(tasks, field, direction) {
+  return [...tasks].sort((a, b) => compareTasks(a, b, field, direction));
+}
+
+function loadSortPreference() {
+  try {
+    const raw = localStorage.getItem(SORT_STORAGE_KEY);
+    if (raw) {
+      const pref = JSON.parse(raw);
+      if (pref.field && pref.direction) return pref;
+    }
+  } catch { /* ignore */ }
+  return { field: 'due_at', direction: 'asc' };
+}
+
+function saveSortPreference(field, direction) {
+  try {
+    localStorage.setItem(SORT_STORAGE_KEY, JSON.stringify({ field, direction }));
+  } catch { /* ignore */ }
+}
+
+function LoadingSkeleton() {
+  return (
+    <div data-testid="loading-skeleton" className="space-y-3 p-4">
+      {[1, 2, 3, 4, 5].map((i) => (
+        <div key={i} className="flex items-center gap-3 p-3">
+          <Skeleton className="h-4 w-4 rounded-full" />
+          <Skeleton className="h-4 flex-1" />
+          <Skeleton className="h-5 w-16 rounded-md" />
+          <Skeleton className="h-5 w-20 rounded-md" />
+          <Skeleton className="h-4 w-16" />
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function DrawerSkeleton() {
+  return (
+    <div data-testid="drawer-skeleton" className="space-y-4 p-6">
+      <Skeleton className="h-6 w-3/4" />
+      <Skeleton className="h-8 w-32" />
+      <Skeleton className="h-4 w-full" />
+      <Skeleton className="h-4 w-2/3" />
+      <Skeleton className="h-20 w-full" />
+    </div>
+  );
+}
+
+function SortToolbar({ sortField, sortDirection, onSortChange }) {
+  return (
+    <div data-testid="sort-toolbar" className="flex items-center gap-2 px-4 py-2 border-b border-white/10">
+      {SORT_OPTIONS.map((opt) => (
+        <button
+          key={opt.key}
+          data-testid={`sort-chip-${opt.key}`}
+          onClick={() => onSortChange(opt.key, opt.key === sortField ? sortDirection : 'asc')}
+          className={cn(
+            'text-xs px-2.5 py-1 rounded-full transition-colors',
+            opt.key === sortField
+              ? 'bg-[var(--color-primary,#006666)] text-white'
+              : 'bg-white/10 text-white/50 hover:text-white/70'
+          )}
+        >
+          {opt.label}
+        </button>
+      ))}
+      <button
+        data-testid="sort-direction-toggle"
+        onClick={() => onSortChange(sortField, sortDirection === 'asc' ? 'desc' : 'asc')}
+        className="text-xs text-white/50 hover:text-white/70 ml-1 px-1.5 py-1"
+        aria-label={`Sort ${sortDirection === 'asc' ? 'descending' : 'ascending'}`}
+      >
+        {sortDirection === 'asc' ? '\u2191' : '\u2193'}
+      </button>
+    </div>
+  );
+}
+
+function TaskRow({ task, claimingId, onClaim, selected, onRowClick }) {
+  const { name, title, task_type, canonical_state, priority, due_at, assigned_user, assigned_role, is_unowned } = task;
+  const due = formatDueDate(due_at);
+  const typeColor = TYPE_COLORS[task_type] || 'bg-[var(--color-slate,#34424A)] text-white';
+  const priorityColor = PRIORITY_COLORS[priority] || PRIORITY_COLORS.Low;
+  const isClaiming = claimingId === name;
+
+  return (
+    <div
+      data-testid="task-row"
+      onClick={() => onRowClick(name)}
+      className={cn(
+        'flex items-center gap-3 px-4 py-3 hover:bg-white/5 transition-colors rounded-lg cursor-pointer',
+        selected && 'bg-white/10'
+      )}
+    >
+      {/* Priority dot */}
+      <span
+        data-testid="priority-dot"
+        className={cn('h-2.5 w-2.5 rounded-full shrink-0', priorityColor)}
+      />
+
+      {/* Title */}
+      <span className="flex-1 text-sm text-white/90 truncate min-w-0">
+        {truncateTitle(title)}
+      </span>
+
+      {/* Task type badge */}
+      <Badge className={cn('text-[10px] px-1.5 py-0 shrink-0 border-0', typeColor)}>
+        {task_type || 'Task'}
+      </Badge>
+
+      {/* State badge */}
+      <Badge variant="outline" className="text-[10px] px-1.5 py-0 shrink-0 text-white/60 border-white/20">
+        {canonical_state || 'New'}
+      </Badge>
+
+      {/* Due date */}
+      {due && (
+        <span
+          data-testid="due-date"
+          className={cn(
+            'text-xs shrink-0 tabular-nums',
+            due.overdue ? 'text-red-400 font-medium' : 'text-white/50'
+          )}
+        >
+          {due.text}
+        </span>
+      )}
+
+      {/* Assigned user / role */}
+      <span className="text-xs text-white/40 shrink-0 w-20 text-right truncate">
+        {is_unowned ? (
+          <span className="inline-flex items-center gap-1">
+            <span
+              data-testid="unowned-pulse"
+              className="inline-block h-2 w-2 rounded-full bg-[var(--color-coral,#FF6F61)] animate-pulse"
+            />
+            {assigned_role || 'Unowned'}
+          </span>
+        ) : (
+          assigned_user || assigned_role || ''
+        )}
+      </span>
+
+      {/* Claim button */}
+      {is_unowned && (
+        <button
+          data-testid="claim-button"
+          disabled={isClaiming}
+          onClick={(e) => { e.stopPropagation(); onClaim(name); }}
+          className={cn(
+            'text-xs px-2.5 py-1 rounded-md shrink-0 transition-colors',
+            'bg-[var(--color-primary,#006666)] text-white hover:bg-[var(--color-primary,#006666)]/80',
+            isClaiming && 'opacity-50 cursor-not-allowed'
+          )}
+        >
+          {isClaiming ? (
+            <span data-testid="claim-spinner" className="inline-block h-3 w-3 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+          ) : (
+            'Claim'
+          )}
+        </button>
+      )}
+    </div>
+  );
+}
+
+function TaskDetailDrawer({ task, loading, onClose, onUpdateState, onAddComment, onComplete, stateChanging }) {
+  const [commentText, setCommentText] = useState('');
+  const [pendingState, setPendingState] = useState(null);
+  const [statusReasonInput, setStatusReasonInput] = useState('');
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const commentInputRef = useRef(null);
+
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') onClose();
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [onClose]);
+
+  const handleStateChange = (newState) => {
+    if (REASON_REQUIRED_STATES.includes(newState)) {
+      setPendingState(newState);
+      setStatusReasonInput('');
+    } else {
+      onUpdateState(newState, null);
+    }
+  };
+
+  const handleConfirmStateWithReason = () => {
+    if (!statusReasonInput.trim()) return;
+    onUpdateState(pendingState, statusReasonInput.trim());
+    setPendingState(null);
+    setStatusReasonInput('');
+  };
+
+  const handleCancelReason = () => {
+    setPendingState(null);
+    setStatusReasonInput('');
+  };
+
+  const handleSubmitComment = () => {
+    if (!commentText.trim()) return;
+    onAddComment(commentText.trim());
+    setCommentText('');
+  };
+
+  const typeColor = task ? (TYPE_COLORS[task.task_type] || 'bg-[var(--color-slate,#34424A)] text-white') : '';
+  const priorityColor = task ? (PRIORITY_COLORS[task.priority] || PRIORITY_COLORS.Low) : '';
+  const comments = task?.sm_task_comments || [];
+  const stateHistory = task?.sm_task_state_history || [];
+
+  return (
+    <>
+      {/* Backdrop */}
+      <motion.div
+        data-testid="drawer-backdrop"
+        className="fixed inset-0 bg-black/40 z-40"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        onClick={onClose}
+      />
+      {/* Drawer panel */}
+      <motion.div
+        data-testid="task-detail-drawer"
+        className="fixed top-0 right-0 h-full w-full md:w-[480px] bg-[var(--color-slate,#34424A)] z-50 shadow-2xl flex flex-col overflow-hidden"
+        initial={{ x: '100%' }}
+        animate={{ x: 0 }}
+        exit={{ x: '100%' }}
+        transition={{ type: 'spring', damping: 30, stiffness: 300 }}
+      >
+        {loading ? (
+          <DrawerSkeleton />
+        ) : task ? (
+          <div className="flex flex-col h-full overflow-y-auto">
+            {/* Header */}
+            <div className="px-6 py-4 border-b border-white/10 flex items-start gap-3">
+              <div className="flex-1 min-w-0">
+                <h3 data-testid="drawer-title" className="text-base font-semibold text-white mb-2">
+                  {task.title}
+                </h3>
+                <div className="flex items-center gap-2">
+                  <Badge className={cn('text-[10px] px-1.5 py-0 border-0', typeColor)}>
+                    {task.task_type || 'Task'}
+                  </Badge>
+                  <span className={cn('h-2.5 w-2.5 rounded-full inline-block', priorityColor)} />
+                  <span className="text-xs text-white/50">{task.priority}</span>
+                </div>
+              </div>
+              <button
+                data-testid="drawer-close"
+                onClick={onClose}
+                className="text-white/40 hover:text-white/80 text-lg leading-none p-1"
+                aria-label="Close drawer"
+              >
+                &#10005;
+              </button>
+            </div>
+
+            {/* Status bar */}
+            <div className="px-6 py-3 border-b border-white/10">
+              <label className="text-xs text-white/40 block mb-1">Status</label>
+              {pendingState ? (
+                <div data-testid="status-reason-prompt" className="space-y-2">
+                  <p className="text-xs text-white/70">
+                    Reason for {pendingState}:
+                  </p>
+                  <input
+                    data-testid="status-reason-input"
+                    type="text"
+                    value={statusReasonInput}
+                    onChange={(e) => setStatusReasonInput(e.target.value)}
+                    placeholder="Enter reason..."
+                    className="w-full bg-white/10 text-white text-sm px-3 py-1.5 rounded border border-white/20 outline-none focus:border-white/40"
+                    autoFocus
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') handleConfirmStateWithReason();
+                      if (e.key === 'Escape') { e.stopPropagation(); handleCancelReason(); }
+                    }}
+                  />
+                  <div className="flex gap-2">
+                    <button
+                      data-testid="confirm-reason-btn"
+                      onClick={handleConfirmStateWithReason}
+                      disabled={!statusReasonInput.trim()}
+                      className="text-xs px-3 py-1 rounded bg-[var(--color-primary,#006666)] text-white disabled:opacity-40"
+                    >
+                      Confirm
+                    </button>
+                    <button
+                      onClick={handleCancelReason}
+                      className="text-xs px-3 py-1 rounded bg-white/10 text-white/60"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <select
+                  data-testid="state-selector"
+                  value={task.canonical_state || 'New'}
+                  onChange={(e) => handleStateChange(e.target.value)}
+                  disabled={stateChanging}
+                  className="bg-white/10 text-white text-sm px-3 py-1.5 rounded border border-white/20 outline-none"
+                >
+                  {CANONICAL_STATES.map((s) => (
+                    <option key={s} value={s}>{s}</option>
+                  ))}
+                </select>
+              )}
+            </div>
+
+            {/* Details */}
+            <div className="px-6 py-3 border-b border-white/10 space-y-2">
+              <label className="text-xs text-white/40 block">Details</label>
+              {task.assigned_user && (
+                <div className="flex justify-between text-xs">
+                  <span className="text-white/50">Assigned to</span>
+                  <span className="text-white/80">{task.assigned_user}</span>
+                </div>
+              )}
+              {task.assigned_role && (
+                <div className="flex justify-between text-xs">
+                  <span className="text-white/50">Role</span>
+                  <span className="text-white/80">{task.assigned_role}</span>
+                </div>
+              )}
+              {task.due_at && (
+                <div className="flex justify-between text-xs">
+                  <span className="text-white/50">Due</span>
+                  <span className="text-white/80">{formatTimestamp(task.due_at)}</span>
+                </div>
+              )}
+              {task.source_system && (
+                <div className="flex justify-between text-xs">
+                  <span className="text-white/50">Source</span>
+                  <span className="text-white/80">{task.source_system}</span>
+                </div>
+              )}
+              {task.related_crm_record && (
+                <div className="flex justify-between text-xs">
+                  <span className="text-white/50">CRM Record</span>
+                  <span className="text-white/80">{task.related_crm_record}</span>
+                </div>
+              )}
+              {task.completion_criteria && (
+                <div className="text-xs">
+                  <span className="text-white/50 block mb-1">Completion Criteria</span>
+                  <p className="text-white/80">{task.completion_criteria}</p>
+                </div>
+              )}
+            </div>
+
+            {/* Comments */}
+            <div className="px-6 py-3 border-b border-white/10 flex-1 min-h-0">
+              <label className="text-xs text-white/40 block mb-2">Comments</label>
+              <div data-testid="comments-list" className="space-y-2 mb-3 max-h-48 overflow-y-auto">
+                {[...comments].reverse().map((c, i) => (
+                  <div key={c.name || i} className="bg-white/5 rounded p-2">
+                    <div className="flex justify-between text-[10px] text-white/40 mb-1">
+                      <span>{c.comment_by || 'Unknown'}</span>
+                      <span>{formatTimestamp(c.created_at || c.creation)}</span>
+                    </div>
+                    <p className="text-xs text-white/80">{c.comment}</p>
+                  </div>
+                ))}
+                {comments.length === 0 && (
+                  <p className="text-xs text-white/30">No comments yet</p>
+                )}
+              </div>
+              <div className="flex gap-2">
+                <input
+                  ref={commentInputRef}
+                  data-testid="comment-input"
+                  type="text"
+                  value={commentText}
+                  onChange={(e) => setCommentText(e.target.value)}
+                  placeholder="Add a comment..."
+                  className="flex-1 bg-white/10 text-white text-sm px-3 py-1.5 rounded border border-white/20 outline-none focus:border-white/40"
+                  onKeyDown={(e) => { if (e.key === 'Enter') handleSubmitComment(); }}
+                />
+                <button
+                  data-testid="comment-submit"
+                  onClick={handleSubmitComment}
+                  disabled={!commentText.trim()}
+                  className="text-xs px-3 py-1.5 rounded bg-[var(--color-primary,#006666)] text-white disabled:opacity-40"
+                >
+                  Send
+                </button>
+              </div>
+            </div>
+
+            {/* State History */}
+            <Collapsible.Root open={historyOpen} onOpenChange={setHistoryOpen} className="px-6 py-3 border-b border-white/10">
+              <Collapsible.Trigger asChild>
+                <button data-testid="history-toggle" className="flex items-center gap-2 text-xs text-white/40 hover:text-white/60 w-full">
+                  <span>{historyOpen ? '\u25BC' : '\u25B6'}</span>
+                  <span>State History ({stateHistory.length})</span>
+                </button>
+              </Collapsible.Trigger>
+              <Collapsible.Content>
+                <div data-testid="state-history" className="mt-2 space-y-1.5">
+                  {stateHistory.map((entry, i) => (
+                    <div key={entry.name || i} className="flex items-center gap-2 text-xs">
+                      <span className="h-1.5 w-1.5 rounded-full bg-white/30 shrink-0" />
+                      <span className="text-white/70">{entry.to_state || entry.canonical_state}</span>
+                      <span className="text-white/30">{formatTimestamp(entry.changed_at || entry.creation)}</span>
+                    </div>
+                  ))}
+                  {stateHistory.length === 0 && (
+                    <p className="text-xs text-white/30">No state changes recorded</p>
+                  )}
+                </div>
+              </Collapsible.Content>
+            </Collapsible.Root>
+
+            {/* Complete button */}
+            <div className="px-6 py-4 mt-auto">
+              <button
+                data-testid="complete-button"
+                onClick={onComplete}
+                className="w-full py-2.5 rounded-lg bg-[var(--color-coral,#FF6F61)] text-white text-sm font-medium hover:bg-[var(--color-coral,#FF6F61)]/90 transition-colors"
+              >
+                Complete Task
+              </button>
+            </div>
+          </div>
+        ) : null}
+      </motion.div>
+    </>
+  );
+}
+
+function Toast({ message, visible }) {
+  if (!visible) return null;
+  return (
+    <div
+      data-testid="inline-toast"
+      className="absolute bottom-3 left-1/2 -translate-x-1/2 bg-[var(--color-slate,#34424A)] text-white text-xs px-4 py-2 rounded-lg shadow-lg border border-white/10 z-10"
+    >
+      {message}
+    </div>
+  );
+}
+
+function loadViewPreference() {
+  try {
+    const raw = localStorage.getItem(VIEW_STORAGE_KEY);
+    if (raw === 'kanban') return 'kanban';
+  } catch { /* ignore */ }
+  return 'list';
+}
+
+function saveViewPreference(mode) {
+  try {
+    localStorage.setItem(VIEW_STORAGE_KEY, mode);
+  } catch { /* ignore */ }
+}
+
+function ViewToggle({ viewMode, onViewChange }) {
+  return (
+    <div data-testid="view-toggle" className="flex items-center gap-1">
+      <button
+        data-testid="view-toggle-list"
+        onClick={() => onViewChange('list')}
+        className={cn(
+          'text-xs px-2 py-1 rounded transition-colors',
+          viewMode === 'list'
+            ? 'bg-[var(--color-primary,#006666)] text-white'
+            : 'bg-white/10 text-white/50 hover:text-white/70'
+        )}
+        aria-label="List view"
+      >
+        &#9776;
+      </button>
+      <button
+        data-testid="view-toggle-kanban"
+        onClick={() => onViewChange('kanban')}
+        className={cn(
+          'text-xs px-2 py-1 rounded transition-colors',
+          viewMode === 'kanban'
+            ? 'bg-[var(--color-primary,#006666)] text-white'
+            : 'bg-white/10 text-white/50 hover:text-white/70'
+        )}
+        aria-label="Kanban view"
+      >
+        &#9707;
+      </button>
+    </div>
+  );
+}
+
+function KanbanCard({ task, selected, onCardClick }) {
+  const { name, title, priority, due_at, assigned_user, assigned_role, is_unowned } = task;
+  const due = formatDueDate(due_at);
+  const priorityColor = PRIORITY_COLORS[priority] || PRIORITY_COLORS.Low;
+
+  return (
+    <div
+      data-testid="kanban-card"
+      onClick={() => onCardClick(name)}
+      className={cn(
+        'bg-white/5 rounded-lg p-3 cursor-pointer hover:bg-white/10 transition-colors',
+        selected && 'ring-1 ring-[var(--color-primary,#006666)]'
+      )}
+    >
+      <div className="flex items-start gap-2 mb-2">
+        <span className={cn('h-2 w-2 rounded-full shrink-0 mt-1', priorityColor)} />
+        <span className="text-sm text-white/90 line-clamp-2 min-w-0">{title}</span>
+      </div>
+      <div className="flex items-center justify-between text-xs text-white/40">
+        <span>
+          {is_unowned ? (
+            <span className="inline-flex items-center gap-1">
+              <span
+                data-testid="kanban-unowned-pulse"
+                className="inline-block h-2 w-2 rounded-full bg-[var(--color-coral,#FF6F61)] animate-pulse"
+              />
+              {assigned_role || 'Unowned'}
+            </span>
+          ) : (
+            assigned_user || assigned_role || ''
+          )}
+        </span>
+        {due && (
+          <span className={cn('tabular-nums', due.overdue ? 'text-red-400' : '')}>
+            {due.text}
+          </span>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function KanbanColumn({ columnState, tasks, selectedTaskId, onCardClick }) {
+  return (
+    <div data-testid="kanban-column" className="flex flex-col min-w-[180px] w-full">
+      <div className="flex items-center gap-2 px-2 py-2 border-b border-white/10 mb-2">
+        <span className="text-xs font-semibold text-white/70 uppercase tracking-wider">{columnState}</span>
+        <Badge variant="outline" className="text-[10px] px-1.5 py-0 text-white/40 border-white/20" data-testid="kanban-column-count">
+          {tasks.length}
+        </Badge>
+      </div>
+      <div className="flex-1 space-y-2 px-1 overflow-y-auto">
+        {tasks.map((task) => (
+          <KanbanCard
+            key={task.name}
+            task={task}
+            selected={selectedTaskId === task.name}
+            onCardClick={onCardClick}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function KanbanBoard({ tasks, selectedTaskId, onCardClick }) {
+  const grouped = useMemo(() => {
+    const groups = {};
+    for (const col of KANBAN_COLUMNS) {
+      groups[col] = [];
+    }
+    for (const task of tasks) {
+      const state = task.canonical_state || 'New';
+      if (groups[state]) {
+        groups[state].push(task);
+      }
+    }
+    return groups;
+  }, [tasks]);
+
+  return (
+    <div data-testid="kanban-board" className="flex gap-3 p-3 overflow-x-auto h-full">
+      {KANBAN_COLUMNS.map((col) => (
+        <KanbanColumn
+          key={col}
+          columnState={col}
+          tasks={grouped[col]}
+          selectedTaskId={selectedTaskId}
+          onCardClick={onCardClick}
+        />
+      ))}
+    </div>
+  );
+}
+
+export default function WorkboardMojo() {
+  const [tasks, setTasks] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [claimingId, setClaimingId] = useState(null);
+  const [toast, setToast] = useState({ message: '', visible: false });
+
+  const [sortPref, setSortPref] = useState(loadSortPreference);
+  const [viewMode, setViewMode] = useState(loadViewPreference);
+
+  // Drawer state
+  const [selectedTaskId, setSelectedTaskId] = useState(null);
+  const [drawerTask, setDrawerTask] = useState(null);
+  const [drawerLoading, setDrawerLoading] = useState(false);
+  const [stateChanging, setStateChanging] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetchTasks()
+      .then((data) => {
+        if (!cancelled) {
+          setTasks(data);
+          setLoading(false);
+        }
+      })
+      .catch((err) => {
+        if (!cancelled) {
+          setError(err.message);
+          setLoading(false);
+        }
+      });
+    return () => { cancelled = true; };
+  }, []);
+
+  const showToast = useCallback((message) => {
+    setToast({ message, visible: true });
+    setTimeout(() => setToast({ message: '', visible: false }), 3000);
+  }, []);
+
+  const handleClaim = useCallback(async (taskId) => {
+    setClaimingId(taskId);
+    try {
+      const result = await postClaim(taskId);
+      setTasks((prev) =>
+        prev.map((t) =>
+          t.name === taskId
+            ? { ...t, assigned_user: result.assigned_user || 'You', is_unowned: false }
+            : t
+        )
+      );
+    } catch (err) {
+      showToast(err.message);
+      if (err.status === 409) {
+        fetchTasks().then(setTasks).catch(() => {});
+      }
+    } finally {
+      setClaimingId(null);
+    }
+  }, [showToast]);
+
+  const handleSortChange = useCallback((field, direction) => {
+    setSortPref({ field, direction });
+    saveSortPreference(field, direction);
+  }, []);
+
+  const handleViewChange = useCallback((mode) => {
+    setViewMode(mode);
+    saveViewPreference(mode);
+  }, []);
+
+  const handleRowClick = useCallback(async (taskId) => {
+    setSelectedTaskId(taskId);
+    setDrawerLoading(true);
+    setDrawerTask(null);
+    try {
+      const data = await fetchTask(taskId);
+      setDrawerTask(data.task || data);
+    } catch {
+      showToast('Failed to load task details');
+      setSelectedTaskId(null);
+    } finally {
+      setDrawerLoading(false);
+    }
+  }, [showToast]);
+
+  const handleCloseDrawer = useCallback(() => {
+    setSelectedTaskId(null);
+    setDrawerTask(null);
+  }, []);
+
+  const handleUpdateState = useCallback(async (newState, statusReason) => {
+    if (!drawerTask) return;
+    setStateChanging(true);
+    try {
+      await postUpdateState(drawerTask.name, newState, statusReason);
+      setDrawerTask((prev) => prev ? { ...prev, canonical_state: newState } : prev);
+      setTasks((prev) =>
+        prev.map((t) =>
+          t.name === drawerTask.name ? { ...t, canonical_state: newState } : t
+        )
+      );
+    } catch (err) {
+      showToast(err.message);
+    } finally {
+      setStateChanging(false);
+    }
+  }, [drawerTask, showToast]);
+
+  const handleAddComment = useCallback(async (comment) => {
+    if (!drawerTask) return;
+    try {
+      const result = await postAddComment(drawerTask.name, comment);
+      const newComments = result.comments || [...(drawerTask.sm_task_comments || []), { comment, comment_by: 'You', created_at: new Date().toISOString() }];
+      setDrawerTask((prev) => prev ? { ...prev, sm_task_comments: newComments } : prev);
+    } catch (err) {
+      showToast(err.message);
+    }
+  }, [drawerTask, showToast]);
+
+  const handleComplete = useCallback(async () => {
+    if (!drawerTask) return;
+    try {
+      await postComplete(drawerTask.name);
+      setTasks((prev) => prev.filter((t) => t.name !== drawerTask.name));
+      handleCloseDrawer();
+    } catch (err) {
+      showToast(err.message);
+    }
+  }, [drawerTask, showToast, handleCloseDrawer]);
+
+  const sorted = useMemo(
+    () => sortTasks(tasks, sortPref.field, sortPref.direction),
+    [tasks, sortPref.field, sortPref.direction]
+  );
+
+  if (loading) return <LoadingSkeleton />;
+
+  if (error) {
+    return (
+      <div data-testid="error-state" className="flex items-center justify-center h-full p-8">
+        <p className="text-red-400 text-sm">{error}</p>
+      </div>
+    );
+  }
+
+  if (sorted.length === 0) {
+    return (
+      <div data-testid="empty-state" className="flex flex-col items-center justify-center h-full p-8 gap-3">
+        <div className="w-16 h-16 rounded-full bg-white/5 flex items-center justify-center">
+          <span className="text-2xl">&#10003;</span>
+        </div>
+        <p className="text-white/50 text-sm text-center">
+          No tasks on your plate. You&apos;re all caught up.
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="relative flex flex-col h-full overflow-hidden">
+      <div className="px-4 py-3 border-b border-white/10 flex items-center justify-between">
+        <h2 className="text-sm font-semibold text-white/70 uppercase tracking-wider">
+          Workboard
+        </h2>
+        <ViewToggle viewMode={viewMode} onViewChange={handleViewChange} />
+      </div>
+      {viewMode === 'list' && (
+        <SortToolbar
+          sortField={sortPref.field}
+          sortDirection={sortPref.direction}
+          onSortChange={handleSortChange}
+        />
+      )}
+      {viewMode === 'list' ? (
+        <div className="flex-1 overflow-y-auto">
+          {sorted.map((task) => (
+            <TaskRow
+              key={task.name}
+              task={task}
+              claimingId={claimingId}
+              onClaim={handleClaim}
+              selected={selectedTaskId === task.name}
+              onRowClick={handleRowClick}
+            />
+          ))}
+        </div>
+      ) : (
+        <KanbanBoard
+          tasks={tasks}
+          selectedTaskId={selectedTaskId}
+          onCardClick={handleRowClick}
+        />
+      )}
+      <Toast message={toast.message} visible={toast.visible} />
+      <AnimatePresence>
+        {selectedTaskId && (
+          <TaskDetailDrawer
+            task={drawerTask}
+            loading={drawerLoading}
+            onClose={handleCloseDrawer}
+            onUpdateState={handleUpdateState}
+            onAddComment={handleAddComment}
+            onComplete={handleComplete}
+            stateChanging={stateChanging}
+          />
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
