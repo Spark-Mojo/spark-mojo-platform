@@ -556,3 +556,81 @@ Scaffolding:
 
 **Result:** All gates pass. STORY-009-COMPLETE marker created.
 **Emitting:** `task.done` → Committer hat.
+
+## 2026-03-26 — Committer: STORY-009
+
+**Hat:** Committer
+**Story:** STORY-009 — WorkboardMojo task detail drawer
+**Branch:** `story/STORY-009-task-detail-drawer`
+
+**Code commit:** `dc1949c` — `feat(frontend): WorkboardMojo task detail drawer`
+**State commit:** `0539767` — orchestration state + STORY-009-COMPLETE marker
+
+**Emitting:** `story.committed` → Story Planner hat (next story: STORY-010)
+
+## 2026-03-26 — Story Planner: STORY-010
+
+**Hat:** Story Planner
+**Story:** STORY-010 — WorkboardMojo kanban view toggle
+**Status:** Plan written to PLAN-STORY-010.md
+
+**Key findings:**
+- STORY-008b-COMPLETE and STORY-009-COMPLETE exist — dependencies satisfied
+- This is a React Frontend story — same type as STORY-008a/008b/009
+- 0 files to create, 2 files to modify (WorkboardMojo.jsx, WorkboardMojo.test.jsx)
+- Kanban columns: New, Ready, In Progress, Waiting, Blocked (5 active states — omit Completed, Cancelled, Failed)
+- No new API calls — kanban groups existing list response by canonical_state
+- Task cards reuse same data as list rows: title, priority dot, due date, assigned user/role, is_unowned pulse
+- Clicking card opens same detail drawer as list view (STORY-009)
+- View toggle persists to localStorage key `workboard_view_preference`
+- Sort controls hide in kanban view (kanban groups by state)
+- Story spec references .tsx — using .jsx per CLAUDE.md authority
+- No drag-and-drop in this story
+- No ambiguity — story spec fully specified
+
+**Plan:** 0 files to create, 2 files to modify
+**Emitting:** `plan.ready` → Builder hat.
+
+## 2026-03-26 — Builder: STORY-010
+
+**Hat:** Builder
+**Story:** STORY-010 — WorkboardMojo kanban view toggle
+**Branch:** `story/STORY-010-workboard-kanban`
+
+**Built:**
+- WorkboardMojo.jsx modified:
+  - Added `VIEW_STORAGE_KEY` and `KANBAN_COLUMNS` constants
+  - Added `loadViewPreference`/`saveViewPreference` helpers with localStorage persistence
+  - Added `ViewToggle` component: List (☰) and Kanban (❒) buttons in toolbar header
+  - Added `KanbanCard` component: title, priority dot, due date, assigned user/role, is_unowned pulse
+  - Added `KanbanColumn` component: header with state name + count badge, vertical card list
+  - Added `KanbanBoard` component: 5 columns (New, Ready, In Progress, Waiting, Blocked), groups tasks by canonical_state
+  - Added `viewMode` state initialized from localStorage
+  - Sort controls only visible in list view
+  - Kanban card click → same drawer flow as list row click
+  - Header updated: flex with justify-between, view toggle on right
+- WorkboardMojo.test.jsx modified: 9 new tests (total 34)
+  - View toggle renders, default list, kanban toggle, column counts, correct column placement, card opens drawer, empty columns, localStorage persist, localStorage restore
+
+**Fast gates:**
+- pnpm run lint: ✅ 0 warnings, 0 errors
+- pnpm run test: ✅ 34/34 passed
+- pnpm run build: ✅ succeeds
+
+**Committed:** `47cc49c`
+**Emitting:** `build.ready` → Verifier hat.
+
+## 2026-03-26 — Verifier: STORY-010
+
+**Hat:** Verifier
+**Story:** STORY-010 — WorkboardMojo kanban view toggle
+**Gate type:** React Frontend
+
+**Gate results:**
+
+1. `pnpm run lint`: ✅ 0 warnings, 0 errors
+2. `pnpm run test`: ✅ 34/34 passed (845ms)
+3. `pnpm run build`: ✅ exits 0 (eval warning is pre-existing in CalculatorWidget)
+
+**Result:** All gates pass. STORY-010-COMPLETE marker created.
+**Emitting:** `task.done` → Committer hat.

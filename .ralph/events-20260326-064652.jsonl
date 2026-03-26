@@ -33,3 +33,7 @@
 {"payload":"STORY-009: 2 files, type: frontend","topic":"plan.ready","ts":"2026-03-26T07:37:22.015838+00:00"}
 {"payload":"STORY-009: task detail drawer implementation complete, 25/25 tests passing, lint clean, build succeeds","topic":"build.ready","ts":"2026-03-26T07:41:49.305371+00:00"}
 {"payload":"STORY-009: lint 0 warnings/errors, 25/25 tests passed, build exits 0. All React Frontend gates pass.","topic":"task.done","ts":"2026-03-26T07:42:37.319409+00:00"}
+{"payload":"STORY-009 committed on branch story/STORY-009-task-detail-drawer","topic":"story.committed","ts":"2026-03-26T07:43:25.347334+00:00"}
+{"payload":"STORY-010: 2 files, type: frontend","topic":"plan.ready","ts":"2026-03-26T07:44:40.866635+00:00"}
+{"payload":"STORY-010: kanban view toggle implementation complete, all 34 tests passing, lint clean, build succeeds","topic":"build.ready","ts":"2026-03-26T07:47:30.795107+00:00"}
+{"payload":"STORY-010: lint 0 warnings/errors, tests 34/34 passed, build exits 0. All React Frontend gates pass.","topic":"task.done","ts":"2026-03-26T07:48:31.355421+00:00"}
