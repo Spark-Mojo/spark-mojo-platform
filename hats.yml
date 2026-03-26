@@ -27,6 +27,7 @@ core:
 hats:
   health_check:
     name: "🏥 Health Check"
+    description: "Runs once at session start. Verifies lint, build, and Python imports pass before any build work begins. Halts the session if baseline is broken."
     triggers: ["session.start"]
     publishes: ["health.ok", "health.blocked"]
     max_activations: 1
@@ -56,6 +57,7 @@ hats:
 
   story_planner:
     name: "📋 Story Planner"
+    description: "Reads the next unbuilt story from PROMPT.md, confirms dependencies, and writes a concrete unambiguous build plan before any code is written."
     triggers: ["health.ok", "story.committed"]
     publishes: ["plan.ready", "queue.complete"]
     instructions: |
@@ -94,6 +96,7 @@ hats:
 
   builder:
     name: "🔨 Builder"
+    description: "Implements exactly what the story plan specifies. Runs fast quality gates after each significant change. Emits build.ready when fast gates pass."
     triggers: ["plan.ready", "build.retry"]
     publishes: ["build.ready", "build.blocked"]
     instructions: |
@@ -136,6 +139,7 @@ hats:
 
   verifier:
     name: "✅ Verifier"
+    description: "Runs the full quality gate suite for the completed story. The only hat that can mark a story done. Sends failing stories back to the builder with exact failure details."
     triggers: ["build.ready"]
     publishes: ["task.done", "build.retry"]
     instructions: |
@@ -184,6 +188,7 @@ hats:
 
   committer:
     name: "📦 Committer"
+    description: "Commits verified work to the story branch using the exact commit message from the story spec file. Signals the planner to find the next story."
     triggers: ["task.done"]
     publishes: ["story.committed"]
     instructions: |
