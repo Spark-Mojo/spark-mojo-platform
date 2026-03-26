@@ -634,3 +634,28 @@ Scaffolding:
 
 **Result:** All gates pass. STORY-010-COMPLETE marker created.
 **Emitting:** `task.done` → Committer hat.
+
+## 2026-03-26 — Committer: STORY-010
+
+**Hat:** Committer
+**Story:** STORY-010 — WorkboardMojo kanban view toggle
+**Branch:** `story/STORY-010-workboard-kanban`
+
+**Code commit:** `47cc49c` — `feat(frontend): WorkboardMojo kanban view toggle`
+**State commit:** `a9e17b3` — orchestration state + STORY-010-COMPLETE marker
+
+**Note:** STORY-010 is the LAST story in the queue. All 8 stories (003–010) are complete.
+**Emitting:** `story.committed` → Story Planner hat (should detect queue complete and write QUEUE-COMPLETE.md)
+
+## 2026-03-26 — Story Planner: Queue Complete
+
+**Hat:** Story Planner
+**Event:** `story.committed` for STORY-010 (last story)
+
+**Verification:**
+- All 9 COMPLETE markers present: STORY-003, 004, 005, 006, 007, 008a, 008b, 009, 010
+- No BLOCKED-STORY-NNN files (only pre-existing BLOCKED-FRAPPE-SDK-REFACTOR.md from prior session)
+- QUEUE-COMPLETE.md written at repo root
+
+**Result:** All 8 stories in the Session 5 queue are complete.
+**Emitting:** `queue.complete`

@@ -37,3 +37,7 @@
 {"payload":"STORY-010: 2 files, type: frontend","topic":"plan.ready","ts":"2026-03-26T07:44:40.866635+00:00"}
 {"payload":"STORY-010: kanban view toggle implementation complete, all 34 tests passing, lint clean, build succeeds","topic":"build.ready","ts":"2026-03-26T07:47:30.795107+00:00"}
 {"payload":"STORY-010: lint 0 warnings/errors, tests 34/34 passed, build exits 0. All React Frontend gates pass.","topic":"task.done","ts":"2026-03-26T07:48:31.355421+00:00"}
+{"payload":"STORY-010 committed on branch story/STORY-010-workboard-kanban. This is the LAST story in the queue — all 8 stories (003-010) complete.","topic":"story.committed","ts":"2026-03-26T07:49:39.037754+00:00"}
+{"payload":"All 8 stories (003-010) completed and verified. QUEUE-COMPLETE.md written.","topic":"queue.complete","ts":"2026-03-26T07:50:59.231096+00:00"}
+{"payload":"All 8 stories (003-010) completed and verified. QUEUE-COMPLETE.md written.","topic":"LOOP_COMPLETE","ts":"2026-03-26T07:51:35.959537+00:00"}
+{"ts":"2026-03-26T07:51:39.694380+00:00","iteration":41,"hat":"loop","topic":"loop.terminate","payload":"## Reason\ncompleted\n\n## Status\nAll tasks completed successfully.\n\n## Summary\n- Iterations: 41\n- Duration: 1h 4m 47s\n- Exit code: 0"}
