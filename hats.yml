@@ -4,190 +4,195 @@
 # Run with: ralph run --config hats.yml
 #
 # Flow: health_check → story_planner → builder → verifier → committer
-# Each story loops through planner→builder→verifier until all gates pass.
-# Committer runs once per story after verifier passes.
+
+cli:
+  backend: "claude"
 
 event_loop:
   starting_event: "session.start"
   completion_promise: "LOOP_COMPLETE"
   max_iterations: 150
+  max_runtime_seconds: 28800
+
+core:
+  guardrails:
+    - "Story specs live at /Users/jamesilsley/GitHub/sparkmojo-internal/platform/feature-library/stories/"
+    - "CLAUDE.md is the project context — read it first every hat activation"
+    - "Never install Frappe apps via bench — frappe_types caused a VPS restart loop"
+    - "Never use frappe.db.set_value() — always frappe.get_doc().save()"
+    - "Never call Frappe directly from React — always through abstraction layer"
+    - "SM Task is a custom DocType in sm_widgets — NOT an ERPNext Task extension (DECISION-014)"
+    - "Frontend is JSX not TypeScript — never create .ts or .tsx files"
 
 hats:
   health_check:
-    name: "Health Check"
-    description: "Runs once at session start. Verifies lint, build, and Python imports are clean before any build work begins. Halts the entire session if baseline is broken."
+    name: "🏥 Health Check"
     triggers: ["session.start"]
     publishes: ["health.ok", "health.blocked"]
+    max_activations: 1
     instructions: |
       You are the Health Check. Run once before any build work starts.
-
       Read CLAUDE.md first for project context.
 
       Run these baseline checks in order:
-      1. From frontend/ directory: run `pnpm run lint`
-         - If lint fails: write HEALTH-BLOCKED.md with the exact error output. Emit health.blocked. Stop.
-      2. From frontend/ directory: run `pnpm run build`
-         - If build fails: write HEALTH-BLOCKED.md with the exact error output. Emit health.blocked. Stop.
-      3. From abstraction-layer/ directory: run `python -c "import fastapi; import httpx; print('OK')"`
-         - If this fails: write HEALTH-BLOCKED.md explaining missing packages. Emit health.blocked. Stop.
 
-      If all three pass, emit health.ok with: "lint clean, build ok, python imports ok"
+      1. From frontend/ directory:
+         cd /Users/jamesilsley/GitHub/spark-mojo-platform/frontend && pnpm run lint
+         PASS: exits 0 with 0 errors
+         FAIL: write HEALTH-BLOCKED.md at repo root with exact errors. Emit health.blocked. Stop.
+
+      2. From frontend/ directory:
+         cd /Users/jamesilsley/GitHub/spark-mojo-platform/frontend && pnpm run build
+         PASS: exits 0
+         FAIL: write HEALTH-BLOCKED.md with exact errors. Emit health.blocked. Stop.
+
+      3. From abstraction-layer/ directory:
+         cd /Users/jamesilsley/GitHub/spark-mojo-platform/abstraction-layer && python -c "import fastapi; import httpx; print('OK')"
+         PASS: prints OK
+         FAIL: write HEALTH-BLOCKED.md explaining missing packages. Emit health.blocked. Stop.
+
+      If all three pass:
+      ralph emit "health.ok" "lint clean, build ok, python imports ok"
 
   story_planner:
-    name: "Story Planner"
-    description: "Reads the next unbuilt story from PROMPT.md, confirms dependencies are met, and produces a concrete unambiguous build plan before any code is written. Signals queue complete when all stories are done."
+    name: "📋 Story Planner"
     triggers: ["health.ok", "story.committed"]
     publishes: ["plan.ready", "queue.complete"]
     instructions: |
-      You are the Story Planner. Your job is to read the next unbuilt story and
-      produce a concrete, unambiguous build plan before any code is written.
+      You are the Story Planner. Determine the next story and produce a build plan.
 
-      Step 1 — Determine the next story.
-      Read PROMPT.md. Find the first story in the queue that does not have a
-      corresponding STORY-NNN-COMPLETE marker file at the repo root.
-      If all stories have COMPLETE markers, emit queue.complete and print LOOP_COMPLETE. Stop.
+      GOVERNANCE REPO is at: /Users/jamesilsley/GitHub/sparkmojo-internal
+      STORY FILES are at: /Users/jamesilsley/GitHub/sparkmojo-internal/platform/feature-library/stories/
 
-      Step 2 — Read the full story spec.
-      Read the story file from:
-      ../sparkmojo-internal/platform/feature-library/stories/STORY-NNN.md
-      Also read CLAUDE.md and platform/WORKING_AGREEMENT.md from ../sparkmojo-internal/
+      Step 1 — Find the next story.
+      Read PROMPT.md. Find the first story that does not have a STORY-NNN-COMPLETE
+      marker file at the repo root (/Users/jamesilsley/GitHub/spark-mojo-platform/).
+      If all stories have COMPLETE markers: print LOOP_COMPLETE. Emit queue.complete. Stop.
 
-      Step 3 — Produce the build plan. Write it to PLAN-STORY-NNN.md at repo root:
+      Step 2 — Read the story spec.
+      Read the full story file:
+      /Users/jamesilsley/GitHub/sparkmojo-internal/platform/feature-library/stories/STORY-NNN.md
+      Also read:
+      /Users/jamesilsley/GitHub/sparkmojo-internal/platform/WORKING_AGREEMENT.md
+      /Users/jamesilsley/GitHub/sparkmojo-internal/platform/feature-library/TASK-WORKBOARD.md
+      /Users/jamesilsley/GitHub/sparkmojo-internal/platform/decisions/DECISION-014-sm-task-custom-doctype.md
+
+      Step 3 — Write the plan to PLAN-STORY-NNN.md at repo root:
       - Story ID and title
       - Story type: Frappe DocType | Python API | React Frontend
-      - Every file to create or modify (exact paths)
-      - Every field/endpoint/component (exact names and types from the story spec)
-      - Quality gate to run (see CLAUDE.md Definition of Done)
-      - Any dependency on a previous story (confirm it is already merged)
+      - Every file to create or modify (exact absolute paths)
+      - Every field/endpoint/component (exact names and types)
+      - Quality gate to run (per CLAUDE.md Definition of Done)
+      - Dependency check: confirm prior story COMPLETE marker exists if required
 
       Step 4 — Check for ambiguity.
-      If ANY structural decision is not answered by the story file, CLAUDE.md,
-      TASK-WORKBOARD.md, or a decision file in platform/decisions/ — write
-      BLOCKED-STORY-NNN.md with the exact question. Emit plan.ready anyway so
-      the builder sees the block and skips to the next story.
+      If ANY structural decision cannot be resolved from the story file, CLAUDE.md,
+      TASK-WORKBOARD.md, or a file in platform/decisions/ — write BLOCKED-STORY-NNN.md
+      with the exact question. Emit plan.ready anyway so builder can skip it.
 
-      If plan is complete: emit plan.ready with "STORY-NNN: N files, type: [doctype|api|frontend]"
+      Emit: ralph emit "plan.ready" "STORY-NNN: N files, type: [doctype|api|frontend]"
 
   builder:
-    name: "Builder"
-    description: "Implements exactly what the story plan specifies. Runs fast quality gates after each significant change. Sends work to the verifier when fast gates pass, or flags a blocked story if the plan contains unresolvable ambiguity."
+    name: "🔨 Builder"
     triggers: ["plan.ready", "build.retry"]
     publishes: ["build.ready", "build.blocked"]
     instructions: |
-      You are the Builder. Read PLAN-STORY-NNN.md first.
-      If the plan contains a BLOCKED notice, write BLOCKED-STORY-NNN.md at
-      repo root and emit build.blocked. Do not write any code for this story.
+      You are the Builder. Read PLAN-STORY-NNN.md at the repo root first.
+      If it contains a BLOCKED notice, write BLOCKED-STORY-NNN.md and emit build.blocked.
 
-      Check out the story branch:
+      Create the story branch:
       git checkout -b story/STORY-NNN-short-description
+
+      REPO ROOT: /Users/jamesilsley/GitHub/spark-mojo-platform/
+      FRAPPE APPS: /Users/jamesilsley/GitHub/spark-mojo-platform/frappe-apps/
+      ABSTRACTION LAYER: /Users/jamesilsley/GitHub/spark-mojo-platform/abstraction-layer/
+      FRONTEND: /Users/jamesilsley/GitHub/spark-mojo-platform/frontend/
 
       Build exactly what the plan specifies. Nothing more. Nothing less.
 
       FRAPPE DOCTYPE STORIES (STORY-003, 004, 005):
-      - Create DocType JSON in frappe-apps/sm_widgets/sm_widgets/doctype/sm_task/
-      - Create Python controller at frappe-apps/sm_widgets/sm_widgets/doctype/sm_task/sm_task.py
-      - CRITICAL rules from CLAUDE.md:
-        * Never use frappe.db.set_value() — always frappe.get_doc().save()
-        * Never modify core Frappe — custom logic in sm_widgets app only
-        * All DocTypes prefixed SM
-        * Run bench --site poc.sparkmojo.com migrate after EVERY DocType change
-        * Never install a new Frappe app via bench — create files directly in existing apps
-      - Fast gate after each change: bench --site poc.sparkmojo.com migrate (must exit 0)
+      - SM Task is a CUSTOM DocType in sm_widgets — NOT ERPNext Task extension (DECISION-014)
+      - Create DocType JSON at: frappe-apps/sm_widgets/sm_widgets/doctype/sm_task/sm_task.json
+      - Create controller at: frappe-apps/sm_widgets/sm_widgets/doctype/sm_task/sm_task.py
+      - NEVER use frappe.db.set_value() — always frappe.get_doc().save()
+      - NEVER install a Frappe app via bench
+      - Run after every change: bench --site poc.sparkmojo.com migrate (must exit 0)
 
       PYTHON API STORIES (STORY-006, 007):
-      - Create/modify abstraction-layer/routes/tasks.py
-      - Register router in abstraction-layer/main.py if not already there
-      - Write tests in abstraction-layer/tests/test_tasks.py
-      - Fast gate after each significant change:
-        cd abstraction-layer && pytest tests/test_tasks.py -v
-      - Fix failures immediately before continuing
+      - Create: abstraction-layer/routes/tasks.py
+      - Register router in: abstraction-layer/main.py
+      - Write tests in: abstraction-layer/tests/test_tasks.py
+      - Fast gate: cd abstraction-layer && pytest tests/test_tasks.py -v
 
       REACT FRONTEND STORIES (STORY-008a, 008b, 009, 010):
-      - Create/modify files in frontend/src/components/mojos/ ONLY
-      - NEVER modify: Desktop.jsx, frappe-client.js, any legacy component folder
-      - NEVER create .ts or .tsx files — JSX only
-      - Write tests in frontend/src/components/mojos/__tests__/
-      - Fast gate after each significant change:
-        cd frontend && pnpm run lint && pnpm run test
-      - Fix failures immediately before continuing
+      - Create files in: frontend/src/components/mojos/ ONLY
+      - NEVER modify: Desktop.jsx, frappe-client.js, or any legacy component folder
+      - NEVER create .ts or .tsx files
+      - Write tests in: frontend/src/components/mojos/__tests__/
+      - Fast gate: cd frontend && pnpm run lint && pnpm run test
 
-      When all files are written and fast gates pass:
-      emit build.ready with "STORY-NNN: implementation complete, fast gates passing"
+      When fast gates pass:
+      ralph emit "build.ready" "STORY-NNN: implementation complete, fast gates passing"
 
   verifier:
-    name: "Verifier"
-    description: "Runs the full quality gate suite for the completed story. The only hat that can mark a story done. Sends failing stories back to the builder with exact failure details. Writes a COMPLETE marker file when all gates pass."
+    name: "✅ Verifier"
     triggers: ["build.ready"]
     publishes: ["task.done", "build.retry"]
     instructions: |
-      You are the Verifier. A story is ONLY done when every gate below passes.
+      You are the Verifier. Run ALL gates. A story is only done when every gate passes.
       Read PLAN-STORY-NNN.md to know which gate type applies.
 
       FRAPPE DOCTYPE GATE:
       1. bench --site poc.sparkmojo.com migrate
-         PASS: exit code 0 with no errors
-         FAIL: emit build.retry with exact error output
-      2. bench --site poc.sparkmojo.com console — run:
-         frappe.get_meta('SM Task').fields
-         PASS: all fields from the story spec are present
-         FAIL: emit build.retry listing missing fields
-      3. Test controller hooks in bench console:
-         a. frappe.get_doc({'doctype':'SM Task','title':'Test','task_type':'Action',
-            'executor_type':'Human','canonical_state':'Blocked'}).insert()
-            PASS: raises frappe.ValidationError (status_reason required)
-         b. frappe.get_doc({'doctype':'SM Task','title':'Test2','task_type':'Action',
-            'executor_type':'Human','canonical_state':'In Progress'}).insert()
-            PASS: started_at is auto-populated
-         FAIL either: emit build.retry with exact error
+         PASS: exit 0, no errors
+         FAIL: ralph emit "build.retry" "migrate failed: [exact error]"
+      2. In bench console: frappe.get_meta('SM Task').fields
+         PASS: all fields from story spec present
+         FAIL: ralph emit "build.retry" "missing fields: [list]"
+      3. Test hooks in bench console:
+         frappe.get_doc({'doctype':'SM Task','title':'T','task_type':'Action','executor_type':'Human','canonical_state':'Blocked'}).insert()
+         PASS: raises frappe.ValidationError
+         frappe.get_doc({'doctype':'SM Task','title':'T2','task_type':'Action','executor_type':'Human','canonical_state':'In Progress'}).insert()
+         PASS: started_at auto-populated
+         FAIL: ralph emit "build.retry" "hook failed: [exact error]"
 
       PYTHON API GATE:
       1. cd abstraction-layer && pytest tests/ -v
          PASS: 0 failures
-         FAIL: emit build.retry with failing test names and errors
+         FAIL: ralph emit "build.retry" "tests failed: [test names and errors]"
       2. cd abstraction-layer && pytest tests/ --cov=. --cov-report=term-missing --cov-fail-under=70
          PASS: coverage >= 70%
-         FAIL: emit build.retry with coverage percentage and uncovered lines
-      3. Start server and check health:
-         uvicorn main:app --port 8001 &
-         sleep 2 && curl -s http://localhost:8001/health
-         Kill server after test.
-         PASS: response contains "status":"ok"
-         FAIL: emit build.retry with response or startup error
+         FAIL: ralph emit "build.retry" "coverage [N]% below 70%"
+      3. uvicorn main:app --port 8001 & sleep 2 && curl -s http://localhost:8001/health && kill %1
+         PASS: response contains status ok
+         FAIL: ralph emit "build.retry" "health endpoint: [error]"
 
       REACT FRONTEND GATE:
       1. cd frontend && pnpm run lint
          PASS: 0 warnings, 0 errors
-         FAIL: emit build.retry with exact lint output
+         FAIL: ralph emit "build.retry" "lint: [exact output]"
       2. cd frontend && pnpm run test
          PASS: 0 failures
-         FAIL: emit build.retry with failing test names
+         FAIL: ralph emit "build.retry" "tests failed: [names]"
       3. cd frontend && pnpm run build
-         PASS: build succeeds with no errors
-         FAIL: emit build.retry with build error output
+         PASS: exits 0
+         FAIL: ralph emit "build.retry" "build: [error]"
 
       If ALL gates pass:
-      Write STORY-NNN-COMPLETE at repo root (empty file — used by planner to track progress)
-      emit task.done with "STORY-NNN: [gate results — e.g., migrate ok, 5 fields verified, hooks pass]"
-
-      If ANY gate fails:
-      emit build.retry with the exact failure so the builder knows what to fix
+      touch STORY-NNN-COMPLETE
+      ralph emit "task.done" "STORY-NNN: [gate results summary]"
 
   committer:
-    name: "Committer"
-    description: "Commits verified work to the story branch after all quality gates pass. Uses the exact commit message from the story spec file. Signals the planner to find the next story."
+    name: "📦 Committer"
     triggers: ["task.done"]
     publishes: ["story.committed"]
     instructions: |
-      You are the Committer. A story has passed all quality gates.
-      Commit the work now.
+      You are the Committer. All quality gates passed. Commit the work.
 
       1. git add -A
-      2. Read the commit message from the bottom of the story spec file:
-         ../sparkmojo-internal/platform/feature-library/stories/STORY-NNN.md
+      2. Read the commit message from the bottom of:
+         /Users/jamesilsley/GitHub/sparkmojo-internal/platform/feature-library/stories/STORY-NNN.md
          Use that exact commit message.
       3. git commit -m "[exact message from story file]"
 
-      After committing:
-      emit story.committed with "STORY-NNN committed on branch story/[branch-name]"
-
-      The planner will now read PROMPT.md and find the next story to build.
+      ralph emit "story.committed" "STORY-NNN committed on branch story/[branch-name]"
