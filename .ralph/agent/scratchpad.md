@@ -72,3 +72,73 @@
 
 **Result:** All locally-verifiable gates pass. STORY-003-COMPLETE marker created.
 **Emitting:** `task.done` → Committer hat.
+
+## 2026-03-26 — Story Planner: STORY-004
+
+**Hat:** Story Planner
+**Story:** STORY-004 — SM Task child tables (watchers, tags, state history, assignment history, comments)
+**Status:** Plan written to PLAN-STORY-004.md
+
+**Key findings:**
+- STORY-003-COMPLETE exists — dependency satisfied
+- 5 child DocTypes to create: SM Task Watcher, SM Task Tag, SM Task State History, SM Task Assignment History, SM Task Comment
+- Each child DocType: 3 files (json, py, __init__.py) = 15 new files
+- SM Task JSON needs 7 new fields appended (2 section breaks + 5 table fields)
+- SM Task controller needs 2 new hooks: track_state_change, track_assignment_change (using get_doc_before_save to detect changes)
+- Story spec fully specified — no ambiguity, no BLOCKED file needed
+
+**Plan:** 15 files to create, 2 files to modify (sm_task.json, sm_task.py)
+**Emitting:** `plan.ready` → Builder hat.
+
+## 2026-03-26 — Builder: STORY-004
+
+**Hat:** Builder
+**Story:** STORY-004 — SM Task child tables
+**Branch:** `story/STORY-004-sm-task-child-tables`
+
+**Built:**
+- 15 files created: 5 child DocTypes (SM Task Watcher, SM Task Tag, SM Task State History, SM Task Assignment History, SM Task Comment), each with json, py, __init__.py
+- sm_task.json modified: 7 new fields appended (section_activity, watchers, tags, comments, section_audit, state_history, assignment_history) — total 26 fields
+- sm_task.py modified: added track_state_change() and track_assignment_change() hooks in before_save, using get_doc_before_save() to detect changes
+- All 6 JSON files validated (python -m json.tool)
+- All 6 Python files compiled without errors
+- All 5 child DocTypes have istable=1
+- Committed: `038b1c7`
+
+**Emitting:** `build.ready` → Verifier hat.
+
+## 2026-03-26 — Verifier: STORY-004
+
+**Hat:** Verifier
+**Story:** STORY-004 — SM Task child tables
+**Gate type:** Frappe DocType
+
+**Local verification results:**
+
+Child DocTypes (all 5):
+- SM Task Watcher: ✅ istable=1, fields: user (Link→User, reqd), added_at (Datetime)
+- SM Task Tag: ✅ istable=1, fields: tag (Data, reqd)
+- SM Task State History: ✅ istable=1, fields: from_state (Data), to_state (Data, reqd), changed_by (Link→User, reqd), changed_at (Datetime, reqd), reason (Small Text)
+- SM Task Assignment History: ✅ istable=1, fields: from_owner (Data), to_owner (Data, reqd), owner_type (Select: User/Role/Team/System), changed_by (Link→User, reqd), changed_at (Datetime, reqd)
+- SM Task Comment: ✅ istable=1, fields: comment (Long Text, reqd), created_by (Link→User, reqd), created_at (Datetime, reqd)
+
+SM Task JSON:
+- ✅ 26 total fields (19 original + 7 new)
+- ✅ 7 new fields in correct order: section_activity, watchers, tags, comments, section_audit, state_history, assignment_history
+- ✅ All Table fields reference correct child DocType names
+
+SM Task Controller:
+- ✅ track_state_change() uses get_doc_before_save(), appends to state_history with from_state, to_state, changed_by, changed_at, reason
+- ✅ track_assignment_change() tracks assigned_user, assigned_role, assigned_team changes, appends to assignment_history with correct owner_type
+- ✅ Both hooks called from before_save
+
+Scaffolding:
+- ✅ All 7 __init__.py files present (5 child + sm_task + doctype parent)
+- ✅ All 6 JSON files parse cleanly
+- ✅ All 6 Python files compile without errors
+
+**Remote gate (deferred):**
+- `bench --site poc.sparkmojo.com migrate` — must be run by James on VPS (CLAUDE.md rule #11)
+
+**Result:** All locally-verifiable gates pass. Creating STORY-004-COMPLETE marker.
+**Emitting:** `task.done` → Committer hat.

@@ -1,0 +1,21 @@
+{
+  "name": "SM Task Tag",
+  "module": "SM Widgets",
+  "doctype": "DocType",
+  "document_type": "Document",
+  "engine": "InnoDB",
+  "istable": 1,
+  "custom": 0,
+  "editable_grid": 1,
+  "track_changes": 0,
+  "fields": [
+    {
+      "fieldname": "tag",
+      "label": "Tag",
+      "fieldtype": "Data",
+      "reqd": 1,
+      "in_list_view": 1
+    }
+  ],
+  "permissions": []
+}
