@@ -13,12 +13,9 @@ event_loop:
   max_iterations: 150
 
 hats:
-  # ─────────────────────────────────────────────────────────────
-  # HAT 1: Health Check
-  # Runs once at session start. Halts everything if baseline broken.
-  # ─────────────────────────────────────────────────────────────
   health_check:
     name: "Health Check"
+    description: "Runs once at session start. Verifies lint, build, and Python imports are clean before any build work begins. Halts the entire session if baseline is broken."
     triggers: ["session.start"]
     publishes: ["health.ok", "health.blocked"]
     instructions: |
@@ -36,13 +33,9 @@ hats:
 
       If all three pass, emit health.ok with: "lint clean, build ok, python imports ok"
 
-  # ─────────────────────────────────────────────────────────────
-  # HAT 2: Story Planner
-  # Triggered by health.ok or after each story commits.
-  # Reads the next story and produces a concrete build plan.
-  # ─────────────────────────────────────────────────────────────
   story_planner:
     name: "Story Planner"
+    description: "Reads the next unbuilt story from PROMPT.md, confirms dependencies are met, and produces a concrete unambiguous build plan before any code is written. Signals queue complete when all stories are done."
     triggers: ["health.ok", "story.committed"]
     publishes: ["plan.ready", "queue.complete"]
     instructions: |
@@ -75,13 +68,9 @@ hats:
 
       If plan is complete: emit plan.ready with "STORY-NNN: N files, type: [doctype|api|frontend]"
 
-  # ─────────────────────────────────────────────────────────────
-  # HAT 3: Builder
-  # Triggered by plan.ready. Implements exactly what the plan says.
-  # Runs fast gates after each significant change.
-  # ─────────────────────────────────────────────────────────────
   builder:
     name: "Builder"
+    description: "Implements exactly what the story plan specifies. Runs fast quality gates after each significant change. Sends work to the verifier when fast gates pass, or flags a blocked story if the plan contains unresolvable ambiguity."
     triggers: ["plan.ready", "build.retry"]
     publishes: ["build.ready", "build.blocked"]
     instructions: |
@@ -125,13 +114,9 @@ hats:
       When all files are written and fast gates pass:
       emit build.ready with "STORY-NNN: implementation complete, fast gates passing"
 
-  # ─────────────────────────────────────────────────────────────
-  # HAT 4: Verifier
-  # Triggered by build.ready. Runs the full quality gate suite.
-  # Only this hat can mark a story done or send it back for retry.
-  # ─────────────────────────────────────────────────────────────
   verifier:
     name: "Verifier"
+    description: "Runs the full quality gate suite for the completed story. The only hat that can mark a story done. Sends failing stories back to the builder with exact failure details. Writes a COMPLETE marker file when all gates pass."
     triggers: ["build.ready"]
     publishes: ["task.done", "build.retry"]
     instructions: |
@@ -187,12 +172,9 @@ hats:
       If ANY gate fails:
       emit build.retry with the exact failure so the builder knows what to fix
 
-  # ─────────────────────────────────────────────────────────────
-  # HAT 5: Committer
-  # Triggered by task.done. Commits the verified work.
-  # ─────────────────────────────────────────────────────────────
   committer:
     name: "Committer"
+    description: "Commits verified work to the story branch after all quality gates pass. Uses the exact commit message from the story spec file. Signals the planner to find the next story."
     triggers: ["task.done"]
     publishes: ["story.committed"]
     instructions: |
