@@ -29,3 +29,7 @@
 {"payload":"STORY-008b: 2 files to modify, type: frontend","topic":"plan.ready","ts":"2026-03-26T07:29:58.220876+00:00"}
 {"payload":"STORY-008b: claim action + sort controls implemented, all 3 frontend gates passing (lint 0/0, test 17/17, build ok)","topic":"build.ready","ts":"2026-03-26T07:33:03.866340+00:00"}
 {"payload":"STORY-008b: lint 0/0, test 17/17 passed, build exits 0 — all React Frontend gates pass","topic":"task.done","ts":"2026-03-26T07:34:02.165030+00:00"}
+{"payload":"STORY-008b committed on branch story/STORY-008b-workboard-claim-sort","topic":"story.committed","ts":"2026-03-26T07:35:12.466756+00:00"}
+{"payload":"STORY-009: 2 files, type: frontend","topic":"plan.ready","ts":"2026-03-26T07:37:22.015838+00:00"}
+{"payload":"STORY-009: task detail drawer implementation complete, 25/25 tests passing, lint clean, build succeeds","topic":"build.ready","ts":"2026-03-26T07:41:49.305371+00:00"}
+{"payload":"STORY-009: lint 0 warnings/errors, 25/25 tests passed, build exits 0. All React Frontend gates pass.","topic":"task.done","ts":"2026-03-26T07:42:37.319409+00:00"}

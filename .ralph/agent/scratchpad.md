@@ -479,3 +479,80 @@ Scaffolding:
 
 **Result:** All gates pass. STORY-008b-COMPLETE marker created.
 **Emitting:** `task.done` → Committer hat.
+
+## 2026-03-26 — Committer: STORY-008b
+
+**Hat:** Committer
+**Story:** STORY-008b — WorkboardMojo claim action and sort controls
+**Branch:** `story/STORY-008b-workboard-claim-sort`
+
+**Code commit:** `370e515` — `feat(frontend): WorkboardMojo claim action and sort controls`
+**State commit:** `298ba03` — orchestration state + STORY-008b-COMPLETE marker
+
+**Emitting:** `story.committed` → Story Planner hat (next story: STORY-009)
+
+## 2026-03-26 — Story Planner: STORY-009
+
+**Hat:** Story Planner
+**Story:** STORY-009 — WorkboardMojo task detail drawer
+**Status:** Plan written to PLAN-STORY-009.md
+
+**Key findings:**
+- STORY-008a-COMPLETE and STORY-007-COMPLETE exist — dependencies satisfied
+- This is a React Frontend story — same type as STORY-008a/008b
+- 0 files to create, 2 files to modify (WorkboardMojo.jsx, WorkboardMojo.test.jsx)
+- Uses framer-motion for right-side slide-in (vaul drawer.jsx is bottom-only — not suitable)
+- Drawer sections: header, status bar (state selector), details, comments, state history (collapsible), complete button
+- API calls: GET /get, POST /update_state, POST /add_comment, POST /complete
+- Story spec mentions "editable inline title" but no title update endpoint exists in STORY-007 — displaying as read-only (not blocking)
+- @radix-ui/react-collapsible available for state history section
+- @radix-ui/react-select available for state dropdown
+- No ambiguity — story spec fully specified (title edit is minor, not architectural)
+
+**Plan:** 0 files to create, 2 files to modify
+**Emitting:** `plan.ready` → Builder hat.
+
+## 2026-03-26 — Builder: STORY-009
+
+**Hat:** Builder
+**Story:** STORY-009 — WorkboardMojo task detail drawer
+**Branch:** `story/STORY-009-task-detail-drawer`
+
+**Built:**
+- WorkboardMojo.jsx modified:
+  - Added 4 new API helpers: fetchTask, postUpdateState, postAddComment, postComplete
+  - Added TaskDetailDrawer component with framer-motion slide-in from right (480px desktop, full mobile)
+  - Drawer sections: header (title, type badge, priority, close X), status bar (state selector with reason prompt for Blocked/Failed), details (assigned user/role, due date, source, CRM record, completion criteria), comments (newest-first, text input + send), state history (Radix Collapsible), complete button (coral)
+  - DrawerSkeleton component for loading state
+  - Row click handler: sets selectedTaskId, fetches full task, opens drawer
+  - TaskRow updated: added onClick, selected prop (highlight), stopPropagation on claim button
+  - Escape key closes drawer (document keydown listener)
+  - Backdrop click closes drawer
+  - State change from drawer updates workboard row (local state update)
+  - Comment adds to drawer without re-fetch
+  - Complete removes task from list and closes drawer
+- WorkboardMojo.test.jsx modified: 8 new tests (total 25)
+  - Open drawer with correct data, loading skeleton, state change POST, Blocked reason prompt, add comment POST, complete POST + row removal, Escape close, backdrop close
+
+**Fast gates:**
+- pnpm run lint: ✅ 0 warnings, 0 errors
+- pnpm run test: ✅ 25/25 passed
+- pnpm run build: ✅ succeeds
+
+**Committed:** `dc1949c`
+**Emitting:** `build.ready` → Verifier hat.
+
+## 2026-03-26 — Verifier: STORY-009
+
+**Hat:** Verifier
+**Story:** STORY-009 — WorkboardMojo task detail drawer
+**Gate type:** React Frontend
+
+**Gate results:**
+
+1. `pnpm run lint`: ✅ 0 warnings, 0 errors
+2. `pnpm run test`: ✅ 25/25 passed (790ms)
+3. `pnpm run build`: ✅ exits 0 (eval warning is pre-existing in CalculatorWidget)
+
+**Result:** All gates pass. STORY-009-COMPLETE marker created.
+**Emitting:** `task.done` → Committer hat.
