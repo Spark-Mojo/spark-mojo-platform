@@ -152,6 +152,94 @@
       "read_only": 1
     },
     {
+      "fieldname": "section_sla",
+      "label": "SLA",
+      "fieldtype": "Section Break"
+    },
+    {
+      "fieldname": "sla_hours",
+      "label": "SLA Hours",
+      "fieldtype": "Float",
+      "reqd": 0
+    },
+    {
+      "fieldname": "sla_breached",
+      "label": "SLA Breached",
+      "fieldtype": "Check",
+      "default": "0",
+      "read_only": 1
+    },
+    {
+      "fieldname": "sla_breached_at",
+      "label": "SLA Breached At",
+      "fieldtype": "Datetime",
+      "read_only": 1
+    },
+    {
+      "fieldname": "section_source",
+      "label": "Source & Context",
+      "fieldtype": "Section Break"
+    },
+    {
+      "fieldname": "source_system",
+      "label": "Source System",
+      "fieldtype": "Select",
+      "options": "Frappe\nn8n\nEHR\nStripe\nManual\nAI"
+    },
+    {
+      "fieldname": "source_object_id",
+      "label": "Source Object ID",
+      "fieldtype": "Data"
+    },
+    {
+      "fieldname": "related_crm_record",
+      "label": "Related CRM Contact",
+      "fieldtype": "Link",
+      "options": "CRM Contact"
+    },
+    {
+      "fieldname": "workflow_id",
+      "label": "Workflow",
+      "fieldtype": "Link",
+      "options": "SM Workflow Config"
+    },
+    {
+      "fieldname": "workflow_stage",
+      "label": "Workflow Stage",
+      "fieldtype": "Data"
+    },
+    {
+      "fieldname": "parent_task",
+      "label": "Parent Task",
+      "fieldtype": "Link",
+      "options": "SM Task"
+    },
+    {
+      "fieldname": "section_execution",
+      "label": "Execution",
+      "fieldtype": "Section Break"
+    },
+    {
+      "fieldname": "completion_criteria",
+      "label": "Completion Criteria",
+      "fieldtype": "Small Text"
+    },
+    {
+      "fieldname": "waiting_trigger",
+      "label": "Waiting Trigger",
+      "fieldtype": "Small Text"
+    },
+    {
+      "fieldname": "is_recurring",
+      "label": "Recurring Instance",
+      "fieldtype": "Check"
+    },
+    {
+      "fieldname": "recurrence_template_id",
+      "label": "Recurrence Template ID",
+      "fieldtype": "Data"
+    },
+    {
       "fieldname": "section_activity",
       "label": "Activity",
       "fieldtype": "Section Break"

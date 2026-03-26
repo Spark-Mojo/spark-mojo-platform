@@ -142,3 +142,62 @@ Scaffolding:
 
 **Result:** All locally-verifiable gates pass. Creating STORY-004-COMPLETE marker.
 **Emitting:** `task.done` → Committer hat.
+
+## 2026-03-26 — Story Planner: STORY-005
+
+**Hat:** Story Planner
+**Story:** STORY-005 — SM Task extended fields (SLA, source system, recurrence, execution logic)
+**Status:** Plan written to PLAN-STORY-005.md
+
+**Key findings:**
+- STORY-003-COMPLETE exists — dependency satisfied (STORY-005 depends on STORY-003)
+- STORY-004-COMPLETE also exists
+- 1 file to modify: sm_task.json — append 14 new fields (3 section breaks + 11 data fields)
+- Insert after canceled_at, before section_activity
+- No controller changes needed — fields are additive only
+- No new child tables or DocTypes
+- Story spec fully specified — no ambiguity, no BLOCKED file needed
+- CRM Contact link target confirmed via DECISION-013
+
+**Plan:** 0 files to create, 1 file to modify (sm_task.json). Smallest story yet.
+**Emitting:** `plan.ready` → Builder hat.
+
+## 2026-03-26 — Builder: STORY-005
+
+**Hat:** Builder
+**Story:** STORY-005 — SM Task extended fields
+**Branch:** `story/STORY-005-sm-task-extended-fields`
+
+**Built:**
+- sm_task.json modified: 16 new fields inserted after canceled_at, before section_activity
+  - SLA section: section_sla, sla_hours, sla_breached (read_only, default 0), sla_breached_at (read_only)
+  - Source & Context section: section_source, source_system (Select), source_object_id, related_crm_record (Link→CRM Contact), workflow_id (Link→SM Workflow Config), workflow_stage, parent_task (Link→SM Task, self-referential)
+  - Execution section: section_execution, completion_criteria (Small Text), waiting_trigger (Small Text), is_recurring (Check), recurrence_template_id
+- Total field count: 42 (26 existing + 16 new)
+- Note: Plan said "14 new fields" but story spec actually defines 16 (3 section breaks + 13 data fields). Built to spec.
+- JSON validated: ✅
+- Committed: `aa946b3`
+
+**Emitting:** `build.ready` → Verifier hat.
+
+## 2026-03-26 — Verifier: STORY-005
+
+**Hat:** Verifier
+**Story:** STORY-005 — SM Task extended fields
+**Gate type:** Frappe DocType
+
+**Local verification results:**
+- JSON syntax: ✅ valid
+- Total field count: ✅ 42 fields (19 + 7 + 16)
+- Field insertion: ✅ after canceled_at (#19), before section_activity (#36)
+- SLA section (4 fields): ✅ section_sla, sla_hours (Float), sla_breached (Check, default 0, read_only), sla_breached_at (Datetime, read_only)
+- Source & Context section (7 fields): ✅ section_source, source_system (Select, 6 options), source_object_id (Data), related_crm_record (Link→CRM Contact), workflow_id (Link→SM Workflow Config), workflow_stage (Data), parent_task (Link→SM Task)
+- Execution section (5 fields): ✅ section_execution, completion_criteria (Small Text), waiting_trigger (Small Text), is_recurring (Check), recurrence_template_id (Data)
+- Controller: ✅ no changes needed per spec, none made
+- All fieldtypes, options, read_only, and defaults match story spec exactly
+
+**Remote gate (deferred):**
+- `bench --site poc.sparkmojo.com migrate` — must be run by James on VPS (CLAUDE.md rule #11)
+
+**Result:** All locally-verifiable gates pass. Creating STORY-005-COMPLETE marker.
+**Emitting:** `task.done` → Committer hat.
