@@ -337,3 +337,14 @@ Scaffolding:
 
 **Result:** All gates pass. Creating STORY-007-COMPLETE marker.
 **Emitting:** `task.done` → Committer hat.
+
+## 2026-03-26 — Committer: STORY-007
+
+**Hat:** Committer
+**Story:** STORY-007 — Tasks abstraction layer — write endpoints
+**Branch:** `story/STORY-007-tasks-api-write`
+
+**Code commit:** `f3a7edc` — `feat(abstraction-layer): tasks write endpoints — create, claim, assign, update_state, add_comment, complete`
+**State commit:** `fe3d7d4` — orchestration state + STORY-007-COMPLETE marker
+
+**Emitting:** `story.committed` → Story Planner hat (next story: STORY-008a)
