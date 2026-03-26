@@ -9,6 +9,8 @@ import { differenceInCalendarDays, parseISO, isToday, isTomorrow, isPast, format
 
 const API_BASE = (import.meta.env.VITE_FRAPPE_URL || 'http://localhost:8000') + '/api/modules/tasks';
 const SORT_STORAGE_KEY = 'workboard_sort_preference';
+const VIEW_STORAGE_KEY = 'workboard_view_preference';
+const KANBAN_COLUMNS = ['New', 'Ready', 'In Progress', 'Waiting', 'Blocked'];
 
 const CANONICAL_STATES = ['New', 'Ready', 'In Progress', 'Waiting', 'Blocked', 'Failed', 'Completed', 'Cancelled'];
 const REASON_REQUIRED_STATES = ['Blocked', 'Failed'];
@@ -618,6 +620,148 @@ function Toast({ message, visible }) {
   );
 }
 
+function loadViewPreference() {
+  try {
+    const raw = localStorage.getItem(VIEW_STORAGE_KEY);
+    if (raw === 'kanban') return 'kanban';
+  } catch { /* ignore */ }
+  return 'list';
+}
+
+function saveViewPreference(mode) {
+  try {
+    localStorage.setItem(VIEW_STORAGE_KEY, mode);
+  } catch { /* ignore */ }
+}
+
+function ViewToggle({ viewMode, onViewChange }) {
+  return (
+    <div data-testid="view-toggle" className="flex items-center gap-1">
+      <button
+        data-testid="view-toggle-list"
+        onClick={() => onViewChange('list')}
+        className={cn(
+          'text-xs px-2 py-1 rounded transition-colors',
+          viewMode === 'list'
+            ? 'bg-[var(--color-primary,#006666)] text-white'
+            : 'bg-white/10 text-white/50 hover:text-white/70'
+        )}
+        aria-label="List view"
+      >
+        &#9776;
+      </button>
+      <button
+        data-testid="view-toggle-kanban"
+        onClick={() => onViewChange('kanban')}
+        className={cn(
+          'text-xs px-2 py-1 rounded transition-colors',
+          viewMode === 'kanban'
+            ? 'bg-[var(--color-primary,#006666)] text-white'
+            : 'bg-white/10 text-white/50 hover:text-white/70'
+        )}
+        aria-label="Kanban view"
+      >
+        &#9707;
+      </button>
+    </div>
+  );
+}
+
+function KanbanCard({ task, selected, onCardClick }) {
+  const { name, title, priority, due_at, assigned_user, assigned_role, is_unowned } = task;
+  const due = formatDueDate(due_at);
+  const priorityColor = PRIORITY_COLORS[priority] || PRIORITY_COLORS.Low;
+
+  return (
+    <div
+      data-testid="kanban-card"
+      onClick={() => onCardClick(name)}
+      className={cn(
+        'bg-white/5 rounded-lg p-3 cursor-pointer hover:bg-white/10 transition-colors',
+        selected && 'ring-1 ring-[var(--color-primary,#006666)]'
+      )}
+    >
+      <div className="flex items-start gap-2 mb-2">
+        <span className={cn('h-2 w-2 rounded-full shrink-0 mt-1', priorityColor)} />
+        <span className="text-sm text-white/90 line-clamp-2 min-w-0">{title}</span>
+      </div>
+      <div className="flex items-center justify-between text-xs text-white/40">
+        <span>
+          {is_unowned ? (
+            <span className="inline-flex items-center gap-1">
+              <span
+                data-testid="kanban-unowned-pulse"
+                className="inline-block h-2 w-2 rounded-full bg-[var(--color-coral,#FF6F61)] animate-pulse"
+              />
+              {assigned_role || 'Unowned'}
+            </span>
+          ) : (
+            assigned_user || assigned_role || ''
+          )}
+        </span>
+        {due && (
+          <span className={cn('tabular-nums', due.overdue ? 'text-red-400' : '')}>
+            {due.text}
+          </span>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function KanbanColumn({ columnState, tasks, selectedTaskId, onCardClick }) {
+  return (
+    <div data-testid="kanban-column" className="flex flex-col min-w-[180px] w-full">
+      <div className="flex items-center gap-2 px-2 py-2 border-b border-white/10 mb-2">
+        <span className="text-xs font-semibold text-white/70 uppercase tracking-wider">{columnState}</span>
+        <Badge variant="outline" className="text-[10px] px-1.5 py-0 text-white/40 border-white/20" data-testid="kanban-column-count">
+          {tasks.length}
+        </Badge>
+      </div>
+      <div className="flex-1 space-y-2 px-1 overflow-y-auto">
+        {tasks.map((task) => (
+          <KanbanCard
+            key={task.name}
+            task={task}
+            selected={selectedTaskId === task.name}
+            onCardClick={onCardClick}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function KanbanBoard({ tasks, selectedTaskId, onCardClick }) {
+  const grouped = useMemo(() => {
+    const groups = {};
+    for (const col of KANBAN_COLUMNS) {
+      groups[col] = [];
+    }
+    for (const task of tasks) {
+      const state = task.canonical_state || 'New';
+      if (groups[state]) {
+        groups[state].push(task);
+      }
+    }
+    return groups;
+  }, [tasks]);
+
+  return (
+    <div data-testid="kanban-board" className="flex gap-3 p-3 overflow-x-auto h-full">
+      {KANBAN_COLUMNS.map((col) => (
+        <KanbanColumn
+          key={col}
+          columnState={col}
+          tasks={grouped[col]}
+          selectedTaskId={selectedTaskId}
+          onCardClick={onCardClick}
+        />
+      ))}
+    </div>
+  );
+}
+
 export default function WorkboardMojo() {
   const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -626,6 +770,7 @@ export default function WorkboardMojo() {
   const [toast, setToast] = useState({ message: '', visible: false });
 
   const [sortPref, setSortPref] = useState(loadSortPreference);
+  const [viewMode, setViewMode] = useState(loadViewPreference);
 
   // Drawer state
   const [selectedTaskId, setSelectedTaskId] = useState(null);
@@ -680,6 +825,11 @@ export default function WorkboardMojo() {
   const handleSortChange = useCallback((field, direction) => {
     setSortPref({ field, direction });
     saveSortPreference(field, direction);
+  }, []);
+
+  const handleViewChange = useCallback((mode) => {
+    setViewMode(mode);
+    saveViewPreference(mode);
   }, []);
 
   const handleRowClick = useCallback(async (taskId) => {
@@ -772,28 +922,39 @@ export default function WorkboardMojo() {
 
   return (
     <div className="relative flex flex-col h-full overflow-hidden">
-      <div className="px-4 py-3 border-b border-white/10">
+      <div className="px-4 py-3 border-b border-white/10 flex items-center justify-between">
         <h2 className="text-sm font-semibold text-white/70 uppercase tracking-wider">
           Workboard
         </h2>
+        <ViewToggle viewMode={viewMode} onViewChange={handleViewChange} />
       </div>
-      <SortToolbar
-        sortField={sortPref.field}
-        sortDirection={sortPref.direction}
-        onSortChange={handleSortChange}
-      />
-      <div className="flex-1 overflow-y-auto">
-        {sorted.map((task) => (
-          <TaskRow
-            key={task.name}
-            task={task}
-            claimingId={claimingId}
-            onClaim={handleClaim}
-            selected={selectedTaskId === task.name}
-            onRowClick={handleRowClick}
-          />
-        ))}
-      </div>
+      {viewMode === 'list' && (
+        <SortToolbar
+          sortField={sortPref.field}
+          sortDirection={sortPref.direction}
+          onSortChange={handleSortChange}
+        />
+      )}
+      {viewMode === 'list' ? (
+        <div className="flex-1 overflow-y-auto">
+          {sorted.map((task) => (
+            <TaskRow
+              key={task.name}
+              task={task}
+              claimingId={claimingId}
+              onClaim={handleClaim}
+              selected={selectedTaskId === task.name}
+              onRowClick={handleRowClick}
+            />
+          ))}
+        </div>
+      ) : (
+        <KanbanBoard
+          tasks={tasks}
+          selectedTaskId={selectedTaskId}
+          onCardClick={handleRowClick}
+        />
+      )}
       <Toast message={toast.message} visible={toast.visible} />
       <AnimatePresence>
         {selectedTaskId && (

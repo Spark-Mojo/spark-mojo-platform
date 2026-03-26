@@ -539,4 +539,127 @@ describe('WorkboardMojo', () => {
       expect(screen.queryByTestId('task-detail-drawer')).not.toBeInTheDocument();
     });
   });
+
+  // --- STORY-010: Kanban view toggle tests ---
+
+  it('renders view toggle with List and Kanban buttons', async () => {
+    globalThis.fetch = mockFetchSuccess();
+    render(<WorkboardMojo />);
+    await waitFor(() => {
+      expect(screen.getAllByTestId('task-row')).toHaveLength(3);
+    });
+    expect(screen.getByTestId('view-toggle')).toBeInTheDocument();
+    expect(screen.getByTestId('view-toggle-list')).toBeInTheDocument();
+    expect(screen.getByTestId('view-toggle-kanban')).toBeInTheDocument();
+  });
+
+  it('defaults to list view', async () => {
+    globalThis.fetch = mockFetchSuccess();
+    render(<WorkboardMojo />);
+    await waitFor(() => {
+      expect(screen.getAllByTestId('task-row')).toHaveLength(3);
+    });
+    expect(screen.queryByTestId('kanban-board')).not.toBeInTheDocument();
+    expect(screen.getByTestId('sort-toolbar')).toBeInTheDocument();
+  });
+
+  it('shows kanban columns when Kanban toggle is clicked', async () => {
+    globalThis.fetch = mockFetchSuccess();
+    render(<WorkboardMojo />);
+    await waitFor(() => {
+      expect(screen.getAllByTestId('task-row')).toHaveLength(3);
+    });
+    fireEvent.click(screen.getByTestId('view-toggle-kanban'));
+    expect(screen.getByTestId('kanban-board')).toBeInTheDocument();
+    expect(screen.getAllByTestId('kanban-column')).toHaveLength(5);
+    expect(screen.queryByTestId('sort-toolbar')).not.toBeInTheDocument();
+  });
+
+  it('kanban columns show correct task counts', async () => {
+    globalThis.fetch = mockFetchSuccess();
+    render(<WorkboardMojo />);
+    await waitFor(() => {
+      expect(screen.getAllByTestId('task-row')).toHaveLength(3);
+    });
+    fireEvent.click(screen.getByTestId('view-toggle-kanban'));
+    const counts = screen.getAllByTestId('kanban-column-count');
+    // New: 2 (SM-TASK-002 + SM-TASK-003), Ready: 1 (SM-TASK-001), In Progress: 0, Waiting: 0, Blocked: 0
+    expect(counts[0]).toHaveTextContent('2'); // New
+    expect(counts[1]).toHaveTextContent('1'); // Ready
+    expect(counts[2]).toHaveTextContent('0'); // In Progress
+    expect(counts[3]).toHaveTextContent('0'); // Waiting
+    expect(counts[4]).toHaveTextContent('0'); // Blocked
+  });
+
+  it('tasks appear in correct kanban columns by canonical_state', async () => {
+    globalThis.fetch = mockFetchSuccess();
+    render(<WorkboardMojo />);
+    await waitFor(() => {
+      expect(screen.getAllByTestId('task-row')).toHaveLength(3);
+    });
+    fireEvent.click(screen.getByTestId('view-toggle-kanban'));
+    const cards = screen.getAllByTestId('kanban-card');
+    expect(cards).toHaveLength(3);
+    // New column should have SM-TASK-002 and SM-TASK-003
+    const columns = screen.getAllByTestId('kanban-column');
+    const newColumnCards = columns[0].querySelectorAll('[data-testid="kanban-card"]');
+    expect(newColumnCards).toHaveLength(2);
+    const readyColumnCards = columns[1].querySelectorAll('[data-testid="kanban-card"]');
+    expect(readyColumnCards).toHaveLength(1);
+  });
+
+  it('clicking kanban card opens detail drawer', async () => {
+    const fetchMock = mockFetchSequence([
+      { ok: true, json: () => Promise.resolve({ tasks: MOCK_TASKS }), text: () => Promise.resolve('') },
+      { ok: true, json: () => Promise.resolve({ task: MOCK_FULL_TASK }), text: () => Promise.resolve('') },
+    ]);
+    globalThis.fetch = fetchMock;
+    render(<WorkboardMojo />);
+    await waitFor(() => {
+      expect(screen.getAllByTestId('task-row')).toHaveLength(3);
+    });
+    fireEvent.click(screen.getByTestId('view-toggle-kanban'));
+    const cards = screen.getAllByTestId('kanban-card');
+    fireEvent.click(cards[0]);
+    await waitFor(() => {
+      expect(screen.getByTestId('task-detail-drawer')).toBeInTheDocument();
+    });
+  });
+
+  it('empty kanban columns render with zero count', async () => {
+    const singleTask = [MOCK_TASKS[0]]; // Only Ready state task
+    globalThis.fetch = mockFetchSuccess(singleTask);
+    render(<WorkboardMojo />);
+    await waitFor(() => {
+      expect(screen.getAllByTestId('task-row')).toHaveLength(1);
+    });
+    fireEvent.click(screen.getByTestId('view-toggle-kanban'));
+    const counts = screen.getAllByTestId('kanban-column-count');
+    expect(counts[0]).toHaveTextContent('0'); // New
+    expect(counts[1]).toHaveTextContent('1'); // Ready
+    expect(counts[2]).toHaveTextContent('0'); // In Progress
+    expect(counts[3]).toHaveTextContent('0'); // Waiting
+    expect(counts[4]).toHaveTextContent('0'); // Blocked
+  });
+
+  it('persists view preference to localStorage', async () => {
+    globalThis.fetch = mockFetchSuccess();
+    render(<WorkboardMojo />);
+    await waitFor(() => {
+      expect(screen.getAllByTestId('task-row')).toHaveLength(3);
+    });
+    fireEvent.click(screen.getByTestId('view-toggle-kanban'));
+    expect(localStorage.getItem('workboard_view_preference')).toBe('kanban');
+  });
+
+  it('restores view preference from localStorage on mount', async () => {
+    localStorage.setItem('workboard_view_preference', 'kanban');
+    globalThis.fetch = mockFetchSuccess();
+    render(<WorkboardMojo />);
+    await waitFor(() => {
+      expect(screen.getByTestId('kanban-board')).toBeInTheDocument();
+    });
+    expect(screen.getAllByTestId('kanban-column')).toHaveLength(5);
+    expect(screen.queryByTestId('task-row')).not.toBeInTheDocument();
+  });
 });
