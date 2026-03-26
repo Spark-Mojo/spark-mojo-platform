@@ -42,6 +42,27 @@ const MOCK_TASKS = [
   },
 ];
 
+const MOCK_FULL_TASK = {
+  name: 'SM-TASK-001',
+  title: 'Review quarterly report',
+  task_type: 'Review',
+  canonical_state: 'Ready',
+  priority: 'High',
+  due_at: '2026-03-28T10:00:00.000Z',
+  assigned_user: 'alice@test.com',
+  assigned_role: 'Finance',
+  source_system: 'ERPNext',
+  completion_criteria: 'All sections reviewed and approved',
+  sm_task_comments: [
+    { name: 'CMT-001', comment: 'First comment', comment_by: 'alice@test.com', created_at: '2026-03-20T10:00:00.000Z' },
+    { name: 'CMT-002', comment: 'Second comment', comment_by: 'bob@test.com', created_at: '2026-03-21T14:00:00.000Z' },
+  ],
+  sm_task_state_history: [
+    { name: 'SH-001', to_state: 'New', changed_at: '2026-03-19T08:00:00.000Z' },
+    { name: 'SH-002', to_state: 'Ready', changed_at: '2026-03-20T09:00:00.000Z' },
+  ],
+};
+
 function mockFetchSuccess(tasks = MOCK_TASKS) {
   return vi.fn(() =>
     Promise.resolve({
@@ -310,5 +331,212 @@ describe('WorkboardMojo', () => {
     expect(rows[0]).toHaveTextContent(/Approve vendor/); // 2026-03-22
     expect(rows[1]).toHaveTextContent(/Review quarterly/); // 2026-03-20
     expect(rows[2]).toHaveTextContent(/Process customer/); // 2026-03-18
+  });
+
+  // --- STORY-009: Task detail drawer tests ---
+
+  it('opens drawer with correct task data when row is clicked', async () => {
+    const fetchMock = mockFetchSequence([
+      // Initial list
+      { ok: true, json: () => Promise.resolve({ tasks: MOCK_TASKS }), text: () => Promise.resolve('') },
+      // GET /get for task detail
+      { ok: true, json: () => Promise.resolve({ task: MOCK_FULL_TASK }), text: () => Promise.resolve('') },
+    ]);
+    globalThis.fetch = fetchMock;
+    render(<WorkboardMojo />);
+    await waitFor(() => {
+      expect(screen.getAllByTestId('task-row')).toHaveLength(3);
+    });
+    // Click first row (SM-TASK-002 is first due to sort by due_at asc)
+    fireEvent.click(screen.getAllByTestId('task-row')[1]); // SM-TASK-001
+    await waitFor(() => {
+      expect(screen.getByTestId('task-detail-drawer')).toBeInTheDocument();
+    });
+    expect(screen.getByTestId('drawer-title')).toHaveTextContent('Review quarterly report');
+    expect(screen.getByText('First comment')).toBeInTheDocument();
+    expect(screen.getByText('Second comment')).toBeInTheDocument();
+  });
+
+  it('shows loading skeleton in drawer while fetching task', async () => {
+    let resolveGet;
+    const getPromise = new Promise((r) => { resolveGet = r; });
+    const fetchMock = mockFetchSequence([
+      { ok: true, json: () => Promise.resolve({ tasks: MOCK_TASKS }), text: () => Promise.resolve('') },
+      { ok: true, json: () => getPromise, text: () => Promise.resolve('') },
+    ]);
+    globalThis.fetch = fetchMock;
+    render(<WorkboardMojo />);
+    await waitFor(() => {
+      expect(screen.getAllByTestId('task-row')).toHaveLength(3);
+    });
+    fireEvent.click(screen.getAllByTestId('task-row')[0]);
+    await waitFor(() => {
+      expect(screen.getByTestId('drawer-skeleton')).toBeInTheDocument();
+    });
+    resolveGet({ task: MOCK_FULL_TASK });
+    await waitFor(() => {
+      expect(screen.queryByTestId('drawer-skeleton')).not.toBeInTheDocument();
+    });
+  });
+
+  it('calls POST update_state and updates workboard row on state change', async () => {
+    const fetchMock = mockFetchSequence([
+      { ok: true, json: () => Promise.resolve({ tasks: MOCK_TASKS }), text: () => Promise.resolve('') },
+      { ok: true, json: () => Promise.resolve({ task: MOCK_FULL_TASK }), text: () => Promise.resolve('') },
+      // POST update_state
+      { ok: true, json: () => Promise.resolve({ canonical_state: 'In Progress' }), text: () => Promise.resolve('') },
+    ]);
+    globalThis.fetch = fetchMock;
+    render(<WorkboardMojo />);
+    await waitFor(() => {
+      expect(screen.getAllByTestId('task-row')).toHaveLength(3);
+    });
+    fireEvent.click(screen.getAllByTestId('task-row')[1]);
+    await waitFor(() => {
+      expect(screen.getByTestId('state-selector')).toBeInTheDocument();
+    });
+    fireEvent.change(screen.getByTestId('state-selector'), { target: { value: 'In Progress' } });
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledTimes(3);
+    });
+    const updateCall = fetchMock.mock.calls[2];
+    expect(updateCall[0]).toContain('/api/modules/tasks/update_state');
+    expect(JSON.parse(updateCall[1].body)).toMatchObject({ task_id: 'SM-TASK-001', canonical_state: 'In Progress' });
+  });
+
+  it('shows status_reason input when transitioning to Blocked', async () => {
+    const fetchMock = mockFetchSequence([
+      { ok: true, json: () => Promise.resolve({ tasks: MOCK_TASKS }), text: () => Promise.resolve('') },
+      { ok: true, json: () => Promise.resolve({ task: MOCK_FULL_TASK }), text: () => Promise.resolve('') },
+      // POST update_state after reason is entered
+      { ok: true, json: () => Promise.resolve({ canonical_state: 'Blocked' }), text: () => Promise.resolve('') },
+    ]);
+    globalThis.fetch = fetchMock;
+    render(<WorkboardMojo />);
+    await waitFor(() => {
+      expect(screen.getAllByTestId('task-row')).toHaveLength(3);
+    });
+    fireEvent.click(screen.getAllByTestId('task-row')[1]);
+    await waitFor(() => {
+      expect(screen.getByTestId('state-selector')).toBeInTheDocument();
+    });
+    fireEvent.change(screen.getByTestId('state-selector'), { target: { value: 'Blocked' } });
+    await waitFor(() => {
+      expect(screen.getByTestId('status-reason-prompt')).toBeInTheDocument();
+    });
+    fireEvent.change(screen.getByTestId('status-reason-input'), { target: { value: 'Waiting on vendor' } });
+    fireEvent.click(screen.getByTestId('confirm-reason-btn'));
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledTimes(3);
+    });
+    const body = JSON.parse(fetchMock.mock.calls[2][1].body);
+    expect(body.status_reason).toBe('Waiting on vendor');
+    expect(body.canonical_state).toBe('Blocked');
+  });
+
+  it('calls POST add_comment and shows new comment in drawer', async () => {
+    const fetchMock = mockFetchSequence([
+      { ok: true, json: () => Promise.resolve({ tasks: MOCK_TASKS }), text: () => Promise.resolve('') },
+      { ok: true, json: () => Promise.resolve({ task: MOCK_FULL_TASK }), text: () => Promise.resolve('') },
+      // POST add_comment
+      {
+        ok: true,
+        json: () => Promise.resolve({
+          comments: [
+            ...MOCK_FULL_TASK.sm_task_comments,
+            { name: 'CMT-003', comment: 'New test comment', comment_by: 'me@test.com', created_at: '2026-03-25T12:00:00.000Z' },
+          ],
+        }),
+        text: () => Promise.resolve(''),
+      },
+    ]);
+    globalThis.fetch = fetchMock;
+    render(<WorkboardMojo />);
+    await waitFor(() => {
+      expect(screen.getAllByTestId('task-row')).toHaveLength(3);
+    });
+    fireEvent.click(screen.getAllByTestId('task-row')[1]);
+    await waitFor(() => {
+      expect(screen.getByTestId('comment-input')).toBeInTheDocument();
+    });
+    fireEvent.change(screen.getByTestId('comment-input'), { target: { value: 'New test comment' } });
+    fireEvent.click(screen.getByTestId('comment-submit'));
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledTimes(3);
+    });
+    const commentCall = fetchMock.mock.calls[2];
+    expect(commentCall[0]).toContain('/api/modules/tasks/add_comment');
+    expect(JSON.parse(commentCall[1].body)).toMatchObject({ task_id: 'SM-TASK-001', comment: 'New test comment' });
+    await waitFor(() => {
+      expect(screen.getByText('New test comment')).toBeInTheDocument();
+    });
+  });
+
+  it('calls POST complete, closes drawer, and removes row from list', async () => {
+    const fetchMock = mockFetchSequence([
+      { ok: true, json: () => Promise.resolve({ tasks: MOCK_TASKS }), text: () => Promise.resolve('') },
+      { ok: true, json: () => Promise.resolve({ task: MOCK_FULL_TASK }), text: () => Promise.resolve('') },
+      // POST complete
+      { ok: true, json: () => Promise.resolve({ canonical_state: 'Completed' }), text: () => Promise.resolve('') },
+    ]);
+    globalThis.fetch = fetchMock;
+    render(<WorkboardMojo />);
+    await waitFor(() => {
+      expect(screen.getAllByTestId('task-row')).toHaveLength(3);
+    });
+    fireEvent.click(screen.getAllByTestId('task-row')[1]);
+    await waitFor(() => {
+      expect(screen.getByTestId('complete-button')).toBeInTheDocument();
+    });
+    fireEvent.click(screen.getByTestId('complete-button'));
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledTimes(3);
+    });
+    const completeCall = fetchMock.mock.calls[2];
+    expect(completeCall[0]).toContain('/api/modules/tasks/complete');
+    await waitFor(() => {
+      expect(screen.queryByTestId('task-detail-drawer')).not.toBeInTheDocument();
+    });
+    expect(screen.getAllByTestId('task-row')).toHaveLength(2);
+  });
+
+  it('closes drawer when Escape is pressed', async () => {
+    const fetchMock = mockFetchSequence([
+      { ok: true, json: () => Promise.resolve({ tasks: MOCK_TASKS }), text: () => Promise.resolve('') },
+      { ok: true, json: () => Promise.resolve({ task: MOCK_FULL_TASK }), text: () => Promise.resolve('') },
+    ]);
+    globalThis.fetch = fetchMock;
+    render(<WorkboardMojo />);
+    await waitFor(() => {
+      expect(screen.getAllByTestId('task-row')).toHaveLength(3);
+    });
+    fireEvent.click(screen.getAllByTestId('task-row')[1]);
+    await waitFor(() => {
+      expect(screen.getByTestId('task-detail-drawer')).toBeInTheDocument();
+    });
+    fireEvent.keyDown(document, { key: 'Escape' });
+    await waitFor(() => {
+      expect(screen.queryByTestId('task-detail-drawer')).not.toBeInTheDocument();
+    });
+  });
+
+  it('closes drawer when backdrop is clicked', async () => {
+    const fetchMock = mockFetchSequence([
+      { ok: true, json: () => Promise.resolve({ tasks: MOCK_TASKS }), text: () => Promise.resolve('') },
+      { ok: true, json: () => Promise.resolve({ task: MOCK_FULL_TASK }), text: () => Promise.resolve('') },
+    ]);
+    globalThis.fetch = fetchMock;
+    render(<WorkboardMojo />);
+    await waitFor(() => {
+      expect(screen.getAllByTestId('task-row')).toHaveLength(3);
+    });
+    fireEvent.click(screen.getAllByTestId('task-row')[1]);
+    await waitFor(() => {
+      expect(screen.getByTestId('drawer-backdrop')).toBeInTheDocument();
+    });
+    fireEvent.click(screen.getByTestId('drawer-backdrop'));
+    await waitFor(() => {
+      expect(screen.queryByTestId('task-detail-drawer')).not.toBeInTheDocument();
+    });
   });
 });
