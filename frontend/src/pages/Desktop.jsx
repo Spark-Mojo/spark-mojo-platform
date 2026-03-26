@@ -1,9 +1,9 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { motion } from 'framer-motion';
 import {
   Clock, Cloud, StickyNote, Calculator, Calendar,
   CheckSquare, Timer, Quote, Music, Plus, FolderPlus, Globe, PlusCircle,
-  UserCheck, Loader2,
+  UserCheck,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -23,6 +23,7 @@ import MusicWidget from '@/components/widgets/MusicWidget';
 import IframeWidget from '@/components/widgets/IframeWidget';
 import IframeCreatorWidget from '@/components/widgets/IframeCreatorWidget';
 import OnboardingMojo from './OnboardingMojo';
+import WorkboardMojo from '@/components/mojos/WorkboardMojo';
 
 // Icon lookup map for dynamic Mojo registration
 const ICON_MAP = {
@@ -33,7 +34,7 @@ const ICON_MAP = {
 // Component lookup map for dynamic Mojo registration
 const MOJO_COMPONENT_MAP = {
   OnboardingMojo,
-  // Future mojos registered here
+  WorkboardMojo,
 };
 
 // Built-in utility widgets (always available)
@@ -60,6 +61,15 @@ const FALLBACK_MOJOS = [
     color: 'from-teal-500/20 to-teal-600/20',
     component: OnboardingMojo,
     defaultWidth: 900,
+    defaultHeight: 600,
+  },
+  {
+    id: 'workboard',
+    title: 'Workboard',
+    icon: CheckSquare,
+    color: 'from-emerald-500/20 to-teal-500/20',
+    component: WorkboardMojo,
+    defaultWidth: 800,
     defaultHeight: 600,
   },
 ];
@@ -112,7 +122,7 @@ export default function Desktop() {
         folderId: null,
       }))
     );
-  }, [mojosLoaded, mojoConfigs.length]);
+  }, [mojosLoaded, mojoConfigs.length]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const [folders, setFolders] = useState([
     { id: 'folder-1', name: 'Productivity', position: { x: 50, y: 50 }, isOpen: false },
@@ -252,7 +262,6 @@ export default function Desktop() {
   };
 
   const activeWidgets = widgets.filter(w => !w.folderId);
-  const minimizedWidgets = widgets.filter(w => w.isMinimized && !w.folderId);
 
   return (
     <div 
