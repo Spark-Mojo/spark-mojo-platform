@@ -6,6 +6,7 @@ then falls back to Frappe session cookie, then dev mode fallback.
 """
 
 import os
+import json
 from dotenv import load_dotenv
 load_dotenv()
 
@@ -77,9 +78,33 @@ async def get_current_user(request: Request) -> dict:
 
     email = session["email"]
     full_name = session.get("full_name", email)
+
+    # Fetch roles for authenticated session user
+    roles = []
+    sid = request.cookies.get("sid")
+    if sid:
+        try:
+            async with httpx.AsyncClient() as client:
+                resp = await client.get(
+                    f"{FRAPPE_URL}/api/method/frappe.client.get_list",
+                    params={
+                        "doctype": "Has Role",
+                        "filters": json.dumps({"parent": email}),
+                        "fields": json.dumps(["role"]),
+                        "limit_page_length": 0,
+                    },
+                    cookies={"sid": sid},
+                    timeout=10,
+                )
+                if resp.status_code == 200:
+                    data = resp.json().get("message", [])
+                    roles = [r["role"] for r in data if r.get("role")]
+        except httpx.RequestError:
+            pass
+
     return {
         "email": email,
         "full_name": full_name,
-        "roles": [],
+        "roles": roles,
         "tenant_id": "default",
     }

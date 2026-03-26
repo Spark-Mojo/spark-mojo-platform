@@ -148,6 +148,10 @@ async def tasks_list(
     user: dict = Depends(get_current_user),
 ):
     """List SM Task records filtered by view, state, and priority."""
+    VALID_VIEWS = {"mine", "role", "all"}
+    if view not in VALID_VIEWS:
+        raise HTTPException(status_code=400, detail=f"Invalid view '{view}'. Must be one of: {', '.join(VALID_VIEWS)}")
+
     user_email = user.get("email", "")
     user_roles = user.get("roles", [])
 
@@ -171,6 +175,10 @@ async def tasks_list(
             if t["name"] not in seen:
                 seen.add(t["name"])
                 tasks.append(_enrich_task_list_item(t))
+
+        # Re-sort combined results
+        reverse = sort_order.lower() == "desc"
+        tasks.sort(key=lambda t: t.get(sort_by) or "", reverse=reverse)
     else:
         filters = _build_filters(
             view, user_email, user_roles,

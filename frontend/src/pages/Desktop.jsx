@@ -1,9 +1,9 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { motion } from 'framer-motion';
 import {
   Clock, Cloud, StickyNote, Calculator, Calendar,
   CheckSquare, Timer, Quote, Music, Plus, FolderPlus, Globe, PlusCircle,
-  UserCheck, Loader2,
+  UserCheck,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -122,7 +122,7 @@ export default function Desktop() {
         folderId: null,
       }))
     );
-  }, [mojosLoaded, mojoConfigs.length]);
+  }, [mojosLoaded, mojoConfigs.length]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const [folders, setFolders] = useState([
     { id: 'folder-1', name: 'Productivity', position: { x: 50, y: 50 }, isOpen: false },
@@ -262,7 +262,6 @@ export default function Desktop() {
   };
 
   const activeWidgets = widgets.filter(w => !w.folderId);
-  const minimizedWidgets = widgets.filter(w => w.isMinimized && !w.folderId);
 
   return (
     <div 

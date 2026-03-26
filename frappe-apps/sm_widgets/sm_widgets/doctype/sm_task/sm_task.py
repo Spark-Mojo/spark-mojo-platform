@@ -11,7 +11,8 @@ class SMTask(Document):
         self.track_assignment_change()
 
     def validate_status_reason(self):
-        if self.canonical_state in ("Blocked", "Failed") and not self.status_reason:
+        reason = (self.status_reason or "").strip()
+        if self.canonical_state in ("Blocked", "Failed") and not reason:
             frappe.throw(
                 "Status Reason is required when Status is Blocked or Failed",
                 frappe.ValidationError
@@ -52,7 +53,7 @@ class SMTask(Document):
         for field, owner_type in assignment_fields:
             old_value = getattr(previous, field, None) or ""
             new_value = getattr(self, field, None) or ""
-            if old_value != new_value:
+            if old_value != new_value and new_value:
                 self.append("assignment_history", {
                     "from_owner": old_value,
                     "to_owner": new_value,

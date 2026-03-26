@@ -503,3 +503,51 @@ async def test_tasks_complete_sets_completed_state():
     assert resp.status_code == 200
     data = resp.json()
     assert data["task"]["canonical_state"] == "Completed"
+
+
+@pytest.mark.anyio
+async def test_tasks_list_invalid_view_returns_400(mock_frappe_list):
+    """GET /api/modules/tasks/list?view=foo returns 400."""
+    with patch("modules.tasks.routes.httpx.AsyncClient", return_value=mock_frappe_list):
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as client:
+            resp = await client.get("/api/modules/tasks/list?view=foo")
+    assert resp.status_code == 400
+    assert "Invalid view" in resp.json()["detail"]
+
+
+@pytest.mark.anyio
+async def test_tasks_list_view_all_respects_sort_order():
+    """view=all results are sorted by sort_by/sort_order after dedup."""
+    task_a = {**SAMPLE_TASKS[0], "name": "TASK-A", "due_at": "2026-03-30 10:00:00", "assigned_user": "dev@willow.com"}
+    task_b = {**SAMPLE_TASKS[1], "name": "TASK-B", "due_at": "2026-03-25 10:00:00", "assigned_user": "", "assigned_role": "Front Desk"}
+
+    async def _mock_get(url, **kwargs):
+        params = kwargs.get("params", {})
+        filters_str = params.get("filters", "[]")
+        filters = json.loads(filters_str) if isinstance(filters_str, str) else filters_str
+        # Return task_a for mine, task_b for role
+        for f in filters:
+            if f[0] == "assigned_user" and f[1] == "=":
+                return _mock_response(200, {"data": [task_a]})
+            if f[0] == "assigned_role" and f[1] == "in":
+                return _mock_response(200, {"data": [task_b]})
+        return _mock_response(200, {"data": []})
+
+    mock_client = AsyncMock()
+    mock_client.get = _mock_get
+    mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+    mock_client.__aexit__ = AsyncMock(return_value=None)
+
+    with patch("modules.tasks.routes.httpx.AsyncClient", return_value=mock_client):
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as client:
+            resp = await client.get("/api/modules/tasks/list?view=all&sort_by=due_at&sort_order=asc")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert len(data["tasks"]) == 2
+    # task_b has earlier due_at, should come first in asc order
+    assert data["tasks"][0]["name"] == "TASK-B"
+    assert data["tasks"][1]["name"] == "TASK-A"

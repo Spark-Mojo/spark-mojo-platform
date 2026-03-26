@@ -53,11 +53,11 @@ const MOCK_FULL_TASK = {
   assigned_role: 'Finance',
   source_system: 'ERPNext',
   completion_criteria: 'All sections reviewed and approved',
-  sm_task_comments: [
+  comments: [
     { name: 'CMT-001', comment: 'First comment', comment_by: 'alice@test.com', created_at: '2026-03-20T10:00:00.000Z' },
     { name: 'CMT-002', comment: 'Second comment', comment_by: 'bob@test.com', created_at: '2026-03-21T14:00:00.000Z' },
   ],
-  sm_task_state_history: [
+  state_history: [
     { name: 'SH-001', to_state: 'New', changed_at: '2026-03-19T08:00:00.000Z' },
     { name: 'SH-002', to_state: 'Ready', changed_at: '2026-03-20T09:00:00.000Z' },
   ],
@@ -202,8 +202,8 @@ describe('WorkboardMojo', () => {
     const fetchMock = mockFetchSequence([
       // Initial list fetch
       { ok: true, json: () => Promise.resolve({ tasks: MOCK_TASKS }), text: () => Promise.resolve('') },
-      // Claim response
-      { ok: true, status: 200, json: () => Promise.resolve({ assigned_user: 'me@test.com' }), text: () => Promise.resolve('') },
+      // Claim response — API returns { task: {...} } shape
+      { ok: true, status: 200, json: () => Promise.resolve({ task: { assigned_user: 'me@test.com', is_unowned: false, canonical_state: 'In Progress' } }), text: () => Promise.resolve('') },
     ]);
     globalThis.fetch = fetchMock;
     render(<WorkboardMojo />);
@@ -224,7 +224,7 @@ describe('WorkboardMojo', () => {
   it('updates row on successful claim: removes pulse and Claim button', async () => {
     const fetchMock = mockFetchSequence([
       { ok: true, json: () => Promise.resolve({ tasks: MOCK_TASKS }), text: () => Promise.resolve('') },
-      { ok: true, status: 200, json: () => Promise.resolve({ assigned_user: 'me@test.com' }), text: () => Promise.resolve('') },
+      { ok: true, status: 200, json: () => Promise.resolve({ task: { assigned_user: 'me@test.com', is_unowned: false, canonical_state: 'In Progress' } }), text: () => Promise.resolve('') },
     ]);
     globalThis.fetch = fetchMock;
     render(<WorkboardMojo />);
@@ -443,7 +443,7 @@ describe('WorkboardMojo', () => {
         ok: true,
         json: () => Promise.resolve({
           comments: [
-            ...MOCK_FULL_TASK.sm_task_comments,
+            ...MOCK_FULL_TASK.comments,
             { name: 'CMT-003', comment: 'New test comment', comment_by: 'me@test.com', created_at: '2026-03-25T12:00:00.000Z' },
           ],
         }),
@@ -571,7 +571,7 @@ describe('WorkboardMojo', () => {
     });
     fireEvent.click(screen.getByTestId('view-toggle-kanban'));
     expect(screen.getByTestId('kanban-board')).toBeInTheDocument();
-    expect(screen.getAllByTestId('kanban-column')).toHaveLength(5);
+    expect(screen.getAllByTestId('kanban-column')).toHaveLength(6);
     expect(screen.queryByTestId('sort-toolbar')).not.toBeInTheDocument();
   });
 
@@ -583,12 +583,13 @@ describe('WorkboardMojo', () => {
     });
     fireEvent.click(screen.getByTestId('view-toggle-kanban'));
     const counts = screen.getAllByTestId('kanban-column-count');
-    // New: 2 (SM-TASK-002 + SM-TASK-003), Ready: 1 (SM-TASK-001), In Progress: 0, Waiting: 0, Blocked: 0
+    // New: 2 (SM-TASK-002 + SM-TASK-003), Ready: 1 (SM-TASK-001), In Progress: 0, Waiting: 0, Blocked: 0, Other: 0
     expect(counts[0]).toHaveTextContent('2'); // New
     expect(counts[1]).toHaveTextContent('1'); // Ready
     expect(counts[2]).toHaveTextContent('0'); // In Progress
     expect(counts[3]).toHaveTextContent('0'); // Waiting
     expect(counts[4]).toHaveTextContent('0'); // Blocked
+    expect(counts[5]).toHaveTextContent('0'); // Other
   });
 
   it('tasks appear in correct kanban columns by canonical_state', async () => {
@@ -640,6 +641,7 @@ describe('WorkboardMojo', () => {
     expect(counts[2]).toHaveTextContent('0'); // In Progress
     expect(counts[3]).toHaveTextContent('0'); // Waiting
     expect(counts[4]).toHaveTextContent('0'); // Blocked
+    expect(counts[5]).toHaveTextContent('0'); // Other
   });
 
   it('persists view preference to localStorage', async () => {
@@ -652,6 +654,61 @@ describe('WorkboardMojo', () => {
     expect(localStorage.getItem('workboard_view_preference')).toBe('kanban');
   });
 
+  it('claim response with { task: {...} } shape updates task row with server state', async () => {
+    const fetchMock = mockFetchSequence([
+      { ok: true, json: () => Promise.resolve({ tasks: MOCK_TASKS }), text: () => Promise.resolve('') },
+      {
+        ok: true,
+        status: 200,
+        json: () => Promise.resolve({
+          task: {
+            name: 'SM-TASK-003',
+            assigned_user: 'claimed@test.com',
+            canonical_state: 'In Progress',
+            is_unowned: false,
+          },
+        }),
+        text: () => Promise.resolve(''),
+      },
+    ]);
+    globalThis.fetch = fetchMock;
+    render(<WorkboardMojo />);
+    await waitFor(() => {
+      expect(screen.getAllByTestId('task-row')).toHaveLength(3);
+    });
+    fireEvent.click(screen.getByTestId('claim-button'));
+    await waitFor(() => {
+      expect(screen.getByText('claimed@test.com')).toBeInTheDocument();
+    });
+    expect(screen.queryByTestId('claim-button')).not.toBeInTheDocument();
+  });
+
+  it('kanban Other column catches tasks in non-column states', async () => {
+    const tasksWithFailed = [
+      ...MOCK_TASKS,
+      {
+        name: 'SM-TASK-004',
+        title: 'Failed task',
+        task_type: 'Action',
+        canonical_state: 'Failed',
+        priority: 'Low',
+        due_at: null,
+        assigned_user: 'alice@test.com',
+        is_unowned: false,
+      },
+    ];
+    globalThis.fetch = mockFetchSuccess(tasksWithFailed);
+    render(<WorkboardMojo />);
+    await waitFor(() => {
+      expect(screen.getAllByTestId('task-row')).toHaveLength(4);
+    });
+    fireEvent.click(screen.getByTestId('view-toggle-kanban'));
+    const columns = screen.getAllByTestId('kanban-column');
+    // Other column is last (index 5)
+    const otherCards = columns[5].querySelectorAll('[data-testid="kanban-card"]');
+    expect(otherCards).toHaveLength(1);
+  });
+
   it('restores view preference from localStorage on mount', async () => {
     localStorage.setItem('workboard_view_preference', 'kanban');
     globalThis.fetch = mockFetchSuccess();
@@ -659,7 +716,7 @@ describe('WorkboardMojo', () => {
     await waitFor(() => {
       expect(screen.getByTestId('kanban-board')).toBeInTheDocument();
     });
-    expect(screen.getAllByTestId('kanban-column')).toHaveLength(5);
+    expect(screen.getAllByTestId('kanban-column')).toHaveLength(6);
     expect(screen.queryByTestId('task-row')).not.toBeInTheDocument();
   });
 });

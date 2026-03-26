@@ -10,7 +10,7 @@ import { differenceInCalendarDays, parseISO, isToday, isTomorrow, isPast, format
 const API_BASE = (import.meta.env.VITE_FRAPPE_URL || 'http://localhost:8000') + '/api/modules/tasks';
 const SORT_STORAGE_KEY = 'workboard_sort_preference';
 const VIEW_STORAGE_KEY = 'workboard_view_preference';
-const KANBAN_COLUMNS = ['New', 'Ready', 'In Progress', 'Waiting', 'Blocked'];
+const KANBAN_COLUMNS = ['New', 'Ready', 'In Progress', 'Waiting', 'Blocked', 'Other'];
 
 const CANONICAL_STATES = ['New', 'Ready', 'In Progress', 'Waiting', 'Blocked', 'Failed', 'Completed', 'Cancelled'];
 const REASON_REQUIRED_STATES = ['Blocked', 'Failed'];
@@ -383,8 +383,8 @@ function TaskDetailDrawer({ task, loading, onClose, onUpdateState, onAddComment,
 
   const typeColor = task ? (TYPE_COLORS[task.task_type] || 'bg-[var(--color-slate,#34424A)] text-white') : '';
   const priorityColor = task ? (PRIORITY_COLORS[task.priority] || PRIORITY_COLORS.Low) : '';
-  const comments = task?.sm_task_comments || [];
-  const stateHistory = task?.sm_task_state_history || [];
+  const comments = task?.comments || [];
+  const stateHistory = task?.state_history || [];
 
   return (
     <>
@@ -740,9 +740,8 @@ function KanbanBoard({ tasks, selectedTaskId, onCardClick }) {
     }
     for (const task of tasks) {
       const state = task.canonical_state || 'New';
-      if (groups[state]) {
-        groups[state].push(task);
-      }
+      const bucket = groups[state] ? state : 'Other';
+      groups[bucket].push(task);
     }
     return groups;
   }, [tasks]);
@@ -805,10 +804,11 @@ export default function WorkboardMojo() {
     setClaimingId(taskId);
     try {
       const result = await postClaim(taskId);
+      const updatedTask = result.task || result;
       setTasks((prev) =>
         prev.map((t) =>
           t.name === taskId
-            ? { ...t, assigned_user: result.assigned_user || 'You', is_unowned: false }
+            ? { ...t, ...updatedTask }
             : t
         )
       );
@@ -836,12 +836,18 @@ export default function WorkboardMojo() {
     setSelectedTaskId(taskId);
     setDrawerLoading(true);
     setDrawerTask(null);
+    const requestedId = taskId;
     try {
       const data = await fetchTask(taskId);
-      setDrawerTask(data.task || data);
+      setSelectedTaskId((current) => {
+        if (current === requestedId) {
+          setDrawerTask(data.task || data);
+        }
+        return current;
+      });
     } catch {
       showToast('Failed to load task details');
-      setSelectedTaskId(null);
+      setSelectedTaskId((current) => current === requestedId ? null : current);
     } finally {
       setDrawerLoading(false);
     }
@@ -874,8 +880,8 @@ export default function WorkboardMojo() {
     if (!drawerTask) return;
     try {
       const result = await postAddComment(drawerTask.name, comment);
-      const newComments = result.comments || [...(drawerTask.sm_task_comments || []), { comment, comment_by: 'You', created_at: new Date().toISOString() }];
-      setDrawerTask((prev) => prev ? { ...prev, sm_task_comments: newComments } : prev);
+      const newComments = result.comments || [...(drawerTask.comments || []), { comment, comment_by: 'You', created_at: new Date().toISOString() }];
+      setDrawerTask((prev) => prev ? { ...prev, comments: newComments } : prev);
     } catch (err) {
       showToast(err.message);
     }

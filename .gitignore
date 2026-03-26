@@ -7,3 +7,5 @@ __pycache__/
 *.pyc
 .venv/
 .env.poc
+abstraction-layer/.coverage
+abstraction-layer/htmlcov/
