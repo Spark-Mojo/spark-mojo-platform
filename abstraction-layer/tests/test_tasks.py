@@ -1,6 +1,6 @@
 """
-Tests for the tasks capability routes (STORY-006).
-Mocks Frappe REST API calls to test list and get endpoints.
+Tests for the tasks capability routes (STORY-006, STORY-007).
+Mocks Frappe REST API calls to test list, get, and write endpoints.
 """
 
 import pytest
@@ -294,3 +294,212 @@ async def test_tasks_get_returns_404_for_missing_task(mock_frappe_get):
     assert resp.status_code == 404
     data = resp.json()
     assert data["detail"]["error"] == "task_not_found"
+
+
+# --- STORY-007: Write endpoint fixtures ---
+
+UNOWNED_TASK = {
+    **SAMPLE_FULL_TASK,
+    "name": "TASK-00002",
+    "assigned_user": "",
+    "assigned_role": "Front Desk",
+    "canonical_state": "New",
+    "comments": [],
+}
+
+OWNED_TASK = {
+    **SAMPLE_FULL_TASK,
+    "name": "TASK-00001",
+    "assigned_user": "other@willow.com",
+    "canonical_state": "In Progress",
+    "comments": [],
+}
+
+
+def _make_write_mock(task_data, *, post_response=None, put_response=None, put_status=200):
+    """
+    Create a mock httpx client that handles GET, POST, and PUT.
+    task_data: dict keyed by task name → task dict (for GET)
+    post_response: response data for POST create
+    put_response: response data for PUT save (if None, echoes update merged with original)
+    """
+    mock_client = AsyncMock()
+
+    async def mock_get(url, **kwargs):
+        for name, task in task_data.items():
+            if name in url:
+                return _mock_response(200, {"data": task})
+        return _mock_response(404, {"exc_type": "DoesNotExistError"})
+
+    async def mock_post(url, **kwargs):
+        if post_response is not None:
+            return _mock_response(200, {"data": post_response})
+        body = kwargs.get("json", {})
+        body["name"] = "TASK-NEW-001"
+        return _mock_response(200, {"data": body})
+
+    async def mock_put(url, **kwargs):
+        if put_status >= 400:
+            return _mock_response(put_status, {"exc_type": "ValidationError", "message": "Status reason required"})
+        if put_response is not None:
+            return _mock_response(200, {"data": put_response})
+        # Merge update into original task
+        body = kwargs.get("json", {})
+        task_id = url.split("/api/resource/SM Task/")[1] if "/api/resource/SM Task/" in url else ""
+        original = task_data.get(task_id, {})
+        merged = {**original, **body}
+        return _mock_response(200, {"data": merged})
+
+    mock_client.get = mock_get
+    mock_client.post = mock_post
+    mock_client.put = mock_put
+    mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+    mock_client.__aexit__ = AsyncMock(return_value=None)
+    return mock_client
+
+
+# --- STORY-007: Write endpoint tests ---
+
+@pytest.mark.anyio
+async def test_tasks_create_returns_created_task():
+    """POST /api/modules/tasks/create creates a task and returns it."""
+    mock = _make_write_mock({})
+    with patch("modules.tasks.routes.httpx.AsyncClient", return_value=mock):
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as client:
+            resp = await client.post(
+                "/api/modules/tasks/create",
+                json={"title": "New task", "task_type": "Follow Up"},
+            )
+    assert resp.status_code == 200
+    data = resp.json()
+    assert "task" in data
+    assert data["task"]["title"] == "New task"
+    assert data["task"]["task_type"] == "Follow Up"
+    assert data["task"]["created_by_user"] == "dev@willow.com"
+
+
+@pytest.mark.anyio
+async def test_tasks_claim_assigns_current_user():
+    """POST /api/modules/tasks/claim on unowned task assigns current user."""
+    mock = _make_write_mock({"TASK-00002": UNOWNED_TASK})
+    with patch("modules.tasks.routes.httpx.AsyncClient", return_value=mock):
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as client:
+            resp = await client.post(
+                "/api/modules/tasks/claim",
+                json={"task_id": "TASK-00002"},
+            )
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["task"]["assigned_user"] == "dev@willow.com"
+    assert data["task"]["canonical_state"] == "In Progress"
+
+
+@pytest.mark.anyio
+async def test_tasks_claim_returns_409_if_already_owned():
+    """POST /api/modules/tasks/claim on owned task returns 409."""
+    mock = _make_write_mock({"TASK-00001": OWNED_TASK})
+    with patch("modules.tasks.routes.httpx.AsyncClient", return_value=mock):
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as client:
+            resp = await client.post(
+                "/api/modules/tasks/claim",
+                json={"task_id": "TASK-00001"},
+            )
+    assert resp.status_code == 409
+    data = resp.json()
+    assert data["detail"]["error"] == "task_already_owned"
+
+
+@pytest.mark.anyio
+async def test_tasks_assign_updates_ownership():
+    """POST /api/modules/tasks/assign updates ownership fields."""
+    mock = _make_write_mock({"TASK-00002": UNOWNED_TASK})
+    with patch("modules.tasks.routes.httpx.AsyncClient", return_value=mock):
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as client:
+            resp = await client.post(
+                "/api/modules/tasks/assign",
+                json={"task_id": "TASK-00002", "assigned_user": "new@willow.com"},
+            )
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["task"]["assigned_user"] == "new@willow.com"
+
+
+@pytest.mark.anyio
+async def test_tasks_update_state_transitions():
+    """POST /api/modules/tasks/update_state changes canonical_state."""
+    mock = _make_write_mock({"TASK-00002": UNOWNED_TASK})
+    with patch("modules.tasks.routes.httpx.AsyncClient", return_value=mock):
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as client:
+            resp = await client.post(
+                "/api/modules/tasks/update_state",
+                json={"task_id": "TASK-00002", "canonical_state": "In Progress"},
+            )
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["task"]["canonical_state"] == "In Progress"
+
+
+@pytest.mark.anyio
+async def test_tasks_update_state_blocked_without_reason_returns_400():
+    """POST /api/modules/tasks/update_state to Blocked without reason returns 400."""
+    mock = _make_write_mock({"TASK-00002": UNOWNED_TASK}, put_status=417)
+    with patch("modules.tasks.routes.httpx.AsyncClient", return_value=mock):
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as client:
+            resp = await client.post(
+                "/api/modules/tasks/update_state",
+                json={"task_id": "TASK-00002", "canonical_state": "Blocked"},
+            )
+    assert resp.status_code == 400
+
+
+@pytest.mark.anyio
+async def test_tasks_add_comment_appends_comment():
+    """POST /api/modules/tasks/add_comment appends and returns comments."""
+    task_with_comments = {**UNOWNED_TASK, "comments": []}
+    put_response = {**task_with_comments, "comments": [
+        {"comment": "Test comment", "created_by": "dev@willow.com", "created_at": "2026-03-26T12:00:00"}
+    ]}
+    mock = _make_write_mock({"TASK-00002": task_with_comments}, put_response=put_response)
+    with patch("modules.tasks.routes.httpx.AsyncClient", return_value=mock):
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as client:
+            resp = await client.post(
+                "/api/modules/tasks/add_comment",
+                json={"task_id": "TASK-00002", "comment": "Test comment"},
+            )
+    assert resp.status_code == 200
+    data = resp.json()
+    assert "comments" in data
+    assert len(data["comments"]) == 1
+    assert data["comments"][0]["comment"] == "Test comment"
+
+
+@pytest.mark.anyio
+async def test_tasks_complete_sets_completed_state():
+    """POST /api/modules/tasks/complete sets canonical_state to Completed."""
+    completed_task = {**UNOWNED_TASK, "canonical_state": "Completed"}
+    mock = _make_write_mock({"TASK-00002": UNOWNED_TASK}, put_response=completed_task)
+    with patch("modules.tasks.routes.httpx.AsyncClient", return_value=mock):
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as client:
+            resp = await client.post(
+                "/api/modules/tasks/complete",
+                json={"task_id": "TASK-00002"},
+            )
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["task"]["canonical_state"] == "Completed"
