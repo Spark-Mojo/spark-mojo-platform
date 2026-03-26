@@ -414,3 +414,68 @@ Scaffolding:
 
 **Result:** All gates pass. STORY-008a-COMPLETE marker created.
 **Emitting:** `task.done` → Committer hat.
+
+## 2026-03-26 — Story Planner: STORY-008b
+
+**Hat:** Story Planner
+**Story:** STORY-008b — WorkboardMojo claim action and sort controls
+**Status:** Plan written to PLAN-STORY-008b.md
+
+**Key findings:**
+- STORY-008a-COMPLETE exists — dependency satisfied
+- This is a React Frontend story — same type as STORY-008a
+- 0 files to create, 2 files to modify (WorkboardMojo.jsx, WorkboardMojo.test.jsx)
+- Claim action: POST to /api/modules/tasks/claim, handle 409 conflict, update local state
+- Sort controls: 4 sort options as chips, direction toggle, localStorage persistence
+- Inline toast for claim feedback (no global toast system)
+- Story spec references .tsx — using .jsx per CLAUDE.md authority
+- No ambiguity — story spec fully specified
+
+**Plan:** 0 files to create, 2 files to modify
+**Emitting:** `plan.ready` → Builder hat.
+
+## 2026-03-26 — Builder: STORY-008b
+
+**Hat:** Builder
+**Story:** STORY-008b — WorkboardMojo claim action and sort controls
+**Branch:** `story/STORY-008b-workboard-claim-sort`
+
+**Built:**
+- WorkboardMojo.jsx modified:
+  - Added `postClaim(taskId)` async function: POST to /api/modules/tasks/claim, 409 detection
+  - Added `claimingId` state, `toast` state, `sortPref` state
+  - Added `SortToolbar` component: 4 sort chips (Due Date, Priority, Created Date, Status) + direction toggle
+  - Added `Toast` component: inline toast at bottom of Mojo, auto-dismiss 3s
+  - Replaced hardcoded `sortByDueDate` with generic `compareTasks`/`sortTasks` supporting all 4 fields
+  - Priority sort uses custom order: Urgent > High > Medium > Low
+  - localStorage persistence for sort preference (field + direction)
+  - Claim button on unowned rows, disabled + spinner while in-flight
+  - On claim success: update local state (assigned_user, is_unowned=false)
+  - On 409: show "already claimed" toast, re-fetch list
+  - On other error: show generic error toast
+- WorkboardMojo.test.jsx modified: 9 new tests (total 17)
+  - Claim: button renders only on unowned, correct POST call, row update on success, 409 toast, error toast
+  - Sort: chips render, clicking re-sorts, persists to localStorage, restores from localStorage
+
+**Fast gates:**
+- pnpm run lint: ✅ 0 warnings, 0 errors
+- pnpm run test: ✅ 17/17 passed
+- pnpm run build: ✅ succeeds
+
+**Committed:** `370e515`
+**Emitting:** `build.ready` → Verifier hat.
+
+## 2026-03-26 — Verifier: STORY-008b
+
+**Hat:** Verifier
+**Story:** STORY-008b — WorkboardMojo claim action and sort controls
+**Gate type:** React Frontend
+
+**Gate results:**
+
+1. `pnpm run lint`: ✅ 0 warnings, 0 errors
+2. `pnpm run test`: ✅ 17/17 passed (124ms)
+3. `pnpm run build`: ✅ exits 0 (eval warning is pre-existing in CalculatorWidget)
+
+**Result:** All gates pass. STORY-008b-COMPLETE marker created.
+**Emitting:** `task.done` → Committer hat.

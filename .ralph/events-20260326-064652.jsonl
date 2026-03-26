@@ -25,3 +25,7 @@
 {"payload":"STORY-008a: 2 files create + 1 modify, type: frontend","topic":"plan.ready","ts":"2026-03-26T07:20:32.145737+00:00"}
 {"payload":"STORY-008a: WorkboardMojo task list view — 3 files (1 create, 1 test, 1 modify), all 3 frontend gates passing (lint 0/0, test 8/8, build ok)","topic":"build.ready","ts":"2026-03-26T07:26:43.856490+00:00"}
 {"payload":"STORY-008a: lint 0/0, test 8/8 passed, build exits 0 — all React Frontend gates pass","topic":"task.done","ts":"2026-03-26T07:27:58.894950+00:00"}
+{"payload":"STORY-008a committed on branch story/STORY-008a-workboard-list-view","topic":"story.committed","ts":"2026-03-26T07:28:37.182047+00:00"}
+{"payload":"STORY-008b: 2 files to modify, type: frontend","topic":"plan.ready","ts":"2026-03-26T07:29:58.220876+00:00"}
+{"payload":"STORY-008b: claim action + sort controls implemented, all 3 frontend gates passing (lint 0/0, test 17/17, build ok)","topic":"build.ready","ts":"2026-03-26T07:33:03.866340+00:00"}
+{"payload":"STORY-008b: lint 0/0, test 17/17 passed, build exits 0 — all React Frontend gates pass","topic":"task.done","ts":"2026-03-26T07:34:02.165030+00:00"}
