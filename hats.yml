@@ -1,176 +1,211 @@
 # Ralph Orchestrator — Spark Mojo Platform
 # Session 5: Task & Workboard Management
-# Each story runs as an independent loop with its own quality gates.
+#
+# Run with: ralph run --config hats.yml
+#
+# Flow: health_check → story_planner → builder → verifier → committer
+# Each story loops through planner→builder→verifier until all gates pass.
+# Committer runs once per story after verifier passes.
 
-version: "1"
-
-defaults:
-  max_retries: 3
-  retry_on: ["test_failure", "lint_failure", "build_failure"]
+event_loop:
+  starting_event: "session.start"
+  completion_promise: "LOOP_COMPLETE"
+  max_iterations: 150
 
 hats:
-  # ─────────────────────────────────────────────
+  # ─────────────────────────────────────────────────────────────
   # HAT 1: Health Check
-  # Run once at startup. Halt if baseline is broken.
-  # ─────────────────────────────────────────────
-  - name: health_check
-    role: verifier
-    max_activations: 1
+  # Runs once at session start. Halts everything if baseline broken.
+  # ─────────────────────────────────────────────────────────────
+  health_check:
+    name: "Health Check"
+    triggers: ["session.start"]
+    publishes: ["health.ok", "health.blocked"]
     instructions: |
-      Verify the baseline is healthy before doing any work.
+      You are the Health Check. Run once before any build work starts.
 
-      Run these checks:
-      1. From frontend/: `pnpm run lint`
-         - If this fails, write HEALTH-BLOCKED.md explaining the lint errors and STOP.
-      2. From frontend/: `pnpm run build`
-         - If this fails, write HEALTH-BLOCKED.md explaining the build errors and STOP.
-      3. From abstraction-layer/: `python -c "import fastapi; import httpx; print('OK')"`
-         - If this fails, write HEALTH-BLOCKED.md and STOP.
+      Read CLAUDE.md first for project context.
 
-      If all checks pass, emit:
-      ralph emit "health.ok" "lint: clean, build: ok, python imports: ok"
+      Run these baseline checks in order:
+      1. From frontend/ directory: run `pnpm run lint`
+         - If lint fails: write HEALTH-BLOCKED.md with the exact error output. Emit health.blocked. Stop.
+      2. From frontend/ directory: run `pnpm run build`
+         - If build fails: write HEALTH-BLOCKED.md with the exact error output. Emit health.blocked. Stop.
+      3. From abstraction-layer/ directory: run `python -c "import fastapi; import httpx; print('OK')"`
+         - If this fails: write HEALTH-BLOCKED.md explaining missing packages. Emit health.blocked. Stop.
 
-  # ─────────────────────────────────────────────
+      If all three pass, emit health.ok with: "lint clean, build ok, python imports ok"
+
+  # ─────────────────────────────────────────────────────────────
   # HAT 2: Story Planner
-  # Reads the story file and produces a concrete build plan.
-  # ─────────────────────────────────────────────
-  - name: story_planner
-    role: planner
-    max_activations: 3
+  # Triggered by health.ok or after each story commits.
+  # Reads the next story and produces a concrete build plan.
+  # ─────────────────────────────────────────────────────────────
+  story_planner:
+    name: "Story Planner"
+    triggers: ["health.ok", "story.committed"]
+    publishes: ["plan.ready", "queue.complete"]
     instructions: |
-      Read the current story file from ../sparkmojo-internal/platform/feature-library/stories/
-      Read CLAUDE.md for project conventions.
-      Read platform/WORKING_AGREEMENT.md from the governance repo.
+      You are the Story Planner. Your job is to read the next unbuilt story and
+      produce a concrete, unambiguous build plan before any code is written.
 
-      Produce a concrete, ordered build plan:
-      1. List every file to create or modify
-      2. List every field, endpoint, or component to build — exact names, exact types
-      3. Identify which quality gate applies (Frappe DocType / Python API / React frontend)
-      4. Flag any ambiguity that would require an architectural decision
+      Step 1 — Determine the next story.
+      Read PROMPT.md. Find the first story in the queue that does not have a
+      corresponding STORY-NNN-COMPLETE marker file at the repo root.
+      If all stories have COMPLETE markers, emit queue.complete and print LOOP_COMPLETE. Stop.
 
-      If ANY ambiguity exists on a structural decision that is not answered by:
-      - The story file
-      - CLAUDE.md
-      - The feature spec (TASK-WORKBOARD.md)
-      - An existing decision file in platform/decisions/
+      Step 2 — Read the full story spec.
+      Read the story file from:
+      ../sparkmojo-internal/platform/feature-library/stories/STORY-NNN.md
+      Also read CLAUDE.md and platform/WORKING_AGREEMENT.md from ../sparkmojo-internal/
 
-      Then write BLOCKED-[STORY-ID].md at repo root with the exact question and STOP.
-      Do not improvise on architecture.
+      Step 3 — Produce the build plan. Write it to PLAN-STORY-NNN.md at repo root:
+      - Story ID and title
+      - Story type: Frappe DocType | Python API | React Frontend
+      - Every file to create or modify (exact paths)
+      - Every field/endpoint/component (exact names and types from the story spec)
+      - Quality gate to run (see CLAUDE.md Definition of Done)
+      - Any dependency on a previous story (confirm it is already merged)
 
-      If plan is complete and unambiguous, emit:
-      ralph emit "plan.ready" "[STORY-ID]: N files, gate type: [doctype|api|frontend]"
+      Step 4 — Check for ambiguity.
+      If ANY structural decision is not answered by the story file, CLAUDE.md,
+      TASK-WORKBOARD.md, or a decision file in platform/decisions/ — write
+      BLOCKED-STORY-NNN.md with the exact question. Emit plan.ready anyway so
+      the builder sees the block and skips to the next story.
 
-  # ─────────────────────────────────────────────
+      If plan is complete: emit plan.ready with "STORY-NNN: N files, type: [doctype|api|frontend]"
+
+  # ─────────────────────────────────────────────────────────────
   # HAT 3: Builder
-  # Executes the plan. Uses fast gates on every retry.
-  # ─────────────────────────────────────────────
-  - name: builder
-    role: implementer
+  # Triggered by plan.ready. Implements exactly what the plan says.
+  # Runs fast gates after each significant change.
+  # ─────────────────────────────────────────────────────────────
+  builder:
+    name: "Builder"
+    triggers: ["plan.ready", "build.retry"]
+    publishes: ["build.ready", "build.blocked"]
     instructions: |
-      Execute the build plan from the planner.
+      You are the Builder. Read PLAN-STORY-NNN.md first.
+      If the plan contains a BLOCKED notice, write BLOCKED-STORY-NNN.md at
+      repo root and emit build.blocked. Do not write any code for this story.
+
+      Check out the story branch:
+      git checkout -b story/STORY-NNN-short-description
+
+      Build exactly what the plan specifies. Nothing more. Nothing less.
 
       FRAPPE DOCTYPE STORIES (STORY-003, 004, 005):
-      - Create/modify DocType JSON in frappe-apps/sm_widgets/sm_widgets/doctype/
-      - Create/modify Python controller at sm_widgets/doctype/sm_task/sm_task.py
-      - Follow ALL Frappe golden rules from CLAUDE.md
-      - After every file change: run `bench --site poc.sparkmojo.com migrate`
-      - Gate check: `bench --site poc.sparkmojo.com migrate` must exit 0
+      - Create DocType JSON in frappe-apps/sm_widgets/sm_widgets/doctype/sm_task/
+      - Create Python controller at frappe-apps/sm_widgets/sm_widgets/doctype/sm_task/sm_task.py
+      - CRITICAL rules from CLAUDE.md:
+        * Never use frappe.db.set_value() — always frappe.get_doc().save()
+        * Never modify core Frappe — custom logic in sm_widgets app only
+        * All DocTypes prefixed SM
+        * Run bench --site poc.sparkmojo.com migrate after EVERY DocType change
+        * Never install a new Frappe app via bench — create files directly in existing apps
+      - Fast gate after each change: bench --site poc.sparkmojo.com migrate (must exit 0)
 
       PYTHON API STORIES (STORY-006, 007):
       - Create/modify abstraction-layer/routes/tasks.py
-      - Register router in abstraction-layer/main.py if not already registered
+      - Register router in abstraction-layer/main.py if not already there
       - Write tests in abstraction-layer/tests/test_tasks.py
-      - Gate check after each significant change:
-        `cd abstraction-layer && pytest tests/test_tasks.py -v`
-      - Fix any failures before continuing
+      - Fast gate after each significant change:
+        cd abstraction-layer && pytest tests/test_tasks.py -v
+      - Fix failures immediately before continuing
 
       REACT FRONTEND STORIES (STORY-008a, 008b, 009, 010):
-      - Create/modify files in frontend/src/components/mojos/
-      - Never modify Desktop.jsx, frappe-client.js, or legacy component folders
-      - Never create .ts or .tsx files — JSX only
+      - Create/modify files in frontend/src/components/mojos/ ONLY
+      - NEVER modify: Desktop.jsx, frappe-client.js, any legacy component folder
+      - NEVER create .ts or .tsx files — JSX only
       - Write tests in frontend/src/components/mojos/__tests__/
-      - Gate check after each significant change:
-        `cd frontend && pnpm run lint && pnpm run test`
-      - Fix any failures before continuing
+      - Fast gate after each significant change:
+        cd frontend && pnpm run lint && pnpm run test
+      - Fix failures immediately before continuing
 
-      If you hit a problem that requires an architectural decision not covered by
-      existing documentation, write BLOCKED-[STORY-ID].md and stop this story.
-      Move to the next story in the queue.
+      When all files are written and fast gates pass:
+      emit build.ready with "STORY-NNN: implementation complete, fast gates passing"
 
-      When implementation is complete and all fast gates pass, emit:
-      ralph emit "build.ready" "[STORY-ID]: implementation complete, fast gates passing"
-
-  # ─────────────────────────────────────────────
+  # ─────────────────────────────────────────────────────────────
   # HAT 4: Verifier
-  # Runs all quality gates. Only this hat marks done.
-  # ─────────────────────────────────────────────
-  - name: verifier
-    role: verifier
+  # Triggered by build.ready. Runs the full quality gate suite.
+  # Only this hat can mark a story done or send it back for retry.
+  # ─────────────────────────────────────────────────────────────
+  verifier:
+    name: "Verifier"
+    triggers: ["build.ready"]
+    publishes: ["task.done", "build.retry"]
     instructions: |
-      Run all quality gates for the current story type.
+      You are the Verifier. A story is ONLY done when every gate below passes.
+      Read PLAN-STORY-NNN.md to know which gate type applies.
 
-      FRAPPE DOCTYPE STORIES:
-      1. `bench --site poc.sparkmojo.com migrate`
-         Record: exit code and any warnings
-      2. Open Frappe Desk and verify DocType is visible with all fields
-         (Use bench console to check: `frappe.get_meta('SM Task').fields`)
-      3. Test controller hooks via bench console:
-         - Create SM Task with canonical_state=Blocked, no status_reason → expect ValidationError
-         - Create SM Task with canonical_state='In Progress' → expect started_at auto-populated
-      Record all results.
+      FRAPPE DOCTYPE GATE:
+      1. bench --site poc.sparkmojo.com migrate
+         PASS: exit code 0 with no errors
+         FAIL: emit build.retry with exact error output
+      2. bench --site poc.sparkmojo.com console — run:
+         frappe.get_meta('SM Task').fields
+         PASS: all fields from the story spec are present
+         FAIL: emit build.retry listing missing fields
+      3. Test controller hooks in bench console:
+         a. frappe.get_doc({'doctype':'SM Task','title':'Test','task_type':'Action',
+            'executor_type':'Human','canonical_state':'Blocked'}).insert()
+            PASS: raises frappe.ValidationError (status_reason required)
+         b. frappe.get_doc({'doctype':'SM Task','title':'Test2','task_type':'Action',
+            'executor_type':'Human','canonical_state':'In Progress'}).insert()
+            PASS: started_at is auto-populated
+         FAIL either: emit build.retry with exact error
 
-      PYTHON API STORIES:
-      1. `cd abstraction-layer && pytest tests/ -v`
-         Record: N passed, N failed
-      2. `cd abstraction-layer && pytest tests/ --cov=. --cov-report=term-missing --cov-fail-under=70`
-         Record: coverage percentage
-      3. `cd abstraction-layer && uvicorn main:app &` then `curl http://localhost:8000/health`
-         Record: response body
-      Stop uvicorn after test.
+      PYTHON API GATE:
+      1. cd abstraction-layer && pytest tests/ -v
+         PASS: 0 failures
+         FAIL: emit build.retry with failing test names and errors
+      2. cd abstraction-layer && pytest tests/ --cov=. --cov-report=term-missing --cov-fail-under=70
+         PASS: coverage >= 70%
+         FAIL: emit build.retry with coverage percentage and uncovered lines
+      3. Start server and check health:
+         uvicorn main:app --port 8001 &
+         sleep 2 && curl -s http://localhost:8001/health
+         Kill server after test.
+         PASS: response contains "status":"ok"
+         FAIL: emit build.retry with response or startup error
 
-      REACT FRONTEND STORIES:
-      1. `cd frontend && pnpm run lint`
-         Record: warning count, error count
-      2. `cd frontend && pnpm run test`
-         Record: N passed, N failed
-      3. `cd frontend && pnpm run build`
-         Record: success or error output
-
-      PASS criteria:
-      - Frappe: migrate exits 0, DocType visible, hooks verified
-      - Python: all tests pass, coverage >= 70%, health endpoint responds
-      - React: 0 lint warnings, all tests pass, build succeeds
+      REACT FRONTEND GATE:
+      1. cd frontend && pnpm run lint
+         PASS: 0 warnings, 0 errors
+         FAIL: emit build.retry with exact lint output
+      2. cd frontend && pnpm run test
+         PASS: 0 failures
+         FAIL: emit build.retry with failing test names
+      3. cd frontend && pnpm run build
+         PASS: build succeeds with no errors
+         FAIL: emit build.retry with build error output
 
       If ALL gates pass:
-      ralph emit "task.done" "[STORY-ID]: [exact gate results summary]"
+      Write STORY-NNN-COMPLETE at repo root (empty file — used by planner to track progress)
+      emit task.done with "STORY-NNN: [gate results — e.g., migrate ok, 5 fields verified, hooks pass]"
 
       If ANY gate fails:
-      ralph emit "build.retry" "[STORY-ID]: [exact failure — test name, error message, line number]"
+      emit build.retry with the exact failure so the builder knows what to fix
 
-  # ─────────────────────────────────────────────
+  # ─────────────────────────────────────────────────────────────
   # HAT 5: Committer
-  # Commits verified work. Runs only after task.done.
-  # ─────────────────────────────────────────────
-  - name: committer
-    role: committer
-    trigger: task.done
+  # Triggered by task.done. Commits the verified work.
+  # ─────────────────────────────────────────────────────────────
+  committer:
+    name: "Committer"
+    triggers: ["task.done"]
+    publishes: ["story.committed"]
     instructions: |
-      Commit the verified work for this story.
+      You are the Committer. A story has passed all quality gates.
+      Commit the work now.
 
-      1. `git add -A`
-      2. `git commit -m "[commit message from story file]"`
+      1. git add -A
+      2. Read the commit message from the bottom of the story spec file:
+         ../sparkmojo-internal/platform/feature-library/stories/STORY-NNN.md
+         Use that exact commit message.
+      3. git commit -m "[exact message from story file]"
 
-      The commit message format is specified at the bottom of each story file.
-      Use it exactly.
+      After committing:
+      emit story.committed with "STORY-NNN committed on branch story/[branch-name]"
 
-      After committing, emit:
-      ralph emit "story.committed" "[STORY-ID] committed on branch story/[branch-name]"
-
-      Then the loop moves to the next story in PROMPT.md.
-
-flow:
-  - health_check
-  - story_planner
-  - builder
-  - verifier
-  - committer
+      The planner will now read PROMPT.md and find the next story to build.
