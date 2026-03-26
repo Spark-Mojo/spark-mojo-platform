@@ -153,6 +153,58 @@ Never emit `LOOP_COMPLETE` or mark a task done without running every gate.
 
 ---
 
+## New DocType / Module Pattern
+
+Frappe discovers DocTypes by walking `apps/{app}/{package}/{module_folder}/doctype/`.
+**The module folder is a subdirectory inside the package**, named as the snake_case
+of the module title in `modules.txt`. Getting this nesting wrong causes `bench migrate`
+to silently skip every DocType with no error.
+
+Required directory structure for a custom app:
+
+```
+frappe-apps/{app_name}/                         # app root
+├── pyproject.toml                              # flit build config
+└── {app_name}/                                 # Python package
+    ├── __init__.py                             # MUST contain __version__ = "x.y.z"
+    ├── hooks.py                                # app_name, app_title, etc.
+    ├── modules.txt                             # one module name per line
+    └── {module_folder}/                        # snake_case of module name
+        ├── __init__.py                         # can be empty
+        └── doctype/
+            ├── __init__.py
+            └── {doctype_folder}/               # snake_case of DocType name
+                ├── __init__.py
+                ├── {doctype_name}.json          # DocType schema
+                └── {doctype_name}.py            # controller
+```
+
+Example: app `sm_widgets`, module "SM Widgets", DocType "SM Task":
+
+```
+frappe-apps/sm_widgets/
+├── pyproject.toml
+└── sm_widgets/
+    ├── __init__.py          # __version__ = "0.1.0"
+    ├── hooks.py
+    ├── modules.txt          # "SM Widgets"
+    └── sm_widgets/          # ← module folder matches "SM Widgets"
+        ├── __init__.py
+        └── doctype/
+            └── sm_task/
+                ├── __init__.py
+                ├── sm_task.json
+                └── sm_task.py
+```
+
+**Checklist for every new DocType:**
+1. Module folder exists and matches the snake_case of the module name in `modules.txt`
+2. Every directory in the path has an `__init__.py`
+3. JSON `"module"` field matches the exact title in `modules.txt` (e.g. `"SM Widgets"`)
+4. Child table DocTypes go in the same module folder alongside the parent
+
+---
+
 ## New Capability Router Pattern
 
 1. Create `abstraction-layer/routes/[capability].py`
