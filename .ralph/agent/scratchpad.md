@@ -272,3 +272,68 @@ Scaffolding:
 
 **Result:** All gates pass. STORY-006-COMPLETE marker created.
 **Emitting:** `task.done` → Committer hat.
+
+## 2026-03-26 — Story Planner: STORY-007
+
+**Hat:** Story Planner
+**Story:** STORY-007 — Tasks abstraction layer — write endpoints (create, claim, assign, update_state, add_comment, complete)
+**Status:** Plan written to PLAN-STORY-007.md
+
+**Key findings:**
+- STORY-006-COMPLETE exists — dependency satisfied
+- This is a Python FastAPI story — same type as STORY-006
+- 6 POST endpoints to add to existing `modules/tasks/routes.py`
+- No new files needed — all additions to existing routes.py + test_tasks.py
+- main.py already has tasks_router registered from STORY-006
+- Pattern: httpx GET to load task, httpx PUT to save changes (or POST for create)
+- Error handling: 409 for claim conflicts, 400 for validation errors (Blocked/Failed without reason)
+- 8+ new tests covering all endpoints and error cases
+- Story spec fully specified — no ambiguity, no BLOCKED file needed
+
+**Plan:** 0 files to create, 2 files to modify (routes.py, test_tasks.py)
+**Emitting:** `plan.ready` → Builder hat.
+
+## 2026-03-26 — Builder: STORY-007
+
+**Hat:** Builder
+**Story:** STORY-007 — Tasks abstraction layer — write endpoints
+**Branch:** `story/STORY-007-tasks-api-write`
+
+**Built:**
+- modules/tasks/routes.py modified: 6 POST endpoints added (create, claim, assign, update_state, add_comment, complete)
+  - Pydantic request body models for all 6 endpoints
+  - create: POST to Frappe REST API, sets created_by_user
+  - claim: GET → verify unowned → PUT with assigned_user + state transition (New/Ready → In Progress), 409 if already owned
+  - assign: GET → PUT with ownership fields
+  - update_state: GET → PUT with canonical_state + status_reason, passes through Frappe 400/417 as 400
+  - add_comment: GET → append to comments child table → PUT, returns comments array
+  - complete: GET → set Completed + optional completion_note as comment → PUT
+- tests/test_tasks.py modified: 8 new tests added (total 15 task tests + 1 health = 16)
+
+**Fast gates:**
+- pytest tests/ -v: ✅ 16/16 passed (7 STORY-006 + 8 STORY-007 + 1 health)
+- Coverage (modules/): ✅ 92% (well above 70% threshold)
+- Health endpoint responds: ✅
+
+**Committed:** `f3a7edc`
+**Emitting:** `build.ready` → Verifier hat.
+
+## 2026-03-26 — Verifier: STORY-007
+
+**Hat:** Verifier
+**Story:** STORY-007 — Tasks abstraction layer — write endpoints
+**Gate type:** Python API
+
+**Gate results:**
+
+1. `pytest tests/ -v`: ✅ 16/16 passed
+   - 1 health test + 7 STORY-006 read tests + 8 STORY-007 write tests
+   - All pass in 0.26s
+
+2. Coverage: ✅ modules/tasks/routes.py at 92% (15 lines missed out of 199)
+   - Scoped `--cov=modules` = 92%, well above 70% threshold
+
+3. Health endpoint: ✅ `{"status":"ok","frappe_connected":false}` — responds correctly
+
+**Result:** All gates pass. Creating STORY-007-COMPLETE marker.
+**Emitting:** `task.done` → Committer hat.

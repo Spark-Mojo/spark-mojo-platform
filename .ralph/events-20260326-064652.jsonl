@@ -17,3 +17,7 @@
 {"payload":"STORY-006: 5 files, type: api","topic":"plan.ready","ts":"2026-03-26T07:07:11.971129+00:00"}
 {"payload":"STORY-006: tasks/list and tasks/get endpoints built, 8/8 tests pass, 96% coverage","topic":"build.ready","ts":"2026-03-26T07:10:01.795399+00:00"}
 {"payload":"STORY-006: pytest 8/8 passed, coverage 96% (modules/tasks), health endpoint OK","topic":"task.done","ts":"2026-03-26T07:11:29.691765+00:00"}
+{"payload":"STORY-006 committed on branch story/STORY-006-tasks-api-list-get","topic":"story.committed","ts":"2026-03-26T07:12:04.777972+00:00"}
+{"payload":"STORY-007: 2 files, type: api","topic":"plan.ready","ts":"2026-03-26T07:13:23.809752+00:00"}
+{"payload":"STORY-007: 6 POST endpoints implemented, 16/16 tests pass, 92% coverage","topic":"build.ready","ts":"2026-03-26T07:16:05.489407+00:00"}
+{"payload":"STORY-007: pytest 16/16 passed, coverage 92% (modules), health endpoint OK — all Python API gates pass","topic":"task.done","ts":"2026-03-26T07:17:10.823565+00:00"}
