@@ -1,0 +1,171 @@
+{
+  "name": "SM Task",
+  "module": "SM Widgets",
+  "doctype": "DocType",
+  "document_type": "Document",
+  "engine": "InnoDB",
+  "is_submittable": 0,
+  "track_changes": 1,
+  "autoname": "TASK-.#####",
+  "naming_rule": "Expression (old style)",
+  "custom": 0,
+  "istable": 0,
+  "issingle": 0,
+  "editable_grid": 1,
+  "fields": [
+    {
+      "fieldname": "title",
+      "label": "Title",
+      "fieldtype": "Data",
+      "reqd": 1,
+      "max_length": 200,
+      "in_list_view": 1,
+      "in_standard_filter": 0
+    },
+    {
+      "fieldname": "task_type",
+      "label": "Task Type",
+      "fieldtype": "Select",
+      "reqd": 1,
+      "options": "Action\nReview\nApproval\nInput\nException\nMonitoring\nSystem",
+      "in_list_view": 1,
+      "in_standard_filter": 1
+    },
+    {
+      "fieldname": "description",
+      "label": "Description",
+      "fieldtype": "Long Text",
+      "reqd": 0
+    },
+    {
+      "fieldname": "section_ownership",
+      "label": "Ownership",
+      "fieldtype": "Section Break"
+    },
+    {
+      "fieldname": "assigned_user",
+      "label": "Assigned User",
+      "fieldtype": "Link",
+      "options": "User",
+      "reqd": 0,
+      "in_standard_filter": 1
+    },
+    {
+      "fieldname": "assigned_role",
+      "label": "Assigned Role",
+      "fieldtype": "Link",
+      "options": "Role",
+      "reqd": 0,
+      "in_standard_filter": 1
+    },
+    {
+      "fieldname": "assigned_team",
+      "label": "Assigned Team",
+      "fieldtype": "Link",
+      "options": "Team",
+      "reqd": 0
+    },
+    {
+      "fieldname": "executor_type",
+      "label": "Executor Type",
+      "fieldtype": "Select",
+      "reqd": 1,
+      "options": "Human\nSystem\nHybrid",
+      "in_list_view": 1
+    },
+    {
+      "fieldname": "created_by_user",
+      "label": "Created By",
+      "fieldtype": "Link",
+      "options": "User",
+      "reqd": 1,
+      "read_only": 1,
+      "default": "__user"
+    },
+    {
+      "fieldname": "section_state",
+      "label": "State & Lifecycle",
+      "fieldtype": "Section Break"
+    },
+    {
+      "fieldname": "canonical_state",
+      "label": "Status",
+      "fieldtype": "Select",
+      "reqd": 1,
+      "options": "New\nReady\nIn Progress\nWaiting\nBlocked\nCompleted\nCanceled\nFailed",
+      "default": "New",
+      "in_list_view": 1,
+      "in_standard_filter": 1
+    },
+    {
+      "fieldname": "source_state",
+      "label": "Source State",
+      "fieldtype": "Data",
+      "reqd": 0
+    },
+    {
+      "fieldname": "status_reason",
+      "label": "Status Reason",
+      "fieldtype": "Small Text",
+      "reqd": 0
+    },
+    {
+      "fieldname": "priority",
+      "label": "Priority",
+      "fieldtype": "Select",
+      "reqd": 1,
+      "options": "Low\nMedium\nHigh\nUrgent",
+      "default": "Medium",
+      "in_list_view": 1,
+      "in_standard_filter": 1
+    },
+    {
+      "fieldname": "section_dates",
+      "label": "Dates",
+      "fieldtype": "Section Break"
+    },
+    {
+      "fieldname": "due_at",
+      "label": "Due Date",
+      "fieldtype": "Datetime",
+      "reqd": 0
+    },
+    {
+      "fieldname": "started_at",
+      "label": "Started At",
+      "fieldtype": "Datetime",
+      "reqd": 0,
+      "read_only": 1
+    },
+    {
+      "fieldname": "completed_at",
+      "label": "Completed At",
+      "fieldtype": "Datetime",
+      "reqd": 0,
+      "read_only": 1
+    },
+    {
+      "fieldname": "canceled_at",
+      "label": "Canceled At",
+      "fieldtype": "Datetime",
+      "reqd": 0,
+      "read_only": 1
+    }
+  ],
+  "permissions": [
+    {
+      "role": "System Manager",
+      "read": 1,
+      "write": 1,
+      "create": 1,
+      "delete": 1,
+      "submit": 0,
+      "cancel": 0,
+      "amend": 0
+    }
+  ],
+  "sort_field": "modified",
+  "sort_order": "DESC",
+  "title_field": "title",
+  "search_fields": "title, canonical_state, assigned_user"
+}
