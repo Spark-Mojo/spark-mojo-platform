@@ -39,9 +39,15 @@ services:
       - .env.poc
     labels:
       - "traefik.enable=true"
+      # Primary router: api.poc.sparkmojo.com (all paths)
       - "traefik.http.routers.api-poc.rule=Host(`api.poc.sparkmojo.com`)"
       - "traefik.http.routers.api-poc.entrypoints=websecure"
       - "traefik.http.routers.api-poc.tls.certresolver=mytlschallenge"
+      # Health router: poc.sparkmojo.com/health (higher priority than Frappe catch-all)
+      - "traefik.http.routers.api-poc-health.rule=Host(`poc.sparkmojo.com`) && Path(`/health`)"
+      - "traefik.http.routers.api-poc-health.entrypoints=websecure"
+      - "traefik.http.routers.api-poc-health.tls.certresolver=mytlschallenge"
+      - "traefik.http.routers.api-poc-health.priority=100"
       - "traefik.http.services.api-poc.loadbalancer.server.port=8001"
       - "traefik.docker.network=root_web"
     restart: unless-stopped
