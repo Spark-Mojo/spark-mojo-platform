@@ -1,235 +1,229 @@
 # CLAUDE.md — Spark Mojo Platform
 
-This file is the primary context document for any Claude Code session working
-in this repository. Read it completely before taking any action.
+Read this file completely before taking any action. This is the authoritative context document for every Claude Code session in this repository.
 
 ---
 
 ## What This Repo Is
 
-`spark-mojo-platform` is the production codebase for the Spark Mojo Platform
-— a unified business OS for small and mid-sized businesses. The frontend is a
-desktop OS paradigm (draggable, resizable Mojo windows on a freeform canvas).
-The backend is Frappe/ERPNext with custom apps. Automation runs through n8n.
+`spark-mojo-platform` is the production codebase for the Spark Mojo Platform — a unified business OS for small and mid-sized businesses. The UI is a desktop OS paradigm: draggable, resizable Mojo windows on a freeform canvas. The backend is Frappe/ERPNext with custom apps. Automation runs through n8n.
 
-This is NOT a greenfield build. The frontend is migrated from a working
-prototype (`sm-platform-experimental-platform`). The architecture is fully
-designed and documented. Your job is to execute against that design — not
-to make architectural decisions.
+This is NOT a greenfield build. Architecture is fully designed. Your job is to execute against that design — not to make architectural decisions.
 
 ---
 
-## Governance Repo — Read This First
+## Governance Repo
 
-All architecture decisions, PRDs, and project plans live in:
-`Spark-Mojo/sparkmojo-internal`
+All architecture decisions, feature specs, and sprint plans live in:
+`Spark-Mojo/sparkmojo-internal` (cloned adjacent to this repo at `../sparkmojo-internal`)
 
-Before doing any substantive work, read these files from sparkmojo-internal:
+Before any substantive work, read:
 
 | File | What it is |
-|------|-----------|
-| `platform/prd/FRONTEND_PRD.md` | Complete frontend product requirements — authoritative spec |
-| `platform/JAMES_PROJECT_PLAN.md` | Master project plan — what to build, in what order |
-| `platform/decisions/FRONTEND_DECISIONS.md` | All locked frontend architecture decisions |
-| `platform/architecture/PLATFORM_ARCHITECTURE.md` | Full system architecture |
-| `platform/architecture/FRAPPE_POC_NOTES.md` | Frappe POC results — what works, exact commands |
-| `platform/architecture/TASK_MANAGEMENT_POC_NOTES.md` | Task management POC results |
-| `skills/platform/frappe/SKILL.md` | Frappe golden rules — read before any Frappe work |
-
-To read these, clone sparkmojo-internal adjacent to this repo:
-`git clone git@github.com:Spark-Mojo/sparkmojo-internal.git ../sparkmojo-internal`
+|------|------------|
+| `platform/WORKING_AGREEMENT.md` | Rules of engagement, architecture constants, global build rules |
+| `platform/decisions/DECISION-003-abstraction-layer.md` | Abstraction layer — immutable |
+| `platform/decisions/DECISION-004-multi-tenancy.md` | Site-per-client — immutable |
+| `platform/decisions/DECISION-013-crm-as-canonical-hub.md` | Frappe CRM is canonical person record |
+| `platform/feature-library/TASK-WORKBOARD.md` | Full Task & Workboard feature spec |
+| `platform/feature-library/stories/` | Individual story files for current sprint |
 
 ---
 
 ## Repo Structure
+
 ```
 spark-mojo-platform/
-├── frontend/                 # React app — migrated from sm-platform-experimental-platform
+├── CLAUDE.md                        # This file — read first every session
+├── PROMPT.md                        # Current overnight task queue
+├── hats.yml                         # Ralph workflow phases and quality gates
+├── frontend/                        # React app (Vite + React 18, JSX, pnpm)
 │   ├── src/
-│   │   ├── api/
-│   │   │   ├── frappe-client.js    # Frappe REST client (replaces custom-sdk.js)
-│   │   │   ├── base44Client.js     # Exports FrappeAuth + FrappeEntities
-│   │   │   ├── entities.js         # SM DocType entity classes
-│   │   │   └── integrations.js     # Frappe + n8n integration functions
-│   │   ├── components/             # Shared UI components (Radix/shadcn)
+│   │   ├── api/                     # Abstraction layer client
+│   │   │   └── frappe-client.js     # Frappe REST client — DO NOT MODIFY
+│   │   ├── components/
+│   │   │   ├── mojos/               # NEW Mojo components go here
+│   │   │   ├── ui/                  # shadcn/Radix UI primitives
+│   │   │   └── [legacy folders]     # Pre-migration — do not touch
 │   │   ├── pages/
-│   │   │   ├── Desktop.jsx         # The desktop canvas — DO NOT MODIFY STRUCTURE
-│   │   │   ├── Layout.jsx          # App shell
-│   │   │   └── [other pages]
-│   └── ...
-├── frappe-apps/
-│   ├── sm_connectors/        # Canonical DocTypes — install first
-│   ├── sm_widgets/           # Automation registry
-│   ├── sm_billing/           # Usage metering
-│   └── sm_provisioning/      # Tenant configuration
-├── abstraction-layer/        # Mojo Abstraction Layer (Python FastAPI)
-├── scripts/
-└── CLAUDE.md
+│   │   │   └── Desktop.jsx          # Desktop canvas — DO NOT MODIFY STRUCTURE
+│   │   └── types/                   # Static TS type files — reference only, not used at runtime
+│   ├── package.json
+│   ├── vite.config.js
+│   └── eslint.config.js
+├── abstraction-layer/               # Mojo Abstraction Layer (Python FastAPI)
+│   ├── main.py                      # FastAPI app, router registration
+│   ├── auth.py                      # Session validation
+│   ├── routes/                      # Capability routers — one file per capability
+│   │   └── onboarding.py            # Example capability router
+│   ├── connectors/                  # Backend connectors per EHR/system
+│   └── requirements.txt
+├── frappe-apps/                     # Frappe custom apps
+│   ├── sm_connectors/               # Canonical DocTypes — install first
+│   ├── sm_widgets/                  # Mojo configs (SM Task lives here)
+│   ├── sm_billing/
+│   └── sm_provisioning/
+└── scripts/
 ```
 
 ---
 
-## Architecture — Locked Decisions
+## Stack
 
-These decisions are final. Do not re-litigate them.
+| Layer | Technology |
+|-------|------------|
+| Frontend | Vite + React 18, JSX (not TypeScript), pnpm |
+| Styling | Tailwind CSS + shadcn/Radix UI |
+| Backend | Frappe/ERPNext — site-per-client multi-tenancy |
+| Abstraction Layer | Python FastAPI — uvicorn |
+| Automation | n8n (cross-system), Frappe Server Scripts (internal) |
+| Package manager (frontend) | pnpm |
+| Package manager (Python) | pip |
 
-| Decision | Value |
-|----------|-------|
-| Frontend framework | Vite + React 18 |
-| Deployment target | VPS (not Vercel) |
-| Desktop paradigm | Draggable resizable Mojo windows on freeform canvas |
-| Backend | Frappe/ERPNext (site-per-client multi-tenancy) |
-| Automation engine | n8n for cross-system, Frappe Server Scripts for internal |
-| API routing | All frontend calls go through /api/modules/[capability]/[action] |
-| Auth | Frappe session cookie (credentials: include on every request) |
-| Task management | ERPNext Task extended with SM custom fields |
-
-**CRITICAL:** The React frontend NEVER calls Frappe directly. It always
-calls the Mojo Abstraction Layer. This is DECISION-003 and it is immutable.
+**Frontend is JSX, not TypeScript.** Do not create `.tsx` or `.ts` files. Do not install TypeScript. Do not add `tsconfig.json`.
 
 ---
 
-## Terminology
+## Key Commands
 
-| Term | Meaning |
-|------|---------|
-| **Mojo** | A windowed capability on the desktop (brand term) |
-| **Widget** | Code synonym for Mojo |
-| **Workspace** | Architecture synonym for Mojo |
-| **Automation** | An SM Automation Template record. NOT called a Mojo. |
-| **Tenant** | A single client deployment — one Frappe site |
-| **SM prefix** | All canonical Frappe DocTypes are prefixed SM |
+```bash
+# Frontend — run from frontend/
+pnpm install                          # Install deps
+pnpm run dev                          # Dev server (port 5173)
+pnpm run build                        # Production build
+pnpm run lint                         # ESLint — must pass with 0 warnings
+pnpm run test                         # Vitest unit tests
+pnpm run test:coverage                # Vitest with coverage report
+
+# Abstraction layer — run from abstraction-layer/
+uvicorn main:app --reload             # Dev server (port 8000)
+pip install -r requirements.txt       # Install deps
+pytest tests/ -v                      # Unit tests
+pytest tests/ --cov=. --cov-report=term-missing --cov-fail-under=70  # Coverage
+
+# Frappe — run from bench root (NOT from this repo)
+bench --site poc.sparkmojo.com migrate          # After any DocType change — ALWAYS run this
+bench --site poc.sparkmojo.com list-apps        # Verify app installation
+bench --site poc.sparkmojo.com console          # Interactive console for testing
+```
 
 ---
 
-## Frappe Golden Rules
+## Definition of Done
 
-Read `sparkmojo-internal/skills/platform/frappe/SKILL.md` before any Frappe
-work. Key rules:
+A story is ONLY complete when ALL of these pass with zero errors:
 
-1. Use `frappe.get_doc("DocType", name).save()` for updates — never `db.set_value()`
-2. Custom logic lives in SM custom apps only — never modify core Frappe
-3. All custom API endpoints use `@frappe.whitelist()` decorator
-4. All SM DocTypes are prefixed SM
-5. The Mojo Abstraction Layer is NEVER bypassed
-6. Run `bench --site [sitename] migrate` after every DocType change
-7. n8n handles all cross-system operations
-8. Background jobs use `frappe.enqueue()`
+**Frontend stories:**
+1. `pnpm run lint` — 0 warnings, 0 errors
+2. `pnpm run test` — all tests pass
+3. `pnpm run build` — build succeeds
+
+**Abstraction layer stories:**
+1. `pytest tests/ -v` — all tests pass
+2. `pytest tests/ --cov=. --cov-fail-under=70` — coverage met
+3. App starts: `uvicorn main:app` — no import errors
+
+**Frappe/DocType stories:**
+1. `bench --site poc.sparkmojo.com migrate` — exit code 0, no errors
+2. DocType visible in Frappe Desk with all fields present
+3. Validation hooks fire correctly (manual test in bench console)
+
+Never emit `LOOP_COMPLETE` or mark a task done without running every gate for that story type.
+
+---
+
+## Architecture — Immutable Rules
+
+1. **React NEVER calls Frappe directly.** Always through `/api/modules/[capability]/[action]`.
+2. **Never use `frappe.db.set_value()`.** Always `frappe.get_doc("DocType", name).save()`.
+3. **Custom logic lives in SM custom apps only.** Never modify core Frappe or ERPNext.
+4. **All SM DocTypes are prefixed `SM`.** Never create a DocType without the prefix.
+5. **All custom API endpoints use `@frappe.whitelist()` decorator.**
+6. **Always run `bench --site [sitename] migrate` after any DocType change.**
+7. **n8n handles all cross-system operations.** No direct external API calls from Frappe in the hot path.
+8. **Background jobs use `frappe.enqueue()`.** Never Python threading.
+9. **New Mojo components go in `frontend/src/components/mojos/`.** Never in legacy folders.
+10. **Never install Frappe apps on the bench without explicit story instruction.** The frappe_types incident caused a VPS restart loop — app installation has side effects.
+
+---
+
+## Frappe App Installation Warning
+
+⚠️ **CRITICAL:** Installing a Frappe app via `bench get-app` + `bench install-app` registers it in `sites/apps.txt`. If the Python module is not importable, the scheduler crashes on every startup in a loop. **Never install a Frappe app unless the story explicitly instructs it AND the app is confirmed to be properly packaged.** If in doubt, create the DocType JSON directly in the existing `sm_widgets` or `sm_connectors` app instead.
+
+---
+
+## New Capability Router Pattern
+
+When adding a new capability to the abstraction layer:
+
+1. Create `abstraction-layer/routes/[capability].py`
+2. Define a FastAPI `APIRouter` with prefix `/api/modules/[capability]`
+3. Import and register in `main.py`: `app.include_router([capability]_router)`
+4. Follow the pattern in `abstraction-layer/routes/onboarding.py`
+
+Do NOT add capability logic to `main.py` directly. Each capability is its own router file.
+
+---
+
+## New Mojo Component Pattern
+
+When adding a new Mojo component:
+
+1. Create `frontend/src/components/mojos/[MojoName]Mojo.jsx`
+2. Export as default: `export default function [MojoName]Mojo() {}`
+3. All data fetching via abstraction layer — never direct Frappe calls
+4. Use existing shadcn/Radix UI primitives from `frontend/src/components/ui/`
+5. Use brand tokens (see below) — never hardcode colors
+6. Register in the Mojo registry so it appears in the launcher
 
 ---
 
 ## Brand Tokens
 
-| Token | Value |
-|-------|-------|
-| Primary Teal | `#006666` (Tailwind: `sm-teal`) |
-| Coral | `#FF6F61` (Tailwind: `sm-coral`) |
-| Gold | `#FFB300` (Tailwind: `sm-gold`) |
-| Slate | `#34424A` (Tailwind: `sm-slate`) |
-| Off-white | `#F8F9FA` (Tailwind: `sm-off-white`) |
+| Token | Value | Tailwind class |
+|-------|-------|----------------|
+| Primary Teal | `#006666` | `sm-teal` |
+| Coral (CTA) | `#FF6F61` | `sm-coral` |
+| Gold (highlights) | `#FFB300` | `sm-gold` |
+| Slate (body text) | `#34424A` | `sm-slate` |
+| Off-white (bg) | `#F8F9FA` | `sm-off-white` |
 
-For runtime tenant theming: use CSS variables `var(--color-primary)` etc.
-Never hardcode colors — always use tokens or CSS variables.
-
----
-
-## Phase 2 Task Sequence
-
-### Task 2.3 — Frontend Migration
-**Full spec:** FRONTEND_PRD.md Section 8
-
-The 4 gateway files to replace (everything else is untouched):
-- `lib/custom-sdk.js` → DELETE, create `src/api/frappe-client.js`
-- `src/api/base44Client.js` → REWRITE
-- `src/api/entities.js` → REWRITE
-- `src/api/integrations.js` → REWRITE (stub with console.warn)
-
-Pages to DELETE:
-POS.jsx, Inventory.jsx, Orders.jsx, OrdersMobile.jsx, Recharges.jsx,
-TimeTracking.jsx, Technicians.jsx, Events.jsx, Expenses.jsx,
-Financial.jsx, FinancialReports.jsx, Customers.jsx, CustomerPortal.jsx,
-PinAccess.jsx, PinLogin.jsx
-
-Infrastructure to DELETE:
-src/Functions/, lib/supabase-client.js, lib/custom-sdk.js,
-lib/unified-custom-sdk.js, start-functions-server.sh, stop-functions-server.sh
-
-**KEY CONSTRAINT:** Desktop.jsx carries forward UNCHANGED. Zero Base44
-dependencies. Do not touch its structure.
-
-### Task 2.4 — Mojo Abstraction Layer
-**Full spec:** FRONTEND_PRD.md Section 3.2
-
-Required endpoints:
-- GET  /api/modules/desktop/mojos
-- GET  /api/modules/tenant/public-config (unauthenticated)
-- GET  /api/modules/automations/contextual
-- POST /api/modules/automations/run
-- GET/POST/PUT/DELETE /api/modules/{capability}/{action}
-- GET  /health
-
-### Task 2.5 — SM Custom Frappe App Shells
-Install order: sm_connectors FIRST
-
-sm_connectors DocTypes:
-SM Client, SM Appointment, SM Task (extended), SM Invoice, SM Document,
-SM Employee, SM Connector Config, SM Desktop State, SM Tenant Config,
-SM Mojo Definition, SM Sync Log
-
-ERPNext Task custom fields (in sm_connectors):
-sm_linked_doctype, sm_linked_docname, sm_assigned_role,
-sm_source_template, sm_due_date
-
-sm_widgets DocTypes:
-SM Automation Template, SM Client Automation, SM Automation Log
+For runtime tenant theming: use CSS variables `var(--color-primary)` etc. Never hardcode hex values.
 
 ---
 
-## Verification Checklist
+## Do Not Touch
 
-**After 2.3:**
-- `pnpm install && pnpm run dev` starts without errors
-- Desktop.jsx renders (login screen visible, auth errors expected)
-- No missing import errors in console
-
-**After 2.4:**
-- `uvicorn main:app --reload` starts
-- GET /health returns `{ "status": "ok", "frappe_connected": false }`
-
-**After 2.5:**
-- Each app passes `bench --check`
-- install_apps.sh runs without errors
+- `frontend/src/pages/Desktop.jsx` — desktop canvas structure is immutable
+- `frontend/src/api/frappe-client.js` — Frappe REST client is load-bearing, do not modify
+- `frontend/src/types/` — static type reference files, do not modify or delete
+- Any file in legacy component folders (cash/, pos/, quickrepairs/, workorder/, technicians/, orders/, inventory/) — pre-migration artifacts, leave as-is
+- `sites/apps.txt` on the bench — never modify directly
+- Core Frappe or ERPNext source files — always use custom apps
 
 ---
 
-## What NOT to Do
+## When Ambiguous
 
-- Do NOT make architectural decisions — all locked in sparkmojo-internal
-- Do NOT build Mojo content (Onboarding, Billing AR) — that is Phase 3
-- Do NOT deploy to HIPAA VPS — waits for Digital Ocean BAA
-- Do NOT call Frappe directly from React — always through abstraction layer
-- Do NOT use localStorage for auth — Frappe session cookies only
-- Do NOT hardcode tenant colors — CSS variables only
-- Do NOT modify Desktop.jsx structure
-- Do NOT create signUp() — user creation is admin-only
+- Check `platform/feature-library/TASK-WORKBOARD.md` for feature spec
+- Check `platform/decisions/` for architectural decisions
+- Check `abstraction-layer/routes/onboarding.py` for router pattern
+- **STOP and write a `BLOCKED-[STORY-NNN].md` file** rather than improvise on any structural decision
+- Never guess at field names, DocType names, or API shapes — they are all specified in story files
 
 ---
 
 ## Commit Convention
 
-- `feat:` new feature
-- `chore:` setup/scaffolding
+- `feat:` new feature or capability
+- `chore:` setup, config, scaffolding
 - `fix:` bug fix
-- `docs:` documentation
+- `docs:` documentation only
+- `test:` test files only
+
+Branch naming: `story/STORY-NNN-short-description`
 
 ---
 
-## When in Doubt
-
-Check FRAPPE_POC_NOTES.md for Frappe quirks.
-Check SKILL.md for Frappe patterns.
-STOP and report rather than improvise architectural decisions.
-
----
-
-*Last updated: March 22, 2026 — Session 3c*
+*Last updated: March 25, 2026 — Session 5*

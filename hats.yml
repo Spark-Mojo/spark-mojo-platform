@@ -1,0 +1,176 @@
+# Ralph Orchestrator — Spark Mojo Platform
+# Session 5: Task & Workboard Management
+# Each story runs as an independent loop with its own quality gates.
+
+version: "1"
+
+defaults:
+  max_retries: 3
+  retry_on: ["test_failure", "lint_failure", "build_failure"]
+
+hats:
+  # ─────────────────────────────────────────────
+  # HAT 1: Health Check
+  # Run once at startup. Halt if baseline is broken.
+  # ─────────────────────────────────────────────
+  - name: health_check
+    role: verifier
+    max_activations: 1
+    instructions: |
+      Verify the baseline is healthy before doing any work.
+
+      Run these checks:
+      1. From frontend/: `pnpm run lint`
+         - If this fails, write HEALTH-BLOCKED.md explaining the lint errors and STOP.
+      2. From frontend/: `pnpm run build`
+         - If this fails, write HEALTH-BLOCKED.md explaining the build errors and STOP.
+      3. From abstraction-layer/: `python -c "import fastapi; import httpx; print('OK')"`
+         - If this fails, write HEALTH-BLOCKED.md and STOP.
+
+      If all checks pass, emit:
+      ralph emit "health.ok" "lint: clean, build: ok, python imports: ok"
+
+  # ─────────────────────────────────────────────
+  # HAT 2: Story Planner
+  # Reads the story file and produces a concrete build plan.
+  # ─────────────────────────────────────────────
+  - name: story_planner
+    role: planner
+    max_activations: 3
+    instructions: |
+      Read the current story file from ../sparkmojo-internal/platform/feature-library/stories/
+      Read CLAUDE.md for project conventions.
+      Read platform/WORKING_AGREEMENT.md from the governance repo.
+
+      Produce a concrete, ordered build plan:
+      1. List every file to create or modify
+      2. List every field, endpoint, or component to build — exact names, exact types
+      3. Identify which quality gate applies (Frappe DocType / Python API / React frontend)
+      4. Flag any ambiguity that would require an architectural decision
+
+      If ANY ambiguity exists on a structural decision that is not answered by:
+      - The story file
+      - CLAUDE.md
+      - The feature spec (TASK-WORKBOARD.md)
+      - An existing decision file in platform/decisions/
+
+      Then write BLOCKED-[STORY-ID].md at repo root with the exact question and STOP.
+      Do not improvise on architecture.
+
+      If plan is complete and unambiguous, emit:
+      ralph emit "plan.ready" "[STORY-ID]: N files, gate type: [doctype|api|frontend]"
+
+  # ─────────────────────────────────────────────
+  # HAT 3: Builder
+  # Executes the plan. Uses fast gates on every retry.
+  # ─────────────────────────────────────────────
+  - name: builder
+    role: implementer
+    instructions: |
+      Execute the build plan from the planner.
+
+      FRAPPE DOCTYPE STORIES (STORY-003, 004, 005):
+      - Create/modify DocType JSON in frappe-apps/sm_widgets/sm_widgets/doctype/
+      - Create/modify Python controller at sm_widgets/doctype/sm_task/sm_task.py
+      - Follow ALL Frappe golden rules from CLAUDE.md
+      - After every file change: run `bench --site poc.sparkmojo.com migrate`
+      - Gate check: `bench --site poc.sparkmojo.com migrate` must exit 0
+
+      PYTHON API STORIES (STORY-006, 007):
+      - Create/modify abstraction-layer/routes/tasks.py
+      - Register router in abstraction-layer/main.py if not already registered
+      - Write tests in abstraction-layer/tests/test_tasks.py
+      - Gate check after each significant change:
+        `cd abstraction-layer && pytest tests/test_tasks.py -v`
+      - Fix any failures before continuing
+
+      REACT FRONTEND STORIES (STORY-008a, 008b, 009, 010):
+      - Create/modify files in frontend/src/components/mojos/
+      - Never modify Desktop.jsx, frappe-client.js, or legacy component folders
+      - Never create .ts or .tsx files — JSX only
+      - Write tests in frontend/src/components/mojos/__tests__/
+      - Gate check after each significant change:
+        `cd frontend && pnpm run lint && pnpm run test`
+      - Fix any failures before continuing
+
+      If you hit a problem that requires an architectural decision not covered by
+      existing documentation, write BLOCKED-[STORY-ID].md and stop this story.
+      Move to the next story in the queue.
+
+      When implementation is complete and all fast gates pass, emit:
+      ralph emit "build.ready" "[STORY-ID]: implementation complete, fast gates passing"
+
+  # ─────────────────────────────────────────────
+  # HAT 4: Verifier
+  # Runs all quality gates. Only this hat marks done.
+  # ─────────────────────────────────────────────
+  - name: verifier
+    role: verifier
+    instructions: |
+      Run all quality gates for the current story type.
+
+      FRAPPE DOCTYPE STORIES:
+      1. `bench --site poc.sparkmojo.com migrate`
+         Record: exit code and any warnings
+      2. Open Frappe Desk and verify DocType is visible with all fields
+         (Use bench console to check: `frappe.get_meta('SM Task').fields`)
+      3. Test controller hooks via bench console:
+         - Create SM Task with canonical_state=Blocked, no status_reason → expect ValidationError
+         - Create SM Task with canonical_state='In Progress' → expect started_at auto-populated
+      Record all results.
+
+      PYTHON API STORIES:
+      1. `cd abstraction-layer && pytest tests/ -v`
+         Record: N passed, N failed
+      2. `cd abstraction-layer && pytest tests/ --cov=. --cov-report=term-missing --cov-fail-under=70`
+         Record: coverage percentage
+      3. `cd abstraction-layer && uvicorn main:app &` then `curl http://localhost:8000/health`
+         Record: response body
+      Stop uvicorn after test.
+
+      REACT FRONTEND STORIES:
+      1. `cd frontend && pnpm run lint`
+         Record: warning count, error count
+      2. `cd frontend && pnpm run test`
+         Record: N passed, N failed
+      3. `cd frontend && pnpm run build`
+         Record: success or error output
+
+      PASS criteria:
+      - Frappe: migrate exits 0, DocType visible, hooks verified
+      - Python: all tests pass, coverage >= 70%, health endpoint responds
+      - React: 0 lint warnings, all tests pass, build succeeds
+
+      If ALL gates pass:
+      ralph emit "task.done" "[STORY-ID]: [exact gate results summary]"
+
+      If ANY gate fails:
+      ralph emit "build.retry" "[STORY-ID]: [exact failure — test name, error message, line number]"
+
+  # ─────────────────────────────────────────────
+  # HAT 5: Committer
+  # Commits verified work. Runs only after task.done.
+  # ─────────────────────────────────────────────
+  - name: committer
+    role: committer
+    trigger: task.done
+    instructions: |
+      Commit the verified work for this story.
+
+      1. `git add -A`
+      2. `git commit -m "[commit message from story file]"`
+
+      The commit message format is specified at the bottom of each story file.
+      Use it exactly.
+
+      After committing, emit:
+      ralph emit "story.committed" "[STORY-ID] committed on branch story/[branch-name]"
+
+      Then the loop moves to the next story in PROMPT.md.
+
+flow:
+  - health_check
+  - story_planner
+  - builder
+  - verifier
+  - committer
