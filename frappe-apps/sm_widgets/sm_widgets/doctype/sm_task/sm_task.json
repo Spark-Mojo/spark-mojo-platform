@@ -150,6 +150,46 @@
       "fieldtype": "Datetime",
       "reqd": 0,
       "read_only": 1
+    },
+    {
+      "fieldname": "section_activity",
+      "label": "Activity",
+      "fieldtype": "Section Break"
+    },
+    {
+      "fieldname": "watchers",
+      "label": "Watchers",
+      "fieldtype": "Table",
+      "options": "SM Task Watcher"
+    },
+    {
+      "fieldname": "tags",
+      "label": "Tags",
+      "fieldtype": "Table",
+      "options": "SM Task Tag"
+    },
+    {
+      "fieldname": "comments",
+      "label": "Comments",
+      "fieldtype": "Table",
+      "options": "SM Task Comment"
+    },
+    {
+      "fieldname": "section_audit",
+      "label": "Audit Trail",
+      "fieldtype": "Section Break"
+    },
+    {
+      "fieldname": "state_history",
+      "label": "State History",
+      "fieldtype": "Table",
+      "options": "SM Task State History"
+    },
+    {
+      "fieldname": "assignment_history",
+      "label": "Assignment History",
+      "fieldtype": "Table",
+      "options": "SM Task Assignment History"
     }
   ],
   "permissions": [
