@@ -9,3 +9,7 @@
 {"payload":"STORY-004: 17 files (15 create, 2 modify), type: doctype","topic":"plan.ready","ts":"2026-03-26T06:57:01.962635+00:00"}
 {"payload":"STORY-004: 5 child DocTypes created, SM Task updated with 7 new fields and 2 tracking hooks, all JSON/Python validated","topic":"build.ready","ts":"2026-03-26T06:59:36.234679+00:00"}
 {"payload":"STORY-004: all local gates pass — 5 child DocTypes verified (istable=1, correct fields), SM Task JSON has 7 new fields in correct order, controller hooks track_state_change and track_assignment_change implemented correctly. Remote gate (bench migrate) deferred to James.","topic":"task.done","ts":"2026-03-26T07:00:53.468645+00:00"}
+{"payload":"STORY-004 committed on branch story/STORY-004-sm-task-child-tables","topic":"story.committed","ts":"2026-03-26T07:01:24.162646+00:00"}
+{"payload":"STORY-005: 1 file, type: doctype","topic":"plan.ready","ts":"2026-03-26T07:02:43.225672+00:00"}
+{"payload":"STORY-005: 16 extended fields added to sm_task.json (SLA, source system, recurrence, execution logic). JSON valid, 42 total fields. Committed aa946b3.","topic":"build.ready","ts":"2026-03-26T07:03:59.645960+00:00"}
+{"payload":"STORY-005: All local gates pass. 16 extended fields verified (SLA 4, Source 7, Execution 5). 42 total fields, correct order, all fieldtypes/options/defaults match spec. JSON valid. No controller changes needed. bench migrate deferred to VPS.","topic":"task.done","ts":"2026-03-26T07:05:12.421167+00:00"}
