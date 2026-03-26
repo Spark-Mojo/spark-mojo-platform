@@ -348,3 +348,69 @@ Scaffolding:
 **State commit:** `fe3d7d4` — orchestration state + STORY-007-COMPLETE marker
 
 **Emitting:** `story.committed` → Story Planner hat (next story: STORY-008a)
+
+## 2026-03-26 — Story Planner: STORY-008a
+
+**Hat:** Story Planner
+**Story:** STORY-008a — WorkboardMojo task list view
+**Status:** Plan written to PLAN-STORY-008a.md
+
+**Key findings:**
+- STORY-006-COMPLETE and STORY-007-COMPLETE exist — dependencies satisfied
+- This is the first React Frontend story in the queue
+- Story spec says `.tsx` but CLAUDE.md forbids TypeScript — using `.jsx` (CLAUDE.md is authoritative)
+- Story spec says `useFrappeGetCall` but established pattern (OnboardingMojo) uses plain fetch to abstraction layer — following established pattern per DECISION-003
+- `frontend/src/components/mojos/` is empty (.gitkeep only) — this is the first real Mojo in the correct directory
+- OnboardingMojo is in `pages/` (legacy location)
+- Mojo registration: `MOJO_COMPONENT_MAP` + `FALLBACK_MOJOS` in Desktop.jsx
+- `frappe-react-sdk` is installed in package.json — provides FrappeProvider in App.jsx but OnboardingMojo doesn't use its hooks
+- date-fns is available for relative date formatting
+
+**Plan:** 2 files to create (WorkboardMojo.jsx, test file), 1 file to modify (Desktop.jsx — import + map entry)
+**Emitting:** `plan.ready` → Builder hat.
+
+## 2026-03-26 — Builder: STORY-008a
+
+**Hat:** Builder
+**Story:** STORY-008a — WorkboardMojo task list view
+**Branch:** `story/STORY-008a-workboard-list-view`
+
+**Built:**
+- WorkboardMojo.jsx created in `frontend/src/components/mojos/`
+  - Fetches `GET /api/modules/tasks/list?view=all` via abstraction layer (plain fetch pattern matching OnboardingMojo)
+  - Loading skeleton, error state, empty state
+  - Task rows: truncated title (60 chars), type badge (color-coded), state badge, priority dot, relative due date, assigned user/role
+  - Unowned tasks show pulsing ring indicator (animate-pulse)
+  - Client-side sort by due_at ascending, nulls last
+  - Brand tokens via CSS variables with fallbacks
+  - eslint-disable react/prop-types at file level (no prop-types package installed)
+- Desktop.jsx modified: WorkboardMojo import, MOJO_COMPONENT_MAP entry, FALLBACK_MOJOS entry
+- Test file: 8 tests covering loading, success, empty, error, truncation, sort order, overdue styling, unowned pulse
+
+**Key decisions:**
+- Used `.jsx` not `.tsx` (CLAUDE.md forbids TypeScript)
+- Used plain fetch, not useFrappeGetCall (established pattern from OnboardingMojo, per DECISION-003)
+- Used `getAllByText` / `getAllByTestId` in tests to handle React 18 potential double-renders
+
+**Fast gates:**
+- pnpm run lint: ✅ 0 warnings, 0 errors
+- pnpm run test: ✅ 8/8 passed
+- pnpm run build: ✅ succeeds
+
+**Committed:** `28ec752`
+**Emitting:** `build.ready` → Verifier hat.
+
+## 2026-03-26 — Verifier: STORY-008a
+
+**Hat:** Verifier
+**Story:** STORY-008a — WorkboardMojo task list view
+**Gate type:** React Frontend
+
+**Gate results:**
+
+1. `pnpm run lint`: ✅ 0 warnings, 0 errors
+2. `pnpm run test`: ✅ 8/8 passed (WorkboardMojo.test.jsx — 61ms)
+3. `pnpm run build`: ✅ exits 0 (2.97s, eval warning is pre-existing in CalculatorWidget)
+
+**Result:** All gates pass. STORY-008a-COMPLETE marker created.
+**Emitting:** `task.done` → Committer hat.
