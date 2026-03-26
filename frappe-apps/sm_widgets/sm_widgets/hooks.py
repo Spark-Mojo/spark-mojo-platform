@@ -1,0 +1,8 @@
+app_name = "sm_widgets"
+app_title = "SM Widgets"
+app_publisher = "Spark Mojo"
+app_description = "Custom DocTypes for Spark Mojo Platform — SM Task and related child tables"
+app_icon = "octicon octicon-tasklist"
+app_color = "#006666"
+app_email = "dev@sparkmojo.com"
+app_license = "MIT"
