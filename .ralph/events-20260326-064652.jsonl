@@ -5,3 +5,7 @@
 {"payload":"STORY-003: 6 files, type: doctype — SM Task core fields and lifecycle hooks in sm_widgets","topic":"plan.ready","ts":"2026-03-26T06:52:19.186476+00:00"}
 {"payload":"STORY-003: SM Task DocType created in sm_widgets — 19 fields, controller with status_reason validation and lifecycle timestamp hooks. JSON valid, Python valid. Commit 5cda5ad on story/STORY-003-sm-task-doctype-core.","topic":"build.ready","ts":"2026-03-26T06:53:50.886040+00:00"}
 {"payload":"STORY-003: All local gates pass — JSON valid (19 fields, correct order/types), Python valid (controller hooks correct), scaffolding complete. bench migrate deferred to VPS. STORY-003-COMPLETE marker created.","topic":"task.done","ts":"2026-03-26T06:55:10.753382+00:00"}
+{"payload":"STORY-003 committed on branch story/STORY-003-sm-task-doctype-core","topic":"story.committed","ts":"2026-03-26T06:55:44.095306+00:00"}
+{"payload":"STORY-004: 17 files (15 create, 2 modify), type: doctype","topic":"plan.ready","ts":"2026-03-26T06:57:01.962635+00:00"}
+{"payload":"STORY-004: 5 child DocTypes created, SM Task updated with 7 new fields and 2 tracking hooks, all JSON/Python validated","topic":"build.ready","ts":"2026-03-26T06:59:36.234679+00:00"}
+{"payload":"STORY-004: all local gates pass — 5 child DocTypes verified (istable=1, correct fields), SM Task JSON has 7 new fields in correct order, controller hooks track_state_change and track_assignment_change implemented correctly. Remote gate (bench migrate) deferred to James.","topic":"task.done","ts":"2026-03-26T07:00:53.468645+00:00"}
