@@ -75,12 +75,14 @@ Type: React JSX | Size: M
 Depends on: STORY-008b + STORY-009 merged
 Full spec: `../sparkmojo-internal/platform/feature-library/stories/STORY-010.md`
 
-## If You Finish All Stories
+## Completion
 
-Do not start new work. Write `QUEUE-COMPLETE.md` at repo root with:
-- List of completed stories and their branch names
-- Any blocked stories and their BLOCKED-NNN.md file contents summarised
-- Any observations about the codebase that James should review
+When all stories are complete (or blocked and documented):
+1. Write `QUEUE-COMPLETE.md` at repo root with:
+   - List of completed stories and their branch names
+   - Any blocked stories and their BLOCKED-NNN.md file contents summarised
+   - Any observations about the codebase that James should review
+2. Output the completion signal: LOOP_COMPLETE
 
 ## Critical Reminders
 
