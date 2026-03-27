@@ -835,7 +835,7 @@ export default function WorkboardMojo() {
       setTasks((prev) =>
         prev.map((t) =>
           t.name === taskId
-            ? { ...t, ...updatedTask }
+            ? { ...t, ...updatedTask, is_unowned: false }
             : t
         )
       );
