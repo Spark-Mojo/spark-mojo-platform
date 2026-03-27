@@ -135,6 +135,9 @@ async def google_callback(request: Request, code: str = "", state: str = "", err
     session_token = create_session(email, full_name)
 
     response = RedirectResponse(FRONTEND_URL, status_code=302)
+    # domain must cover all subdomains (app.poc, api.poc, poc) so the
+    # browser sends the cookie on cross-subdomain API requests.
+    cookie_domain = os.getenv("COOKIE_DOMAIN", ".poc.sparkmojo.com")
     response.set_cookie(
         key="sm_session",
         value=session_token,
@@ -143,6 +146,7 @@ async def google_callback(request: Request, code: str = "", state: str = "", err
         samesite="lax",
         max_age=86400,  # 24 hours
         path="/",
+        domain=cookie_domain,
     )
     return response
 
@@ -168,5 +172,6 @@ async def auth_logout(request: Request):
     if token:
         delete_session(token)
     response = RedirectResponse(FRONTEND_URL, status_code=302)
-    response.delete_cookie("sm_session")
+    cookie_domain = os.getenv("COOKIE_DOMAIN", ".poc.sparkmojo.com")
+    response.delete_cookie("sm_session", domain=cookie_domain, path="/")
     return response
