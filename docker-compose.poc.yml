@@ -48,6 +48,11 @@ services:
       - "traefik.http.routers.api-poc-health.entrypoints=websecure"
       - "traefik.http.routers.api-poc-health.tls.certresolver=mytlschallenge"
       - "traefik.http.routers.api-poc-health.priority=100"
+      # Modules router: poc.sparkmojo.com/api/modules/* (higher priority than Frappe /api/ catch-all)
+      - "traefik.http.routers.api-poc-modules.rule=Host(`poc.sparkmojo.com`) && PathPrefix(`/api/modules/`)"
+      - "traefik.http.routers.api-poc-modules.entrypoints=websecure"
+      - "traefik.http.routers.api-poc-modules.tls.certresolver=mytlschallenge"
+      - "traefik.http.routers.api-poc-modules.priority=100"
       - "traefik.http.services.api-poc.loadbalancer.server.port=8001"
       - "traefik.docker.network=root_web"
     restart: unless-stopped
