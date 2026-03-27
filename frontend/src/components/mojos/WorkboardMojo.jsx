@@ -14,10 +14,16 @@ const VIEW_STORAGE_KEY = 'workboard_view_preference';
 const KANBAN_COLUMNS = ['New', 'Ready', 'In Progress', 'Waiting', 'Blocked', 'Other'];
 
 const CANONICAL_STATES = ['New', 'Ready', 'In Progress', 'Waiting', 'Blocked', 'Failed', 'Completed', 'Canceled'];
+const RESOLVED_STATES = ['Completed', 'Canceled', 'Failed'];
 const REASON_REQUIRED_STATES = ['Blocked', 'Failed'];
 
-async function fetchTasks() {
-  const resp = await fetch(`${API_BASE}/list?view=all`, {
+const TASK_TYPES = ['Action', 'Review', 'Approval', 'Input', 'Exception', 'Monitoring', 'System'];
+const PRIORITY_OPTIONS = ['Low', 'Medium', 'High', 'Urgent'];
+
+async function fetchTasks(includeCompleted = false) {
+  const params = new URLSearchParams({ view: 'all' });
+  if (includeCompleted) params.set('include_completed', 'true');
+  const resp = await fetch(`${API_BASE}/list?${params}`, {
     credentials: 'include',
     headers: { 'Content-Type': 'application/json' },
   });
@@ -97,6 +103,41 @@ async function postComplete(taskId, completionNote) {
   });
   if (!resp.ok) {
     throw new Error(`Failed to complete task: ${resp.status}`);
+  }
+  return resp.json();
+}
+
+async function postCreateTask(data) {
+  const resp = await fetch(`${API_BASE}/create`, {
+    method: 'POST',
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  });
+  if (!resp.ok) {
+    const text = await resp.text().catch(() => '');
+    let detail = `Failed to create task: ${resp.status}`;
+    try {
+      const parsed = JSON.parse(text);
+      detail = typeof parsed.detail === 'string' ? parsed.detail : JSON.stringify(parsed.detail) || detail;
+    } catch { /* ignore */ }
+    throw new Error(detail);
+  }
+  return resp.json();
+}
+
+async function postAssign(taskId, assignedUser, assignedRole) {
+  const body = { task_id: taskId };
+  if (assignedUser !== undefined) body.assigned_user = assignedUser;
+  if (assignedRole !== undefined) body.assigned_role = assignedRole;
+  const resp = await fetch(`${API_BASE}/assign`, {
+    method: 'POST',
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  if (!resp.ok) {
+    throw new Error(`Failed to assign task: ${resp.status}`);
   }
   return resp.json();
 }
@@ -255,11 +296,12 @@ function SortToolbar({ sortField, sortDirection, onSortChange }) {
 }
 
 function TaskRow({ task, claimingId, onClaim, selected, onRowClick }) {
-  const { name, title, task_type, canonical_state, priority, due_at, assigned_user, assigned_role, is_unowned } = task;
+  const { name, title, task_type, canonical_state, priority, due_at, source_system, assigned_user, assigned_role, is_unowned } = task;
   const due = formatDueDate(due_at);
   const typeColor = TYPE_COLORS[task_type] || 'bg-[var(--color-slate,#34424A)] text-white';
   const priorityColor = PRIORITY_COLORS[priority] || PRIORITY_COLORS.Low;
   const isClaiming = claimingId === name;
+  const isResolved = RESOLVED_STATES.includes(canonical_state);
 
   return (
     <div
@@ -268,7 +310,8 @@ function TaskRow({ task, claimingId, onClaim, selected, onRowClick }) {
       className={cn(
         'flex items-center gap-3 px-3 py-2.5 hover:bg-gray-50 transition-colors cursor-pointer',
         selected && 'bg-gray-50',
-        due?.overdue && 'border-l-[3px] border-l-red-500'
+        due?.overdue && 'border-l-[3px] border-l-red-500',
+        isResolved && 'opacity-60'
       )}
     >
       {/* Priority dot */}
@@ -278,7 +321,10 @@ function TaskRow({ task, claimingId, onClaim, selected, onRowClick }) {
       />
 
       {/* Title */}
-      <span className="flex-1 text-sm font-medium text-gray-900 truncate min-w-0">
+      <span className={cn(
+        'flex-1 text-sm font-medium text-gray-900 truncate min-w-0',
+        isResolved && 'line-through'
+      )}>
         {truncateTitle(title)}
       </span>
 
@@ -305,6 +351,16 @@ function TaskRow({ task, claimingId, onClaim, selected, onRowClick }) {
         </span>
       )}
 
+      {/* Source system badge */}
+      {source_system && (
+        <Badge
+          data-testid="source-system-badge"
+          className="text-[10px] px-2 py-0.5 rounded-full shrink-0 font-normal bg-gray-100 text-gray-500 border-0"
+        >
+          {source_system}
+        </Badge>
+      )}
+
       {/* Assigned user / role */}
       <span className="text-xs text-gray-400 shrink-0 w-20 text-right truncate">
         {is_unowned ? (
@@ -320,8 +376,8 @@ function TaskRow({ task, claimingId, onClaim, selected, onRowClick }) {
         )}
       </span>
 
-      {/* Claim button */}
-      {is_unowned && (
+      {/* Claim button — hidden for resolved tasks */}
+      {is_unowned && !isResolved && (
         <button
           data-testid="claim-button"
           disabled={isClaiming}
@@ -343,12 +399,28 @@ function TaskRow({ task, claimingId, onClaim, selected, onRowClick }) {
   );
 }
 
-function TaskDetailDrawer({ task, loading, onClose, onUpdateState, onAddComment, onComplete, stateChanging }) {
+function TaskDetailDrawer({ task, loading, onClose, onUpdateState, onAddComment, onComplete, onAssign, stateChanging }) {
   const [commentText, setCommentText] = useState('');
   const [pendingState, setPendingState] = useState(null);
   const [statusReasonInput, setStatusReasonInput] = useState('');
   const [historyOpen, setHistoryOpen] = useState(false);
+  const [editingAssign, setEditingAssign] = useState(false);
+  const [assignUser, setAssignUser] = useState('');
+  const [assignRole, setAssignRole] = useState('');
+  const [assignSaving, setAssignSaving] = useState(false);
+  const [assignError, setAssignError] = useState(null);
   const commentInputRef = useRef(null);
+
+  const isResolved = task ? RESOLVED_STATES.includes(task.canonical_state) : false;
+
+  useEffect(() => {
+    if (task) {
+      setAssignUser(task.assigned_user || '');
+      setAssignRole(task.assigned_role || '');
+      setEditingAssign(false);
+      setAssignError(null);
+    }
+  }, [task]);
 
   useEffect(() => {
     const handleKeyDown = (e) => {
@@ -383,6 +455,31 @@ function TaskDetailDrawer({ task, loading, onClose, onUpdateState, onAddComment,
     if (!commentText.trim()) return;
     onAddComment(commentText.trim());
     setCommentText('');
+  };
+
+  const handleStartEditAssign = () => {
+    setAssignUser(task?.assigned_user || '');
+    setAssignRole(task?.assigned_role || '');
+    setEditingAssign(true);
+    setAssignError(null);
+  };
+
+  const handleCancelEditAssign = () => {
+    setEditingAssign(false);
+    setAssignError(null);
+  };
+
+  const handleSaveAssign = async () => {
+    setAssignSaving(true);
+    setAssignError(null);
+    try {
+      await onAssign(assignUser, assignRole);
+      setEditingAssign(false);
+    } catch (err) {
+      setAssignError(err.message);
+    } finally {
+      setAssignSaving(false);
+    }
   };
 
   const typeColor = task ? (TYPE_COLORS[task.task_type] || 'bg-[var(--color-slate,#34424A)] text-white') : '';
@@ -438,38 +535,125 @@ function TaskDetailDrawer({ task, loading, onClose, onUpdateState, onAddComment,
               </button>
             </div>
 
-            {/* Status bar */}
-            <div className="px-6 py-3 border-b border-gray-200">
-              <label className="text-xs text-gray-500 block mb-1">Status</label>
-              {pendingState ? (
-                <div data-testid="status-reason-prompt" className="space-y-2">
-                  <p className="text-xs text-gray-600">
-                    Reason for {pendingState}:
-                  </p>
-                  <input
-                    data-testid="status-reason-input"
-                    type="text"
-                    value={statusReasonInput}
-                    onChange={(e) => setStatusReasonInput(e.target.value)}
-                    placeholder="Enter reason..."
+            {/* Status bar — read-only for resolved tasks */}
+            {!isResolved && (
+              <div className="px-6 py-3 border-b border-gray-200">
+                <label className="text-xs text-gray-500 block mb-1">Status</label>
+                {pendingState ? (
+                  <div data-testid="status-reason-prompt" className="space-y-2">
+                    <p className="text-xs text-gray-600">
+                      Reason for {pendingState}:
+                    </p>
+                    <input
+                      data-testid="status-reason-input"
+                      type="text"
+                      value={statusReasonInput}
+                      onChange={(e) => setStatusReasonInput(e.target.value)}
+                      placeholder="Enter reason..."
+                      className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-teal-400"
+                      autoFocus
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') handleConfirmStateWithReason();
+                        if (e.key === 'Escape') { e.stopPropagation(); handleCancelReason(); }
+                      }}
+                    />
+                    <div className="flex gap-2">
+                      <button
+                        data-testid="confirm-reason-btn"
+                        onClick={handleConfirmStateWithReason}
+                        disabled={!statusReasonInput.trim()}
+                        className="text-xs px-3 py-1.5 rounded bg-teal-600 text-white disabled:opacity-40"
+                      >
+                        Confirm
+                      </button>
+                      <button
+                        onClick={handleCancelReason}
+                        className="text-xs px-3 py-1.5 rounded border border-gray-200 text-gray-600 hover:bg-gray-50"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <select
+                    data-testid="state-selector"
+                    value={task.canonical_state || 'New'}
+                    onChange={(e) => handleStateChange(e.target.value)}
+                    disabled={stateChanging}
                     className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-teal-400"
-                    autoFocus
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') handleConfirmStateWithReason();
-                      if (e.key === 'Escape') { e.stopPropagation(); handleCancelReason(); }
-                    }}
-                  />
+                  >
+                    {CANONICAL_STATES.map((s) => (
+                      <option key={s} value={s}>{s}</option>
+                    ))}
+                  </select>
+                )}
+              </div>
+            )}
+
+            {/* Resolved status display */}
+            {isResolved && (
+              <div className="px-6 py-3 border-b border-gray-200">
+                <label className="text-xs text-gray-500 block mb-1">Status</label>
+                <Badge className="text-xs px-3 py-1 rounded-full font-medium bg-gray-100 text-gray-600 border-0">
+                  {task.canonical_state}
+                </Badge>
+              </div>
+            )}
+
+            {/* Details */}
+            <div className="px-6 py-3 border-b border-gray-200 space-y-2">
+              <div className="flex items-center justify-between">
+                <label className="text-xs text-gray-500">Details</label>
+                {!isResolved && !editingAssign && (
+                  <button
+                    data-testid="edit-assign-button"
+                    onClick={handleStartEditAssign}
+                    className="text-gray-400 hover:text-gray-600 text-xs p-0.5"
+                    aria-label="Edit assignment"
+                  >
+                    &#9998;
+                  </button>
+                )}
+              </div>
+
+              {/* Inline assign edit form */}
+              {editingAssign ? (
+                <div data-testid="assign-edit-form" className="space-y-2 bg-gray-50 rounded-lg p-3">
+                  <div>
+                    <label className="text-[10px] text-gray-500 block mb-0.5">Assigned User</label>
+                    <input
+                      data-testid="assign-user-input"
+                      type="email"
+                      value={assignUser}
+                      onChange={(e) => setAssignUser(e.target.value)}
+                      placeholder="user@example.com"
+                      className="w-full border border-gray-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:border-teal-400"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[10px] text-gray-500 block mb-0.5">Assigned Role</label>
+                    <input
+                      data-testid="assign-role-input"
+                      type="text"
+                      value={assignRole}
+                      onChange={(e) => setAssignRole(e.target.value)}
+                      placeholder="e.g. Support, Finance"
+                      className="w-full border border-gray-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:border-teal-400"
+                    />
+                  </div>
+                  {assignError && <p className="text-red-500 text-xs">{assignError}</p>}
                   <div className="flex gap-2">
                     <button
-                      data-testid="confirm-reason-btn"
-                      onClick={handleConfirmStateWithReason}
-                      disabled={!statusReasonInput.trim()}
+                      data-testid="assign-save-button"
+                      onClick={handleSaveAssign}
+                      disabled={assignSaving}
                       className="text-xs px-3 py-1.5 rounded bg-teal-600 text-white disabled:opacity-40"
                     >
-                      Confirm
+                      {assignSaving ? 'Saving...' : 'Save'}
                     </button>
                     <button
-                      onClick={handleCancelReason}
+                      data-testid="assign-cancel-button"
+                      onClick={handleCancelEditAssign}
                       className="text-xs px-3 py-1.5 rounded border border-gray-200 text-gray-600 hover:bg-gray-50"
                     >
                       Cancel
@@ -477,34 +661,20 @@ function TaskDetailDrawer({ task, loading, onClose, onUpdateState, onAddComment,
                   </div>
                 </div>
               ) : (
-                <select
-                  data-testid="state-selector"
-                  value={task.canonical_state || 'New'}
-                  onChange={(e) => handleStateChange(e.target.value)}
-                  disabled={stateChanging}
-                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-teal-400"
-                >
-                  {CANONICAL_STATES.map((s) => (
-                    <option key={s} value={s}>{s}</option>
-                  ))}
-                </select>
-              )}
-            </div>
-
-            {/* Details */}
-            <div className="px-6 py-3 border-b border-gray-200 space-y-2">
-              <label className="text-xs text-gray-500 block">Details</label>
-              {task.assigned_user && (
-                <div className="flex justify-between text-xs">
-                  <span className="text-gray-500">Assigned to</span>
-                  <span className="text-gray-700">{task.assigned_user}</span>
-                </div>
-              )}
-              {task.assigned_role && (
-                <div className="flex justify-between text-xs">
-                  <span className="text-gray-500">Role</span>
-                  <span className="text-gray-700">{task.assigned_role}</span>
-                </div>
+                <>
+                  {task.assigned_user && (
+                    <div className="flex justify-between text-xs">
+                      <span className="text-gray-500">Assigned to</span>
+                      <span className="text-gray-700">{task.assigned_user}</span>
+                    </div>
+                  )}
+                  {task.assigned_role && (
+                    <div className="flex justify-between text-xs">
+                      <span className="text-gray-500">Role</span>
+                      <span className="text-gray-700">{task.assigned_role}</span>
+                    </div>
+                  )}
+                </>
               )}
               {task.due_at && (
                 <div className="flex justify-between text-xs">
@@ -549,26 +719,29 @@ function TaskDetailDrawer({ task, loading, onClose, onUpdateState, onAddComment,
                   <p className="text-xs text-gray-400">No comments yet</p>
                 )}
               </div>
-              <div className="flex gap-2">
-                <input
-                  ref={commentInputRef}
-                  data-testid="comment-input"
-                  type="text"
-                  value={commentText}
-                  onChange={(e) => setCommentText(e.target.value)}
-                  placeholder="Add a comment..."
-                  className="flex-1 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-teal-400"
-                  onKeyDown={(e) => { if (e.key === 'Enter') handleSubmitComment(); }}
-                />
-                <button
-                  data-testid="comment-submit"
-                  onClick={handleSubmitComment}
-                  disabled={!commentText.trim()}
-                  className="text-xs px-3 py-1.5 rounded bg-teal-600 text-white disabled:opacity-40"
-                >
-                  Send
-                </button>
-              </div>
+              {/* Comment input — hidden for resolved tasks */}
+              {!isResolved && (
+                <div className="flex gap-2">
+                  <input
+                    ref={commentInputRef}
+                    data-testid="comment-input"
+                    type="text"
+                    value={commentText}
+                    onChange={(e) => setCommentText(e.target.value)}
+                    placeholder="Add a comment..."
+                    className="flex-1 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-teal-400"
+                    onKeyDown={(e) => { if (e.key === 'Enter') handleSubmitComment(); }}
+                  />
+                  <button
+                    data-testid="comment-submit"
+                    onClick={handleSubmitComment}
+                    disabled={!commentText.trim()}
+                    className="text-xs px-3 py-1.5 rounded bg-teal-600 text-white disabled:opacity-40"
+                  >
+                    Send
+                  </button>
+                </div>
+              )}
             </div>
 
             {/* State History */}
@@ -595,16 +768,18 @@ function TaskDetailDrawer({ task, loading, onClose, onUpdateState, onAddComment,
               </Collapsible.Content>
             </Collapsible.Root>
 
-            {/* Complete button */}
-            <div className="px-6 py-4 mt-auto">
-              <button
-                data-testid="complete-button"
-                onClick={onComplete}
-                className="w-full py-2.5 rounded-lg bg-[#FF6F61] text-white text-sm font-medium hover:bg-[#e5635a] transition-colors"
-              >
-                Complete Task
-              </button>
-            </div>
+            {/* Complete button — hidden for resolved tasks */}
+            {!isResolved && (
+              <div className="px-6 py-4 mt-auto">
+                <button
+                  data-testid="complete-button"
+                  onClick={onComplete}
+                  className="w-full py-2.5 rounded-lg bg-[#FF6F61] text-white text-sm font-medium hover:bg-[#e5635a] transition-colors"
+                >
+                  Complete Task
+                </button>
+              </div>
+            )}
           </div>
         ) : null}
       </motion.div>
@@ -668,6 +843,137 @@ function ViewToggle({ viewMode, onViewChange }) {
         &#9707;
       </button>
     </div>
+  );
+}
+
+function CreateTaskModal({ open, onClose, onCreated }) {
+  const [form, setForm] = useState({
+    title: '', task_type: 'Action', priority: 'Medium',
+    assigned_user: '', assigned_role: '', due_at: '', source_system: '', description: '',
+  });
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    if (open) {
+      setForm({
+        title: '', task_type: 'Action', priority: 'Medium',
+        assigned_user: '', assigned_role: '', due_at: '', source_system: '', description: '',
+      });
+      setError(null);
+    }
+  }, [open]);
+
+  const handleChange = (field, value) => setForm((prev) => ({ ...prev, [field]: value }));
+
+  const handleSubmit = async () => {
+    if (!form.title.trim()) return;
+    setSubmitting(true);
+    setError(null);
+    try {
+      const payload = { title: form.title.trim(), task_type: form.task_type, priority: form.priority, executor_type: 'Human' };
+      if (form.assigned_user.trim()) payload.assigned_user = form.assigned_user.trim();
+      if (form.assigned_role.trim()) payload.assigned_role = form.assigned_role.trim();
+      if (form.due_at) payload.due_at = form.due_at;
+      if (form.source_system.trim()) payload.source_system = form.source_system.trim();
+      if (form.description.trim()) payload.description = form.description.trim();
+      const result = await postCreateTask(payload);
+      const newTask = result.task || result;
+      onCreated(newTask);
+      onClose();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  if (!open) return null;
+
+  const inputClass = 'w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-teal-400';
+
+  return (
+    <>
+      <motion.div
+        data-testid="create-modal-backdrop"
+        className="fixed inset-0 bg-black/40 z-40"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        onClick={onClose}
+      />
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <motion.div
+          data-testid="create-task-modal"
+          className="bg-white rounded-xl shadow-2xl w-full max-w-md max-h-[90vh] overflow-y-auto"
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          exit={{ opacity: 0, scale: 0.95 }}
+        >
+          <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
+            <h3 className="text-base font-semibold text-gray-900">New Task</h3>
+            <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-lg leading-none p-1" aria-label="Close">
+              &#10005;
+            </button>
+          </div>
+          <div className="px-6 py-4 space-y-3">
+            <div>
+              <label className="text-xs text-gray-500 block mb-1">Title *</label>
+              <input
+                data-testid="create-title-input"
+                type="text" value={form.title} onChange={(e) => handleChange('title', e.target.value)}
+                className={inputClass} placeholder="Task title" autoFocus
+              />
+            </div>
+            <div>
+              <label className="text-xs text-gray-500 block mb-1">Task Type</label>
+              <select data-testid="create-type-select" value={form.task_type} onChange={(e) => handleChange('task_type', e.target.value)} className={inputClass}>
+                {TASK_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="text-xs text-gray-500 block mb-1">Priority</label>
+              <select data-testid="create-priority-select" value={form.priority} onChange={(e) => handleChange('priority', e.target.value)} className={inputClass}>
+                {PRIORITY_OPTIONS.map((p) => <option key={p} value={p}>{p}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="text-xs text-gray-500 block mb-1">Assigned User</label>
+              <input type="email" value={form.assigned_user} onChange={(e) => handleChange('assigned_user', e.target.value)} className={inputClass} placeholder="user@example.com" />
+            </div>
+            <div>
+              <label className="text-xs text-gray-500 block mb-1">Assigned Role</label>
+              <input type="text" value={form.assigned_role} onChange={(e) => handleChange('assigned_role', e.target.value)} className={inputClass} placeholder="e.g. Support, Finance" />
+            </div>
+            <div>
+              <label className="text-xs text-gray-500 block mb-1">Due Date</label>
+              <input data-testid="create-due-input" type="date" value={form.due_at} onChange={(e) => handleChange('due_at', e.target.value)} className={inputClass} />
+            </div>
+            <div>
+              <label className="text-xs text-gray-500 block mb-1">Source System</label>
+              <input type="text" value={form.source_system} onChange={(e) => handleChange('source_system', e.target.value)} className={inputClass} placeholder="e.g. Onboarding Workflow" />
+            </div>
+            <div>
+              <label className="text-xs text-gray-500 block mb-1">Description</label>
+              <textarea value={form.description} onChange={(e) => handleChange('description', e.target.value)} className={cn(inputClass, 'resize-none')} rows={3} placeholder="Optional description" />
+            </div>
+            {error && <p data-testid="create-error" className="text-red-500 text-xs">{error}</p>}
+          </div>
+          <div className="px-6 py-4 border-t border-gray-200 flex justify-end gap-2">
+            <button onClick={onClose} className="text-xs px-4 py-2 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50">
+              Cancel
+            </button>
+            <button
+              data-testid="create-submit-button"
+              onClick={handleSubmit} disabled={!form.title.trim() || submitting}
+              className="text-xs px-4 py-2 rounded-lg bg-[var(--color-primary,#006666)] text-white hover:opacity-90 disabled:opacity-40"
+            >
+              {submitting ? 'Creating...' : 'Create Task'}
+            </button>
+          </div>
+        </motion.div>
+      </div>
+    </>
   );
 }
 
@@ -797,6 +1103,8 @@ export default function WorkboardMojo() {
 
   const [sortPref, setSortPref] = useState(loadSortPreference);
   const [viewMode, setViewMode] = useState(loadViewPreference);
+  const [showCompleted, setShowCompleted] = useState(false);
+  const [createModalOpen, setCreateModalOpen] = useState(false);
 
   // Drawer state
   const [selectedTaskId, setSelectedTaskId] = useState(null);
@@ -806,7 +1114,8 @@ export default function WorkboardMojo() {
 
   useEffect(() => {
     let cancelled = false;
-    fetchTasks()
+    setLoading(true);
+    fetchTasks(showCompleted)
       .then((data) => {
         if (!cancelled) {
           setTasks(data);
@@ -820,7 +1129,7 @@ export default function WorkboardMojo() {
         }
       });
     return () => { cancelled = true; };
-  }, []);
+  }, [showCompleted]);
 
   const showToast = useCallback((message) => {
     setToast({ message, visible: true });
@@ -842,12 +1151,12 @@ export default function WorkboardMojo() {
     } catch (err) {
       showToast(err.message);
       if (err.status === 409) {
-        fetchTasks().then(setTasks).catch(() => {});
+        fetchTasks(showCompleted).then(setTasks).catch(() => {});
       }
     } finally {
       setClaimingId(null);
     }
-  }, [showToast]);
+  }, [showToast, showCompleted]);
 
   const handleSortChange = useCallback((field, direction) => {
     setSortPref({ field, direction });
@@ -857,6 +1166,17 @@ export default function WorkboardMojo() {
   const handleViewChange = useCallback((mode) => {
     setViewMode(mode);
     saveViewPreference(mode);
+  }, []);
+
+  const handleToggleCompleted = useCallback(() => {
+    setShowCompleted((prev) => !prev);
+  }, []);
+
+  const handleTaskCreated = useCallback((newTask) => {
+    setTasks((prev) => [{
+      ...newTask,
+      is_unowned: !newTask.assigned_user && !!newTask.assigned_role,
+    }, ...prev]);
   }, []);
 
   const handleKanbanDragEnd = useCallback(async (result) => {
@@ -959,12 +1279,34 @@ export default function WorkboardMojo() {
     if (!drawerTask) return;
     try {
       await postComplete(drawerTask.name);
-      setTasks((prev) => prev.filter((t) => t.name !== drawerTask.name));
+      if (showCompleted) {
+        setTasks((prev) =>
+          prev.map((t) =>
+            t.name === drawerTask.name ? { ...t, canonical_state: 'Completed' } : t
+          )
+        );
+      } else {
+        setTasks((prev) => prev.filter((t) => t.name !== drawerTask.name));
+      }
       handleCloseDrawer();
     } catch (err) {
       showToast(err.message);
     }
-  }, [drawerTask, showToast, handleCloseDrawer]);
+  }, [drawerTask, showToast, handleCloseDrawer, showCompleted]);
+
+  const handleAssign = useCallback(async (assignedUser, assignedRole) => {
+    if (!drawerTask) return;
+    const result = await postAssign(drawerTask.name, assignedUser, assignedRole);
+    const updated = result.task || result;
+    setDrawerTask((prev) => prev ? { ...prev, assigned_user: updated.assigned_user, assigned_role: updated.assigned_role } : prev);
+    setTasks((prev) =>
+      prev.map((t) =>
+        t.name === drawerTask.name
+          ? { ...t, assigned_user: updated.assigned_user, assigned_role: updated.assigned_role, is_unowned: !updated.assigned_user && !!updated.assigned_role }
+          : t
+      )
+    );
+  }, [drawerTask]);
 
   const sorted = useMemo(
     () => sortTasks(tasks, sortPref.field, sortPref.direction),
@@ -1000,7 +1342,28 @@ export default function WorkboardMojo() {
         <h2 className="text-base font-semibold text-gray-900">
           Workboard
         </h2>
-        <ViewToggle viewMode={viewMode} onViewChange={handleViewChange} />
+        <div className="flex items-center gap-2">
+          <button
+            data-testid="toggle-completed"
+            onClick={handleToggleCompleted}
+            className={cn(
+              'text-xs px-2.5 py-1 rounded transition-colors',
+              showCompleted
+                ? 'bg-gray-200 text-gray-700'
+                : 'text-gray-400 hover:text-gray-600 hover:bg-gray-100'
+            )}
+          >
+            {showCompleted ? 'Hide Completed' : 'Show Completed'}
+          </button>
+          <button
+            data-testid="new-task-button"
+            onClick={() => setCreateModalOpen(true)}
+            className="text-xs px-2.5 py-1 rounded bg-[var(--color-primary,#006666)] text-white hover:opacity-90 transition-colors"
+          >
+            + New Task
+          </button>
+          <ViewToggle viewMode={viewMode} onViewChange={handleViewChange} />
+        </div>
       </div>
       {viewMode === 'list' && (
         <SortToolbar
@@ -1042,7 +1405,17 @@ export default function WorkboardMojo() {
             onUpdateState={handleUpdateState}
             onAddComment={handleAddComment}
             onComplete={handleComplete}
+            onAssign={handleAssign}
             stateChanging={stateChanging}
+          />
+        )}
+      </AnimatePresence>
+      <AnimatePresence>
+        {createModalOpen && (
+          <CreateTaskModal
+            open={createModalOpen}
+            onClose={() => setCreateModalOpen(false)}
+            onCreated={handleTaskCreated}
           />
         )}
       </AnimatePresence>

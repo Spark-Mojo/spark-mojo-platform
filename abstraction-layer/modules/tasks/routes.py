@@ -145,12 +145,15 @@ async def tasks_list(
     sort_by: str = "due_at",
     sort_order: str = "asc",
     include_resolved: bool = False,
+    include_completed: bool = False,
     user: dict = Depends(get_current_user),
 ):
     """List SM Task records filtered by view, state, and priority."""
     VALID_VIEWS = {"mine", "role", "all"}
     if view not in VALID_VIEWS:
         raise HTTPException(status_code=400, detail=f"Invalid view '{view}'. Must be one of: {', '.join(VALID_VIEWS)}")
+
+    effective_include_resolved = include_resolved or include_completed
 
     user_email = user.get("email", "")
     user_roles = user.get("roles", [])
@@ -159,11 +162,11 @@ async def tasks_list(
         # Union of mine + role results
         mine_filters = _build_filters(
             "mine", user_email, user_roles,
-            canonical_state, priority, include_resolved,
+            canonical_state, priority, effective_include_resolved,
         )
         role_filters = _build_filters(
             "role", user_email, user_roles,
-            canonical_state, priority, include_resolved,
+            canonical_state, priority, effective_include_resolved,
         )
         mine_tasks = await _fetch_tasks(mine_filters, sort_by, sort_order)
         role_tasks = await _fetch_tasks(role_filters, sort_by, sort_order)
@@ -182,7 +185,7 @@ async def tasks_list(
     else:
         filters = _build_filters(
             view, user_email, user_roles,
-            canonical_state, priority, include_resolved,
+            canonical_state, priority, effective_include_resolved,
         )
         tasks = [_enrich_task_list_item(t) for t in await _fetch_tasks(filters, sort_by, sort_order)]
 

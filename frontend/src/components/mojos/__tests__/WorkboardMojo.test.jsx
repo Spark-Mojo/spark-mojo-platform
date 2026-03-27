@@ -170,7 +170,7 @@ describe('WorkboardMojo', () => {
     });
     const overdueBadges = screen.getAllByText('Overdue');
     expect(overdueBadges.length).toBeGreaterThanOrEqual(1);
-    expect(overdueBadges[0]).toHaveClass('text-red-400');
+    expect(overdueBadges[0]).toHaveClass('text-red-500');
   });
 
   it('shows pulsing indicator for unowned tasks', async () => {
