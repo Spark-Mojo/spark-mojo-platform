@@ -527,7 +527,10 @@ async def test_tasks_list_view_all_respects_sort_order():
         params = kwargs.get("params", {})
         filters_str = params.get("filters", "[]")
         filters = json.loads(filters_str) if isinstance(filters_str, str) else filters_str
-        # Return task_a for mine, task_b for role
+        # view=all sends no user/role filter — return all tasks sorted by due_at asc
+        has_user_filter = any(f[0] in ("assigned_user", "assigned_role") for f in filters)
+        if not has_user_filter:
+            return _mock_response(200, {"data": [task_b, task_a]})
         for f in filters:
             if f[0] == "assigned_user" and f[1] == "=":
                 return _mock_response(200, {"data": [task_a]})

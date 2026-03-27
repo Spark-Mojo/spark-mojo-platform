@@ -719,4 +719,91 @@ describe('WorkboardMojo', () => {
     expect(screen.getAllByTestId('kanban-column')).toHaveLength(6);
     expect(screen.queryByTestId('task-row')).not.toBeInTheDocument();
   });
+
+  // --- BUG-003: Source System dropdown ---
+
+  it('renders Source System as a dropdown with valid options in create modal', async () => {
+    const fetchMock = mockFetchSuccess();
+    globalThis.fetch = fetchMock;
+    render(<WorkboardMojo />);
+    await waitFor(() => {
+      expect(screen.getAllByTestId('task-row')).toHaveLength(3);
+    });
+    fireEvent.click(screen.getByTestId('new-task-button'));
+    await waitFor(() => {
+      expect(screen.getByTestId('create-task-modal')).toBeInTheDocument();
+    });
+    const sourceSelect = screen.getByTestId('create-source-select');
+    expect(sourceSelect.tagName).toBe('SELECT');
+    const options = Array.from(sourceSelect.querySelectorAll('option')).map(o => o.value);
+    expect(options).toEqual(['Manual', 'Frappe', 'n8n', 'EHR', 'Stripe', 'AI']);
+    expect(sourceSelect.value).toBe('Manual');
+  });
+
+  // --- BUG-007: Tasks with role-only assignment visible ---
+
+  it('shows tasks with assigned_role but no assigned_user', async () => {
+    const roleOnlyTask = {
+      name: 'SM-TASK-ROLE',
+      title: 'Role-only task',
+      task_type: 'Action',
+      canonical_state: 'New',
+      priority: 'Medium',
+      due_at: null,
+      assigned_role: 'Accounts User',
+      assigned_user: '',
+      is_unowned: true,
+    };
+    globalThis.fetch = mockFetchSuccess([...MOCK_TASKS, roleOnlyTask]);
+    render(<WorkboardMojo />);
+    await waitFor(() => {
+      expect(screen.getAllByTestId('task-row')).toHaveLength(4);
+    });
+    expect(screen.getByText('Role-only task')).toBeInTheDocument();
+  });
+
+  // --- BUG-008: Kanban card separator ---
+
+  it('shows separator between assignee and due date in kanban card', async () => {
+    globalThis.fetch = mockFetchSuccess();
+    render(<WorkboardMojo />);
+    await waitFor(() => {
+      expect(screen.getAllByTestId('task-row')).toHaveLength(3);
+    });
+    fireEvent.click(screen.getByTestId('view-toggle-kanban'));
+    const cards = screen.getAllByTestId('kanban-card');
+    // SM-TASK-002 has assigned_user and due_at — should have middot separator
+    const cardWithBoth = cards.find(c => c.textContent.includes('Approve vendor'));
+    expect(cardWithBoth.textContent).toMatch(/bob@test\.com.*·.*Overdue/);
+  });
+
+  // --- BUG-005: Complete button shows loading state ---
+
+  it('shows loading state on Complete button while completing', async () => {
+    let resolveComplete;
+    const completePromise = new Promise((r) => { resolveComplete = r; });
+    const fetchMock = mockFetchSequence([
+      { ok: true, json: () => Promise.resolve({ tasks: MOCK_TASKS }), text: () => Promise.resolve('') },
+      { ok: true, json: () => Promise.resolve({ task: MOCK_FULL_TASK }), text: () => Promise.resolve('') },
+      { ok: true, json: () => completePromise, text: () => Promise.resolve('') },
+    ]);
+    globalThis.fetch = fetchMock;
+    render(<WorkboardMojo />);
+    await waitFor(() => {
+      expect(screen.getAllByTestId('task-row')).toHaveLength(3);
+    });
+    fireEvent.click(screen.getAllByTestId('task-row')[1]);
+    await waitFor(() => {
+      expect(screen.getByTestId('complete-button')).toBeInTheDocument();
+    });
+    fireEvent.click(screen.getByTestId('complete-button'));
+    await waitFor(() => {
+      expect(screen.getByTestId('complete-button')).toHaveTextContent('Completing...');
+    });
+    expect(screen.getByTestId('complete-button')).toBeDisabled();
+    resolveComplete({ canonical_state: 'Completed' });
+    await waitFor(() => {
+      expect(screen.queryByTestId('task-detail-drawer')).not.toBeInTheDocument();
+    });
+  });
 });

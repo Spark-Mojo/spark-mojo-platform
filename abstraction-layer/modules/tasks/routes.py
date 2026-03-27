@@ -97,7 +97,7 @@ def _build_filters(
     elif view == "role":
         filters.append(["assigned_role", "in", user_roles])
         filters.append(["assigned_user", "in", ["", None]])
-    # view == "all" handled by combining two queries
+    # view == "all": no user/role filter — return all tasks
 
     if canonical_state:
         filters.append(["canonical_state", "=", canonical_state])
@@ -159,29 +159,12 @@ async def tasks_list(
     user_roles = user.get("roles", [])
 
     if view == "all":
-        # Union of mine + role results
-        mine_filters = _build_filters(
-            "mine", user_email, user_roles,
+        # Fetch all tasks (no user/role filter) — small-business workboard shows everything
+        all_filters = _build_filters(
+            "all", user_email, user_roles,
             canonical_state, priority, effective_include_resolved,
         )
-        role_filters = _build_filters(
-            "role", user_email, user_roles,
-            canonical_state, priority, effective_include_resolved,
-        )
-        mine_tasks = await _fetch_tasks(mine_filters, sort_by, sort_order)
-        role_tasks = await _fetch_tasks(role_filters, sort_by, sort_order)
-
-        # Deduplicate by name, mine takes precedence
-        seen = set()
-        tasks = []
-        for t in mine_tasks + role_tasks:
-            if t["name"] not in seen:
-                seen.add(t["name"])
-                tasks.append(_enrich_task_list_item(t))
-
-        # Re-sort combined results
-        reverse = sort_order.lower() == "desc"
-        tasks.sort(key=lambda t: t.get(sort_by) or "", reverse=reverse)
+        tasks = [_enrich_task_list_item(t) for t in await _fetch_tasks(all_filters, sort_by, sort_order)]
     else:
         filters = _build_filters(
             view, user_email, user_roles,
