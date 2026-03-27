@@ -404,12 +404,55 @@ will abort if `frontend/` has uncommitted changes.
 
 ---
 
-## Commit Convention
+## Git Workflow
+
+### Commit prefixes
 
 `feat:` / `chore:` / `fix:` / `docs:` / `test:`
 
-Branch naming: `story/STORY-NNN-short-description`
+### When to use PRs vs direct commits
+
+| Change type | Workflow | Example |
+|-------------|----------|---------|
+| Story / feature work | PR on feature branch | New Mojo component, new DocType, new API route |
+| Bug fixes to app code | PR on feature branch | Fixing a broken component, controller logic |
+| Deploy/infra fixes | Direct to main | deploy.sh changes, Traefik routing, Docker config |
+| Docs / CLAUDE.md | Direct to main | Updating instructions, adding conventions |
+| Branding / config | Direct to main | Title changes, env vars, .env files |
+
+### PR workflow (for story/feature/bugfix work)
+
+```bash
+# 1. Create branch
+git checkout -b story/STORY-NNN-short-description
+
+# 2. Make changes, commit
+git add <files>
+git commit -m "feat: description"
+
+# 3. Push and create PR
+git push -u origin story/STORY-NNN-short-description
+gh pr create --title "feat: description" --body "## Summary\n- ..."
+
+# 4. After approval/merge, clean up
+git checkout main
+git pull origin main
+git branch -d story/STORY-NNN-short-description
+```
+
+When creating PRs, use `gh pr create` (GitHub CLI). After the PR is merged,
+delete the remote branch: `gh pr merge --delete-branch`.
+
+### Direct-to-main workflow (for fixes/docs/deploy)
+
+```bash
+git add <files>
+git commit -m "fix: description"
+git push origin main
+```
+
+Then deploy per the Deployment section above.
 
 ---
 
-*Last updated: March 26, 2026 — Session 5 (Rules 13–17 added)*
+*Last updated: March 27, 2026 — Session 6*
