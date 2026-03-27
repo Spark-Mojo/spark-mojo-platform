@@ -1,5 +1,22 @@
 # CLAUDE.md — Spark Mojo Platform
 
+## Before Starting — Read Governance Docs First
+
+**Step 1:** Check `platform/HANDOFF.md` in sparkmojo-internal:
+`/Users/jamesilsley/GitHub/sparkmojo-internal/platform/HANDOFF.md`
+If it exists and is accurate, continue that in-progress task.
+If it exists but is stale, overwrite it with current state before proceeding.
+
+**Step 2:** Read `platform/README.md` in sparkmojo-internal:
+`/Users/jamesilsley/GitHub/sparkmojo-internal/platform/README.md`
+That is the master navigation key for all platform documentation.
+
+**Step 3:** Read the story file for your current task:
+`/Users/jamesilsley/GitHub/sparkmojo-internal/platform/feature-library/stories/STORY-NNN.md`
+Then proceed with work in this repo.
+
+---
+
 Read this file completely before taking any action. This is the authoritative context document for every Claude Code session in this repository.
 
 ---
@@ -391,6 +408,7 @@ frappe-apps/{app_name}/                         # app root
                 ├── __init__.py
                 ├── {doctype_name}.json          # DocType schema
                 └── {doctype_name}.py            # controller
+
 ```
 
 Example: app `sm_widgets`, module "SM Widgets", DocType "SM Task":
@@ -491,7 +509,7 @@ will abort if `frontend/` has uncommitted changes.
 ### When to use PRs vs direct commits
 
 | Change type | Workflow | Example |
-|-------------|----------|---------| 
+|-------------|----------|---------|
 | Story / feature work | PR on feature branch | New Mojo component, new DocType, new API route |
 | Bug fixes to app code | PR on feature branch | Fixing a broken component, controller logic |
 | Deploy/infra fixes | Direct to main | deploy.sh changes, Traefik routing, Docker config |
