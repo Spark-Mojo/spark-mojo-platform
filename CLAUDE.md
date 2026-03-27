@@ -192,6 +192,47 @@ Never emit `LOOP_COMPLETE` or mark a task done without running every gate.
       Safe to add via MariaDB INSERT. Does NOT trigger Python imports.
     - For SM custom apps deployed via `docker cp`: add to `tabInstalled Application` only.
       Never add to `apps.txt` unless the app is pip-installed in all Frappe containers.
+13. **Custom Frappe app directory structure must have an extra module subfolder.**
+    Frappe expects: `frappe-apps/{app}/{app}/{module_folder}/doctype/`
+    NOT: `frappe-apps/{app}/{app}/doctype/`
+    The module subfolder (same name as the app) must exist between the app
+    root and the doctype folder. If it's missing, `bench migrate` runs silently
+    and creates no DocTypes. This burned 6+ hours on 2026-03-26.
+    Before creating any new DocType in a custom app, verify the directory
+    structure matches the pattern above. The sm_widgets fix is in commit 7ad311e.
+14. **Use `deploy.sh` for all deployments — never deploy manually.**
+    A `deploy.sh` script exists in the repo root. It must be used for all
+    deployments. It handles: git pull, sm_widgets sync (apps.txt +
+    tabInstalled Application + pip install), bench migrate, Docker rebuilds
+    with `--no-cache`, and post-deploy verification.
+    Never execute deployment steps manually — the manual process is what
+    caused the 18-hour incident on 2026-03-26.
+    If `deploy.sh` doesn't exist yet, create it before deploying. The spec
+    for `deploy.sh` is in DEPLOY.md.
+15. **Docker `--no-cache` builds change the Vite bundle filename hash.**
+    When rebuilding the frontend with `--no-cache`, Vite generates a new
+    content-hash filename (e.g. `index-BeuH284U.js` → `index-XxYzAb12.js`).
+    If nginx continues serving the old `index.html`, the app loads as a blank
+    page with no `<div id="root">`.
+    `deploy.sh` handles this automatically (Phase 6 verifies hash sync).
+    If you ever rebuild the frontend outside of `deploy.sh`, manually verify:
+    `docker exec {frontend-container} grep -o 'assets/index-[^"]*\.js' /usr/share/nginx/html/index.html`
+    `docker exec {frontend-container} ls /usr/share/nginx/html/assets/*.js`
+    Both must reference the same filename.
+16. **/api/modules/ routing requires Traefik priority rule.**
+    The Mojo Abstraction Layer serves all routes under `/api/modules/`.
+    Frappe has a catch-all rule for `/api/` that intercepts these routes
+    unless Traefik gives the abstraction layer a higher priority.
+    If `/api/modules/tasks/list` returns a Frappe `DoesNotExistError`, the
+    Traefik priority rule is missing or wrong — not a code bug.
+    This is the same class of issue fixed in commit 5e22e49d for `/health`.
+    `deploy.sh` Phase 7 Check 4 verifies this explicitly on every deploy.
+17. **`frappe-apps/` is not volume-mounted in the POC — this is intentional.**
+    The Frappe Docker container does not have `frappe-apps/` volume-mounted.
+    This is a known POC trade-off. The fix (volume mount) is in the
+    `deploy.sh` upgrade task. The production fix is Frappe Press (Phase 5).
+    Do not attempt to "fix" this by modifying the `frappe-poc` docker-compose.yml
+    without reading DEPLOY.md first and understanding the full deployment flow.
 
 ---
 
@@ -309,4 +350,4 @@ Branch naming: `story/STORY-NNN-short-description`
 
 ---
 
-*Last updated: March 26, 2026 — Session 5*
+*Last updated: March 26, 2026 — Session 5 (Rules 13–17 added)*
