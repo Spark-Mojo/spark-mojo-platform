@@ -366,6 +366,23 @@ phase_6() {
   echo "[Phase 6] Rebuilding frontend (no-cache)..."
 
   cd "$DEPLOY_DIR"
+
+  # Guard: abort if frontend/ has uncommitted changes.
+  # On 2026-03-27 a tool overwrote pages/index.jsx on the VPS without committing,
+  # replacing the Desktop/WorkboardMojo routing with a different page structure.
+  # Vite then tree-shook out all Mojo code. This check prevents that class of bug.
+  DIRTY_FILES=$(git diff --name-only -- frontend/ 2>/dev/null || true)
+  if [ -n "$DIRTY_FILES" ]; then
+    echo "ABORT: frontend/ has uncommitted changes — build would use wrong source."
+    echo "  Modified files:"
+    echo "$DIRTY_FILES" | sed 's/^/    /'
+    echo ""
+    echo "  To fix: git checkout -- frontend/  (restores git HEAD)"
+    echo "  Or commit the changes if they are intentional."
+    exit 1
+  fi
+  echo "  Working tree clean: frontend/ matches git HEAD"
+
   sudo docker compose -f "$COMPOSE_FILE" build --no-cache poc-frontend
   sudo docker compose -f "$COMPOSE_FILE" up -d poc-frontend
 

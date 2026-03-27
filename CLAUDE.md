@@ -325,11 +325,19 @@ Use CSS variables `var(--color-primary)` for runtime theming. Never hardcode hex
 ## Do Not Touch
 
 - `frontend/src/pages/Desktop.jsx` — immutable structure
+- `frontend/src/pages/index.jsx` — app routing, imports Desktop. If this file is changed,
+  Vite tree-shakes out all Mojo components (WorkboardMojo, etc.) as dead code.
+  History: on 2026-03-27 this file was overwritten on the VPS by a tool, replacing
+  Desktop routing with placeholder pages. The bundle silently lost all Mojo code.
 - `frontend/src/api/frappe-client.js` — load-bearing, do not modify
 - `frontend/src/types/` — static reference files
 - All legacy component folders (cash/, pos/, quickrepairs/, workorder/, technicians/, orders/, inventory/)
 - `sites/apps.txt` on the bench
 - Core Frappe or ERPNext source
+
+**VPS working tree must match git HEAD before any Docker build.**
+Never modify files directly on the VPS without committing. `deploy.sh` Phase 6
+will abort if `frontend/` has uncommitted changes.
 
 ---
 
