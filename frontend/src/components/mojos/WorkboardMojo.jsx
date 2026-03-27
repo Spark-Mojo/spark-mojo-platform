@@ -12,7 +12,7 @@ const SORT_STORAGE_KEY = 'workboard_sort_preference';
 const VIEW_STORAGE_KEY = 'workboard_view_preference';
 const KANBAN_COLUMNS = ['New', 'Ready', 'In Progress', 'Waiting', 'Blocked', 'Other'];
 
-const CANONICAL_STATES = ['New', 'Ready', 'In Progress', 'Waiting', 'Blocked', 'Failed', 'Completed', 'Cancelled'];
+const CANONICAL_STATES = ['New', 'Ready', 'In Progress', 'Waiting', 'Blocked', 'Failed', 'Completed', 'Canceled'];
 const REASON_REQUIRED_STATES = ['Blocked', 'Failed'];
 
 async function fetchTasks() {
@@ -101,16 +101,16 @@ async function postComplete(taskId, completionNote) {
 }
 
 const TYPE_COLORS = {
-  Action: 'bg-[var(--color-primary,#006666)] text-white',
-  Review: 'bg-[var(--color-gold,#FFB300)] text-slate-900',
-  Approval: 'bg-[var(--color-coral,#FF6F61)] text-white',
+  Action: 'bg-teal-100 text-teal-700',
+  Review: 'bg-amber-100 text-amber-800',
+  Approval: 'bg-orange-100 text-orange-800',
 };
 
 const PRIORITY_COLORS = {
   Urgent: 'bg-red-500',
-  High: 'bg-[var(--color-coral,#FF6F61)]',
-  Medium: 'bg-[var(--color-gold,#FFB300)]',
-  Low: 'bg-[var(--color-slate,#34424A)]',
+  High: 'bg-orange-400',
+  Medium: 'bg-amber-400',
+  Low: 'bg-gray-400',
 };
 
 const PRIORITY_ORDER = { Urgent: 0, High: 1, Medium: 2, Low: 3 };
@@ -223,17 +223,17 @@ function DrawerSkeleton() {
 
 function SortToolbar({ sortField, sortDirection, onSortChange }) {
   return (
-    <div data-testid="sort-toolbar" className="flex items-center gap-2 px-4 py-2 border-b border-white/10">
+    <div data-testid="sort-toolbar" className="flex items-center gap-2 px-4 py-2 border-b border-gray-200">
       {SORT_OPTIONS.map((opt) => (
         <button
           key={opt.key}
           data-testid={`sort-chip-${opt.key}`}
           onClick={() => onSortChange(opt.key, opt.key === sortField ? sortDirection : 'asc')}
           className={cn(
-            'text-xs px-2.5 py-1 rounded-full transition-colors',
+            'text-xs px-2.5 py-1 rounded-full font-medium transition-colors',
             opt.key === sortField
-              ? 'bg-[var(--color-primary,#006666)] text-white'
-              : 'bg-white/10 text-white/50 hover:text-white/70'
+              ? 'bg-teal-600 text-white'
+              : 'bg-white text-gray-600 border border-gray-200 hover:border-gray-300'
           )}
         >
           {opt.label}
@@ -242,7 +242,7 @@ function SortToolbar({ sortField, sortDirection, onSortChange }) {
       <button
         data-testid="sort-direction-toggle"
         onClick={() => onSortChange(sortField, sortDirection === 'asc' ? 'desc' : 'asc')}
-        className="text-xs text-white/50 hover:text-white/70 ml-1 px-1.5 py-1"
+        className="text-xs text-gray-400 hover:text-gray-600 ml-1 px-1.5 py-1"
         aria-label={`Sort ${sortDirection === 'asc' ? 'descending' : 'ascending'}`}
       >
         {sortDirection === 'asc' ? '\u2191' : '\u2193'}
@@ -263,8 +263,9 @@ function TaskRow({ task, claimingId, onClaim, selected, onRowClick }) {
       data-testid="task-row"
       onClick={() => onRowClick(name)}
       className={cn(
-        'flex items-center gap-3 px-4 py-3 hover:bg-white/5 transition-colors rounded-lg cursor-pointer',
-        selected && 'bg-white/10'
+        'flex items-center gap-3 px-3 py-2.5 hover:bg-gray-50 transition-colors cursor-pointer',
+        selected && 'bg-gray-50',
+        due?.overdue && 'border-l-[3px] border-l-red-500'
       )}
     >
       {/* Priority dot */}
@@ -274,17 +275,17 @@ function TaskRow({ task, claimingId, onClaim, selected, onRowClick }) {
       />
 
       {/* Title */}
-      <span className="flex-1 text-sm text-white/90 truncate min-w-0">
+      <span className="flex-1 text-sm font-medium text-gray-900 truncate min-w-0">
         {truncateTitle(title)}
       </span>
 
       {/* Task type badge */}
-      <Badge className={cn('text-[10px] px-1.5 py-0 shrink-0 border-0', typeColor)}>
+      <Badge className={cn('text-[10px] px-2 py-0.5 rounded-full shrink-0 border-0 font-medium', typeColor)}>
         {task_type || 'Task'}
       </Badge>
 
       {/* State badge */}
-      <Badge variant="outline" className="text-[10px] px-1.5 py-0 shrink-0 text-white/60 border-white/20">
+      <Badge className="text-[10px] px-2 py-0.5 rounded-full shrink-0 font-medium bg-slate-100 text-slate-700 border-0">
         {canonical_state || 'New'}
       </Badge>
 
@@ -293,8 +294,8 @@ function TaskRow({ task, claimingId, onClaim, selected, onRowClick }) {
         <span
           data-testid="due-date"
           className={cn(
-            'text-xs shrink-0 tabular-nums',
-            due.overdue ? 'text-red-400 font-medium' : 'text-white/50'
+            'text-xs shrink-0 font-mono tabular-nums',
+            due.overdue ? 'text-red-500 font-medium' : 'text-gray-500'
           )}
         >
           {due.text}
@@ -302,12 +303,12 @@ function TaskRow({ task, claimingId, onClaim, selected, onRowClick }) {
       )}
 
       {/* Assigned user / role */}
-      <span className="text-xs text-white/40 shrink-0 w-20 text-right truncate">
+      <span className="text-xs text-gray-400 shrink-0 w-20 text-right truncate">
         {is_unowned ? (
           <span className="inline-flex items-center gap-1">
             <span
               data-testid="unowned-pulse"
-              className="inline-block h-2 w-2 rounded-full bg-[var(--color-coral,#FF6F61)] animate-pulse"
+              className="inline-block h-2 w-2 rounded-full bg-orange-400 animate-pulse"
             />
             {assigned_role || 'Unowned'}
           </span>
@@ -323,13 +324,13 @@ function TaskRow({ task, claimingId, onClaim, selected, onRowClick }) {
           disabled={isClaiming}
           onClick={(e) => { e.stopPropagation(); onClaim(name); }}
           className={cn(
-            'text-xs px-2.5 py-1 rounded-md shrink-0 transition-colors',
-            'bg-[var(--color-primary,#006666)] text-white hover:bg-[var(--color-primary,#006666)]/80',
+            'text-xs px-2.5 py-1 rounded font-medium shrink-0 transition-colors',
+            'text-teal-600 hover:text-teal-800 hover:bg-teal-50',
             isClaiming && 'opacity-50 cursor-not-allowed'
           )}
         >
           {isClaiming ? (
-            <span data-testid="claim-spinner" className="inline-block h-3 w-3 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+            <span data-testid="claim-spinner" className="inline-block h-3 w-3 border-2 border-teal-200 border-t-teal-600 rounded-full animate-spin" />
           ) : (
             'Claim'
           )}
@@ -400,7 +401,7 @@ function TaskDetailDrawer({ task, loading, onClose, onUpdateState, onAddComment,
       {/* Drawer panel */}
       <motion.div
         data-testid="task-detail-drawer"
-        className="fixed top-0 right-0 h-full w-full md:w-[480px] bg-[var(--color-slate,#34424A)] z-50 shadow-2xl flex flex-col overflow-hidden"
+        className="fixed top-0 right-0 h-full w-full md:w-[480px] bg-white z-50 shadow-2xl border-l border-gray-200 flex flex-col overflow-hidden"
         initial={{ x: '100%' }}
         animate={{ x: 0 }}
         exit={{ x: '100%' }}
@@ -411,23 +412,23 @@ function TaskDetailDrawer({ task, loading, onClose, onUpdateState, onAddComment,
         ) : task ? (
           <div className="flex flex-col h-full overflow-y-auto">
             {/* Header */}
-            <div className="px-6 py-4 border-b border-white/10 flex items-start gap-3">
+            <div className="px-6 py-4 border-b border-gray-200 flex items-start gap-3">
               <div className="flex-1 min-w-0">
-                <h3 data-testid="drawer-title" className="text-base font-semibold text-white mb-2">
+                <h3 data-testid="drawer-title" className="text-base font-semibold text-gray-900 mb-2">
                   {task.title}
                 </h3>
                 <div className="flex items-center gap-2">
-                  <Badge className={cn('text-[10px] px-1.5 py-0 border-0', typeColor)}>
+                  <Badge className={cn('text-[10px] px-2 py-0.5 rounded-full border-0 font-medium', typeColor)}>
                     {task.task_type || 'Task'}
                   </Badge>
                   <span className={cn('h-2.5 w-2.5 rounded-full inline-block', priorityColor)} />
-                  <span className="text-xs text-white/50">{task.priority}</span>
+                  <span className="text-xs text-gray-500">{task.priority}</span>
                 </div>
               </div>
               <button
                 data-testid="drawer-close"
                 onClick={onClose}
-                className="text-white/40 hover:text-white/80 text-lg leading-none p-1"
+                className="text-gray-400 hover:text-gray-600 text-lg leading-none p-1"
                 aria-label="Close drawer"
               >
                 &#10005;
@@ -435,11 +436,11 @@ function TaskDetailDrawer({ task, loading, onClose, onUpdateState, onAddComment,
             </div>
 
             {/* Status bar */}
-            <div className="px-6 py-3 border-b border-white/10">
-              <label className="text-xs text-white/40 block mb-1">Status</label>
+            <div className="px-6 py-3 border-b border-gray-200">
+              <label className="text-xs text-gray-500 block mb-1">Status</label>
               {pendingState ? (
                 <div data-testid="status-reason-prompt" className="space-y-2">
-                  <p className="text-xs text-white/70">
+                  <p className="text-xs text-gray-600">
                     Reason for {pendingState}:
                   </p>
                   <input
@@ -448,7 +449,7 @@ function TaskDetailDrawer({ task, loading, onClose, onUpdateState, onAddComment,
                     value={statusReasonInput}
                     onChange={(e) => setStatusReasonInput(e.target.value)}
                     placeholder="Enter reason..."
-                    className="w-full bg-white/10 text-white text-sm px-3 py-1.5 rounded border border-white/20 outline-none focus:border-white/40"
+                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-teal-400"
                     autoFocus
                     onKeyDown={(e) => {
                       if (e.key === 'Enter') handleConfirmStateWithReason();
@@ -460,13 +461,13 @@ function TaskDetailDrawer({ task, loading, onClose, onUpdateState, onAddComment,
                       data-testid="confirm-reason-btn"
                       onClick={handleConfirmStateWithReason}
                       disabled={!statusReasonInput.trim()}
-                      className="text-xs px-3 py-1 rounded bg-[var(--color-primary,#006666)] text-white disabled:opacity-40"
+                      className="text-xs px-3 py-1.5 rounded bg-teal-600 text-white disabled:opacity-40"
                     >
                       Confirm
                     </button>
                     <button
                       onClick={handleCancelReason}
-                      className="text-xs px-3 py-1 rounded bg-white/10 text-white/60"
+                      className="text-xs px-3 py-1.5 rounded border border-gray-200 text-gray-600 hover:bg-gray-50"
                     >
                       Cancel
                     </button>
@@ -478,7 +479,7 @@ function TaskDetailDrawer({ task, loading, onClose, onUpdateState, onAddComment,
                   value={task.canonical_state || 'New'}
                   onChange={(e) => handleStateChange(e.target.value)}
                   disabled={stateChanging}
-                  className="bg-white/10 text-white text-sm px-3 py-1.5 rounded border border-white/20 outline-none"
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-teal-400"
                 >
                   {CANONICAL_STATES.map((s) => (
                     <option key={s} value={s}>{s}</option>
@@ -488,61 +489,61 @@ function TaskDetailDrawer({ task, loading, onClose, onUpdateState, onAddComment,
             </div>
 
             {/* Details */}
-            <div className="px-6 py-3 border-b border-white/10 space-y-2">
-              <label className="text-xs text-white/40 block">Details</label>
+            <div className="px-6 py-3 border-b border-gray-200 space-y-2">
+              <label className="text-xs text-gray-500 block">Details</label>
               {task.assigned_user && (
                 <div className="flex justify-between text-xs">
-                  <span className="text-white/50">Assigned to</span>
-                  <span className="text-white/80">{task.assigned_user}</span>
+                  <span className="text-gray-500">Assigned to</span>
+                  <span className="text-gray-700">{task.assigned_user}</span>
                 </div>
               )}
               {task.assigned_role && (
                 <div className="flex justify-between text-xs">
-                  <span className="text-white/50">Role</span>
-                  <span className="text-white/80">{task.assigned_role}</span>
+                  <span className="text-gray-500">Role</span>
+                  <span className="text-gray-700">{task.assigned_role}</span>
                 </div>
               )}
               {task.due_at && (
                 <div className="flex justify-between text-xs">
-                  <span className="text-white/50">Due</span>
-                  <span className="text-white/80">{formatTimestamp(task.due_at)}</span>
+                  <span className="text-gray-500">Due</span>
+                  <span className="text-gray-700 font-mono">{formatTimestamp(task.due_at)}</span>
                 </div>
               )}
               {task.source_system && (
                 <div className="flex justify-between text-xs">
-                  <span className="text-white/50">Source</span>
-                  <span className="text-white/80">{task.source_system}</span>
+                  <span className="text-gray-500">Source</span>
+                  <span className="text-gray-700">{task.source_system}</span>
                 </div>
               )}
               {task.related_crm_record && (
                 <div className="flex justify-between text-xs">
-                  <span className="text-white/50">CRM Record</span>
-                  <span className="text-white/80">{task.related_crm_record}</span>
+                  <span className="text-gray-500">CRM Record</span>
+                  <span className="text-gray-700">{task.related_crm_record}</span>
                 </div>
               )}
               {task.completion_criteria && (
                 <div className="text-xs">
-                  <span className="text-white/50 block mb-1">Completion Criteria</span>
-                  <p className="text-white/80">{task.completion_criteria}</p>
+                  <span className="text-gray-500 block mb-1">Completion Criteria</span>
+                  <p className="text-gray-700">{task.completion_criteria}</p>
                 </div>
               )}
             </div>
 
             {/* Comments */}
-            <div className="px-6 py-3 border-b border-white/10 flex-1 min-h-0">
-              <label className="text-xs text-white/40 block mb-2">Comments</label>
+            <div className="px-6 py-3 border-b border-gray-200 flex-1 min-h-0">
+              <label className="text-xs text-gray-500 block mb-2">Comments</label>
               <div data-testid="comments-list" className="space-y-2 mb-3 max-h-48 overflow-y-auto">
                 {[...comments].reverse().map((c, i) => (
-                  <div key={c.name || i} className="bg-white/5 rounded p-2">
-                    <div className="flex justify-between text-[10px] text-white/40 mb-1">
+                  <div key={c.name || i} className="bg-gray-50 rounded-lg p-2">
+                    <div className="flex justify-between text-[10px] text-gray-400 mb-1">
                       <span>{c.comment_by || 'Unknown'}</span>
                       <span>{formatTimestamp(c.created_at || c.creation)}</span>
                     </div>
-                    <p className="text-xs text-white/80">{c.comment}</p>
+                    <p className="text-xs text-gray-700">{c.comment}</p>
                   </div>
                 ))}
                 {comments.length === 0 && (
-                  <p className="text-xs text-white/30">No comments yet</p>
+                  <p className="text-xs text-gray-400">No comments yet</p>
                 )}
               </div>
               <div className="flex gap-2">
@@ -553,14 +554,14 @@ function TaskDetailDrawer({ task, loading, onClose, onUpdateState, onAddComment,
                   value={commentText}
                   onChange={(e) => setCommentText(e.target.value)}
                   placeholder="Add a comment..."
-                  className="flex-1 bg-white/10 text-white text-sm px-3 py-1.5 rounded border border-white/20 outline-none focus:border-white/40"
+                  className="flex-1 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-teal-400"
                   onKeyDown={(e) => { if (e.key === 'Enter') handleSubmitComment(); }}
                 />
                 <button
                   data-testid="comment-submit"
                   onClick={handleSubmitComment}
                   disabled={!commentText.trim()}
-                  className="text-xs px-3 py-1.5 rounded bg-[var(--color-primary,#006666)] text-white disabled:opacity-40"
+                  className="text-xs px-3 py-1.5 rounded bg-teal-600 text-white disabled:opacity-40"
                 >
                   Send
                 </button>
@@ -568,9 +569,9 @@ function TaskDetailDrawer({ task, loading, onClose, onUpdateState, onAddComment,
             </div>
 
             {/* State History */}
-            <Collapsible.Root open={historyOpen} onOpenChange={setHistoryOpen} className="px-6 py-3 border-b border-white/10">
+            <Collapsible.Root open={historyOpen} onOpenChange={setHistoryOpen} className="px-6 py-3 border-b border-gray-200">
               <Collapsible.Trigger asChild>
-                <button data-testid="history-toggle" className="flex items-center gap-2 text-xs text-white/40 hover:text-white/60 w-full">
+                <button data-testid="history-toggle" className="flex items-center gap-2 text-xs text-gray-400 hover:text-gray-600 w-full">
                   <span>{historyOpen ? '\u25BC' : '\u25B6'}</span>
                   <span>State History ({stateHistory.length})</span>
                 </button>
@@ -579,13 +580,13 @@ function TaskDetailDrawer({ task, loading, onClose, onUpdateState, onAddComment,
                 <div data-testid="state-history" className="mt-2 space-y-1.5">
                   {stateHistory.map((entry, i) => (
                     <div key={entry.name || i} className="flex items-center gap-2 text-xs">
-                      <span className="h-1.5 w-1.5 rounded-full bg-white/30 shrink-0" />
-                      <span className="text-white/70">{entry.to_state || entry.canonical_state}</span>
-                      <span className="text-white/30">{formatTimestamp(entry.changed_at || entry.creation)}</span>
+                      <span className="h-1.5 w-1.5 rounded-full bg-gray-300 shrink-0" />
+                      <span className="text-gray-600">{entry.to_state || entry.canonical_state}</span>
+                      <span className="text-gray-400">{formatTimestamp(entry.changed_at || entry.creation)}</span>
                     </div>
                   ))}
                   {stateHistory.length === 0 && (
-                    <p className="text-xs text-white/30">No state changes recorded</p>
+                    <p className="text-xs text-gray-400">No state changes recorded</p>
                   )}
                 </div>
               </Collapsible.Content>
@@ -596,7 +597,7 @@ function TaskDetailDrawer({ task, loading, onClose, onUpdateState, onAddComment,
               <button
                 data-testid="complete-button"
                 onClick={onComplete}
-                className="w-full py-2.5 rounded-lg bg-[var(--color-coral,#FF6F61)] text-white text-sm font-medium hover:bg-[var(--color-coral,#FF6F61)]/90 transition-colors"
+                className="w-full py-2.5 rounded-lg bg-[#FF6F61] text-white text-sm font-medium hover:bg-[#e5635a] transition-colors"
               >
                 Complete Task
               </button>
@@ -613,7 +614,7 @@ function Toast({ message, visible }) {
   return (
     <div
       data-testid="inline-toast"
-      className="absolute bottom-3 left-1/2 -translate-x-1/2 bg-[var(--color-slate,#34424A)] text-white text-xs px-4 py-2 rounded-lg shadow-lg border border-white/10 z-10"
+      className="absolute bottom-3 left-1/2 -translate-x-1/2 bg-gray-900 text-white text-xs px-4 py-2 rounded-lg shadow-lg z-10"
     >
       {message}
     </div>
@@ -643,8 +644,8 @@ function ViewToggle({ viewMode, onViewChange }) {
         className={cn(
           'text-xs px-2 py-1 rounded transition-colors',
           viewMode === 'list'
-            ? 'bg-[var(--color-primary,#006666)] text-white'
-            : 'bg-white/10 text-white/50 hover:text-white/70'
+            ? 'bg-teal-600 text-white'
+            : 'text-gray-400 hover:text-gray-600 hover:bg-gray-100'
         )}
         aria-label="List view"
       >
@@ -656,8 +657,8 @@ function ViewToggle({ viewMode, onViewChange }) {
         className={cn(
           'text-xs px-2 py-1 rounded transition-colors',
           viewMode === 'kanban'
-            ? 'bg-[var(--color-primary,#006666)] text-white'
-            : 'bg-white/10 text-white/50 hover:text-white/70'
+            ? 'bg-teal-600 text-white'
+            : 'text-gray-400 hover:text-gray-600 hover:bg-gray-100'
         )}
         aria-label="Kanban view"
       >
@@ -677,21 +678,21 @@ function KanbanCard({ task, selected, onCardClick }) {
       data-testid="kanban-card"
       onClick={() => onCardClick(name)}
       className={cn(
-        'bg-white/5 rounded-lg p-3 cursor-pointer hover:bg-white/10 transition-colors',
-        selected && 'ring-1 ring-[var(--color-primary,#006666)]'
+        'bg-white rounded-lg border border-gray-200 p-3 cursor-pointer hover:border-gray-300 hover:shadow-sm transition-all',
+        selected && 'ring-1 ring-teal-500 border-teal-500'
       )}
     >
       <div className="flex items-start gap-2 mb-2">
         <span className={cn('h-2 w-2 rounded-full shrink-0 mt-1', priorityColor)} />
-        <span className="text-sm text-white/90 line-clamp-2 min-w-0">{title}</span>
+        <span className="text-sm font-medium text-gray-900 line-clamp-2 min-w-0">{title}</span>
       </div>
-      <div className="flex items-center justify-between text-xs text-white/40">
+      <div className="flex items-center justify-between text-xs text-gray-400">
         <span>
           {is_unowned ? (
             <span className="inline-flex items-center gap-1">
               <span
                 data-testid="kanban-unowned-pulse"
-                className="inline-block h-2 w-2 rounded-full bg-[var(--color-coral,#FF6F61)] animate-pulse"
+                className="inline-block h-2 w-2 rounded-full bg-orange-400 animate-pulse"
               />
               {assigned_role || 'Unowned'}
             </span>
@@ -700,7 +701,7 @@ function KanbanCard({ task, selected, onCardClick }) {
           )}
         </span>
         {due && (
-          <span className={cn('tabular-nums', due.overdue ? 'text-red-400' : '')}>
+          <span className={cn('tabular-nums', due.overdue ? 'text-red-500' : '')}>
             {due.text}
           </span>
         )}
@@ -712,9 +713,9 @@ function KanbanCard({ task, selected, onCardClick }) {
 function KanbanColumn({ columnState, tasks, selectedTaskId, onCardClick }) {
   return (
     <div data-testid="kanban-column" className="flex flex-col min-w-[180px] w-full">
-      <div className="flex items-center gap-2 px-2 py-2 border-b border-white/10 mb-2">
-        <span className="text-xs font-semibold text-white/70 uppercase tracking-wider">{columnState}</span>
-        <Badge variant="outline" className="text-[10px] px-1.5 py-0 text-white/40 border-white/20" data-testid="kanban-column-count">
+      <div className="flex items-center gap-2 px-2 py-2 border-b border-gray-200 mb-2">
+        <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">{columnState}</span>
+        <Badge className="text-[10px] px-1.5 py-0 bg-gray-100 text-gray-500 border-0" data-testid="kanban-column-count">
           {tasks.length}
         </Badge>
       </div>
@@ -908,7 +909,7 @@ export default function WorkboardMojo() {
   if (error) {
     return (
       <div data-testid="error-state" className="flex items-center justify-center h-full p-8">
-        <p className="text-red-400 text-sm">{error}</p>
+        <p className="text-red-600 text-sm">{error}</p>
       </div>
     );
   }
@@ -916,10 +917,10 @@ export default function WorkboardMojo() {
   if (sorted.length === 0) {
     return (
       <div data-testid="empty-state" className="flex flex-col items-center justify-center h-full p-8 gap-3">
-        <div className="w-16 h-16 rounded-full bg-white/5 flex items-center justify-center">
-          <span className="text-2xl">&#10003;</span>
+        <div className="w-16 h-16 rounded-full bg-gray-100 flex items-center justify-center">
+          <span className="text-2xl text-teal-600">&#10003;</span>
         </div>
-        <p className="text-white/50 text-sm text-center">
+        <p className="text-gray-400 text-sm text-center">
           No tasks on your plate. You&apos;re all caught up.
         </p>
       </div>
@@ -927,9 +928,9 @@ export default function WorkboardMojo() {
   }
 
   return (
-    <div className="relative flex flex-col h-full overflow-hidden">
-      <div className="px-4 py-3 border-b border-white/10 flex items-center justify-between">
-        <h2 className="text-sm font-semibold text-white/70 uppercase tracking-wider">
+    <div className="relative flex flex-col h-full bg-gray-50 text-gray-900 overflow-hidden">
+      <div className="bg-white border-b border-gray-200 px-4 py-2.5 flex items-center justify-between flex-shrink-0">
+        <h2 className="text-base font-semibold text-gray-900">
           Workboard
         </h2>
         <ViewToggle viewMode={viewMode} onViewChange={handleViewChange} />
@@ -943,6 +944,7 @@ export default function WorkboardMojo() {
       )}
       {viewMode === 'list' ? (
         <div className="flex-1 overflow-y-auto">
+          <div className="bg-white rounded-lg border border-gray-200 mx-3 mt-3 overflow-hidden divide-y divide-gray-100">
           {sorted.map((task) => (
             <TaskRow
               key={task.name}
@@ -953,6 +955,7 @@ export default function WorkboardMojo() {
               onRowClick={handleRowClick}
             />
           ))}
+          </div>
         </div>
       ) : (
         <KanbanBoard

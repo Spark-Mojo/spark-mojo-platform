@@ -70,7 +70,7 @@ RESOLVED_STATES = ("Completed", "Canceled", "Failed")
 LIST_FIELDS = [
     "name", "title", "task_type", "canonical_state", "priority",
     "assigned_user", "assigned_role", "due_at", "source_system",
-    "related_crm_record",
+    "related_crm_record", "creation",
 ]
 
 
@@ -254,6 +254,11 @@ async def tasks_claim(
         # Check if already owned
         if task.get("assigned_user"):
             raise HTTPException(status_code=409, detail={"error": "task_already_owned"})
+
+        # Check role eligibility
+        task_role = task.get("assigned_role")
+        if task_role and task_role not in user.get("roles", []):
+            raise HTTPException(status_code=403, detail={"error": "not_in_role"})
 
         # Build update payload
         update = {"assigned_user": user.get("email", "")}

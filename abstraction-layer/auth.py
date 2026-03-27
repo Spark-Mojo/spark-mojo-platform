@@ -79,28 +79,28 @@ async def get_current_user(request: Request) -> dict:
     email = session["email"]
     full_name = session.get("full_name", email)
 
-    # Fetch roles for authenticated session user
+    # Fetch roles for authenticated user via token auth (works regardless of cookie type)
     roles = []
-    sid = request.cookies.get("sid")
-    if sid:
-        try:
-            async with httpx.AsyncClient() as client:
-                resp = await client.get(
-                    f"{FRAPPE_URL}/api/method/frappe.client.get_list",
-                    params={
-                        "doctype": "Has Role",
-                        "filters": json.dumps({"parent": email}),
-                        "fields": json.dumps(["role"]),
-                        "limit_page_length": 0,
-                    },
-                    cookies={"sid": sid},
-                    timeout=10,
-                )
-                if resp.status_code == 200:
-                    data = resp.json().get("message", [])
-                    roles = [r["role"] for r in data if r.get("role")]
-        except httpx.RequestError:
-            pass
+    try:
+        api_key = os.getenv("FRAPPE_API_KEY", "")
+        api_secret = os.getenv("FRAPPE_API_SECRET", "")
+        async with httpx.AsyncClient() as client:
+            resp = await client.get(
+                f"{FRAPPE_URL}/api/method/frappe.client.get_list",
+                params={
+                    "doctype": "Has Role",
+                    "filters": json.dumps({"parent": email}),
+                    "fields": json.dumps(["role"]),
+                    "limit_page_length": 0,
+                },
+                headers={"Authorization": f"token {api_key}:{api_secret}"},
+                timeout=10,
+            )
+            if resp.status_code == 200:
+                data = resp.json().get("message", [])
+                roles = [r["role"] for r in data if r.get("role")]
+    except httpx.RequestError:
+        pass
 
     return {
         "email": email,
