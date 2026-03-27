@@ -162,7 +162,18 @@ Then give them these exact steps:
      ./deploy.sh --verify-only
 ```
 
-### deploy.sh flags reference
+### deploy.sh phases and flags
+
+| Phase | Name | What it does |
+|-------|------|-------------|
+| 0 | Pre-flight | Verify directory, Docker, Frappe backend running |
+| 1 | Pull | `git pull origin main`, print HEAD commit |
+| 2 | Sync frappe-apps | docker cp + pip install into ALL Frappe containers, apps.txt, tabInstalled Application. Removes non-installable apps from apps.txt. |
+| 3 | Migrate | `bench --site frontend migrate`, verify DocTypes via VERIFY.txt |
+| 4 | Restart | Restart Frappe backend + workers, poll health for 60s |
+| 5 | Abstraction layer | `docker compose build --no-cache poc-api` + restart |
+| 6 | Frontend | `docker compose build --no-cache poc-frontend` + restart. Aborts if frontend/ has uncommitted changes. Verifies bundle hash sync. |
+| 7 | Verification | 6 end-to-end checks: Frappe ping, health, abstraction layer, frontend, per-app DocType checks |
 
 | Command | What it does |
 |---------|-------------|
@@ -171,6 +182,56 @@ Then give them these exact steps:
 | `./deploy.sh --phase 2` | Sync frappe-apps only |
 | `./deploy.sh --phase 3` | bench migrate only |
 | `./deploy.sh --phase 6` | Frontend rebuild only |
+
+---
+
+## VPS Deployment Rules
+
+1. **NEVER modify files directly on the VPS.** All changes go through git.
+   History: on 2026-03-27 an uncommitted `index.jsx` on the VPS had a completely
+   different routing structure. When deploy.sh ran `git pull`, it overwrote
+   the local state and broke the UI. This triggered an 18-hour debug session.
+2. **The VPS must always be a clean checkout of main.** No local modifications.
+3. **deploy.sh is the ONLY way code gets onto the VPS.** Do not manually
+   `docker compose build` or `docker cp` outside of deploy.sh.
+4. **If you SSH in and modify ANY file**, you MUST `git add`, `git commit`,
+   `git push` before ending the session. No exceptions.
+5. **After pushing changes, always run deploy.sh** to ensure the VPS matches main.
+
+---
+
+## Known Gotchas
+
+- **Frappe site name** inside the Docker container is `frontend`, NOT
+  `poc.sparkmojo.com`. All `bench --site` commands use `frontend`.
+- **SM Task `canonical_state`** maps to "Status" in the Frappe UI — not `status`.
+- **Non-installable apps in apps.txt** (e.g. `sm_billing` without `pyproject.toml`)
+  cause `ModuleNotFoundError` during `bench migrate`. This makes Frappe treat valid
+  DocTypes from other apps as "orphaned" and **DELETE them**. deploy.sh Phase 2
+  now removes non-installable apps from apps.txt automatically.
+- **Alpine-based containers** (nginx) need `sh -c` wrapper for glob expansion
+  in `docker exec` commands. `docker exec container ls *.js` fails silently;
+  use `docker exec container sh -c 'ls *.js'` instead.
+- **Phase 7 `<div id="root">` check is a false positive.** A stale bundle still
+  has `<div id="root">`. Always verify by grepping the bundle for expected string
+  literals (e.g. `api/modules/tasks`). See "Verifying Production Bundles" section.
+- **Desktop.jsx is archived** (`_archive/`). The sidebar layout is production.
+  Do not import Desktop.jsx — it will pull in all widget/desktop components
+  and bloat the bundle. WorkboardMojo renders inside the sidebar layout, not
+  as a draggable desktop window.
+
+---
+
+## Ralph Orchestrator Rules
+
+- Every story **MUST** include a smoke test step that verifies the feature is
+  navigable from the live UI, not just that the component file exists.
+- After merging feature branches, **always trigger a deploy** to the VPS.
+- Never mark a story as complete if the feature is unreachable from the UI.
+- If a story adds a new route or component, the smoke test must verify:
+  1. The route is defined in `pages/index.jsx`
+  2. The sidebar link exists in `pages/Layout.jsx`
+  3. The production bundle contains the component's string literals
 
 ---
 
