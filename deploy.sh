@@ -182,9 +182,22 @@ phase_2() {
     done
 
     # Step 2b — Pip install in ALL containers
-    # Skip apps that have no pyproject.toml (not installable yet)
+    # Skip apps that have no pyproject.toml (not installable yet).
+    # CRITICAL: Also REMOVE from apps.txt if present — a non-installable app in
+    # apps.txt causes ModuleNotFoundError which makes bench migrate delete all
+    # DocTypes from other custom apps as "orphaned". This destroyed SM Task on
+    # 2026-03-27.
     if [ ! -f "$FRAPPE_APPS_DIR/$APP/pyproject.toml" ] && [ ! -f "$FRAPPE_APPS_DIR/$APP/setup.py" ]; then
       echo "  [2b] SKIP $APP — no pyproject.toml or setup.py (not a pip-installable app yet)"
+      # Remove from apps.txt if accidentally present (prevents ModuleNotFoundError)
+      for container in $ALL_FRAPPE_CONTAINERS; do
+        if sudo docker ps --format '{{.Names}}' | grep -q "^${container}$"; then
+          if sudo docker exec "$container" bash -c "grep -q '^${APP}$' $FRAPPE_BENCH/sites/apps.txt" 2>/dev/null; then
+            sudo docker exec "$container" bash -c "sed -i '/^${APP}$/d' $FRAPPE_BENCH/sites/apps.txt" 2>/dev/null || true
+            echo "    REMOVED $APP from apps.txt in $container (was present but not installable)"
+          fi
+        fi
+      done
       echo "  [2c] SKIP $APP — not adding to apps.txt (no Python package)"
       echo "  [2d] SKIP $APP — not adding to tabInstalled Application"
       continue
