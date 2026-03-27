@@ -257,6 +257,8 @@ async def tasks_claim(
             json=update,
             timeout=15,
         )
+        if put_resp.status_code >= 400:
+            raise HTTPException(status_code=422, detail=put_resp.json())
         put_resp.raise_for_status()
         updated_task = put_resp.json().get("data", {})
 
@@ -294,6 +296,8 @@ async def tasks_assign(
             json=update,
             timeout=15,
         )
+        if put_resp.status_code >= 400:
+            raise HTTPException(status_code=422, detail=put_resp.json())
         put_resp.raise_for_status()
         updated_task = put_resp.json().get("data", {})
 
@@ -368,6 +372,8 @@ async def tasks_add_comment(
             json={"comments": comments},
             timeout=15,
         )
+        if put_resp.status_code >= 400:
+            raise HTTPException(status_code=422, detail=put_resp.json())
         put_resp.raise_for_status()
         updated_task = put_resp.json().get("data", {})
 
@@ -412,6 +418,8 @@ async def tasks_complete(
             json=update,
             timeout=15,
         )
+        if put_resp.status_code >= 400:
+            raise HTTPException(status_code=422, detail=put_resp.json())
         put_resp.raise_for_status()
         updated_task = put_resp.json().get("data", {})
 

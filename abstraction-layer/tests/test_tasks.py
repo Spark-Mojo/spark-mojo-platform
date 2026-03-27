@@ -554,3 +554,36 @@ async def test_tasks_list_view_all_respects_sort_order():
     # task_b has earlier due_at, should come first in asc order
     assert data["tasks"][0]["name"] == "TASK-B"
     assert data["tasks"][1]["name"] == "TASK-A"
+
+
+@pytest.mark.anyio
+async def test_tasks_assign_invalid_user_returns_422():
+    """POST /api/modules/tasks/assign with invalid user returns 422, not 500/503."""
+    frappe_error = {
+        "_server_messages": json.dumps([json.dumps({"message": "notauser@fake.com could not be found"})])
+    }
+
+    mock_client = AsyncMock()
+
+    async def mock_get(url, **kwargs):
+        return _mock_response(200, {"data": {"name": "TASK-00004", "assigned_user": "", "assigned_role": ""}})
+
+    async def mock_put(url, **kwargs):
+        return _mock_response(417, frappe_error)
+
+    mock_client.get = mock_get
+    mock_client.put = mock_put
+    mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+    mock_client.__aexit__ = AsyncMock(return_value=None)
+
+    with patch("modules.tasks.routes.httpx.AsyncClient", return_value=mock_client):
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as client:
+            resp = await client.post(
+                "/api/modules/tasks/assign",
+                json={"task_id": "TASK-00004", "assigned_user": "notauser@fake.com"},
+            )
+    assert resp.status_code == 422
+    body = resp.json()
+    assert "_server_messages" in body.get("detail", {})
