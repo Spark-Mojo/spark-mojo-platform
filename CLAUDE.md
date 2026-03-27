@@ -4,6 +4,20 @@ Read this file completely before taking any action. This is the authoritative co
 
 ---
 
+## Step 0 — Before Anything Else
+
+**Read the platform master navigation key in the governance repo:**
+
+```
+/Users/jamesilsley/GitHub/sparkmojo-internal/platform/README.md
+```
+
+That document is the index of all platform documentation — what every doc is, how they relate, and the sync rules. It takes 2 minutes to read and prevents 2-hour debugging sessions caused by acting on stale or conflicting information.
+
+After reading it, come back here and continue.
+
+---
+
 ## What This Repo Is
 
 `spark-mojo-platform` is the production codebase for the Spark Mojo Platform — a unified business OS for small and mid-sized businesses. The UI is a desktop OS paradigm: draggable, resizable Mojo windows on a freeform canvas. The backend is Frappe/ERPNext with custom apps. Automation runs through n8n.
@@ -18,6 +32,7 @@ This is NOT a greenfield build. Architecture is fully designed. Your job is to e
 |------|---------------|
 | This repo | `/Users/jamesilsley/GitHub/spark-mojo-platform/` |
 | Governance repo | `/Users/jamesilsley/GitHub/sparkmojo-internal/` |
+| Platform nav key | `/Users/jamesilsley/GitHub/sparkmojo-internal/platform/README.md` |
 | Story files | `/Users/jamesilsley/GitHub/sparkmojo-internal/platform/feature-library/stories/` |
 | Feature specs | `/Users/jamesilsley/GitHub/sparkmojo-internal/platform/feature-library/` |
 | Architecture decisions | `/Users/jamesilsley/GitHub/sparkmojo-internal/platform/decisions/` |
@@ -29,6 +44,7 @@ This is NOT a greenfield build. Architecture is fully designed. Your job is to e
 
 | File | What it is |
 |------|------------|
+| `platform/README.md` (governance repo) | Master nav key — doc index, sync rules, conflict protocol |
 | `platform/WORKING_AGREEMENT.md` | Rules of engagement, architecture constants, global build rules |
 | `platform/decisions/DECISION-003-abstraction-layer.md` | Abstraction layer — immutable |
 | `platform/decisions/DECISION-014-sm-task-custom-doctype.md` | SM Task is custom DocType, NOT ERPNext Task extension |
@@ -419,7 +435,8 @@ frappe-apps/sm_widgets/
 3. All data via abstraction layer — never direct Frappe calls
 4. Use `frontend/src/components/ui/` primitives
 5. Use brand tokens — never hardcode colors
-6. Register in Mojo registry
+6. Register in Mojo registry (`sparkmojo-internal/platform/MOJO_REGISTRY.md`)
+7. Add cross-links: feature spec → stories → MOJO_REGISTRY (see platform/README.md sync rules)
 
 ---
 
@@ -474,7 +491,7 @@ will abort if `frontend/` has uncommitted changes.
 ### When to use PRs vs direct commits
 
 | Change type | Workflow | Example |
-|-------------|----------|---------|
+|-------------|----------|---------| 
 | Story / feature work | PR on feature branch | New Mojo component, new DocType, new API route |
 | Bug fixes to app code | PR on feature branch | Fixing a broken component, controller logic |
 | Deploy/infra fixes | Direct to main | deploy.sh changes, Traefik routing, Docker config |
@@ -502,7 +519,7 @@ git branch -d story/STORY-NNN-short-description
 ```
 
 When creating PRs, use `gh pr create` (GitHub CLI). After the PR is merged,
-delete the remote branch: `gh pr merge --delete-branch`.
+delete the remote branch: `gh pr merge --delete-branch`
 
 ### Direct-to-main workflow (for fixes/docs/deploy)
 
@@ -516,4 +533,4 @@ Then deploy per the Deployment section above.
 
 ---
 
-*Last updated: March 27, 2026 — Session 6*
+*Last updated: March 27, 2026 — Session 7 (documentation rationalization)*
