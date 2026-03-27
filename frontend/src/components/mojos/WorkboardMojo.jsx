@@ -19,6 +19,7 @@ const REASON_REQUIRED_STATES = ['Blocked', 'Failed'];
 
 const TASK_TYPES = ['Action', 'Review', 'Approval', 'Input', 'Exception', 'Monitoring', 'System'];
 const PRIORITY_OPTIONS = ['Low', 'Medium', 'High', 'Urgent'];
+const SOURCE_SYSTEM_OPTIONS = ['Manual', 'Frappe', 'n8n', 'EHR', 'Stripe', 'AI'];
 
 async function fetchTasks(includeCompleted = false) {
   const params = new URLSearchParams({ view: 'all' });
@@ -107,6 +108,34 @@ async function postComplete(taskId, completionNote) {
   return resp.json();
 }
 
+function parseFrappeError(text, fallback) {
+  if (!text) return fallback;
+  try {
+    const parsed = JSON.parse(text);
+    // Frappe-style: { detail: "..." } or { detail: { message: "..." } }
+    if (parsed.detail) {
+      if (typeof parsed.detail === 'string') return parsed.detail;
+      if (parsed.detail.message) return parsed.detail.message;
+      if (parsed.detail.error) return parsed.detail.error;
+    }
+    // Frappe exc_type style: { exc_type: "ValidationError", message: "..." }
+    if (parsed.message) {
+      // Strip Python exception class prefixes like "ValidationError: ..."
+      const msg = String(parsed.message).replace(/^[\w.]+Error:\s*/i, '');
+      return msg || fallback;
+    }
+    // _server_messages format (Frappe)
+    if (parsed._server_messages) {
+      try {
+        const msgs = JSON.parse(parsed._server_messages);
+        const first = typeof msgs[0] === 'string' ? JSON.parse(msgs[0]) : msgs[0];
+        return first.message || fallback;
+      } catch { /* ignore */ }
+    }
+  } catch { /* not JSON */ }
+  return fallback;
+}
+
 async function postCreateTask(data) {
   const resp = await fetch(`${API_BASE}/create`, {
     method: 'POST',
@@ -116,12 +145,7 @@ async function postCreateTask(data) {
   });
   if (!resp.ok) {
     const text = await resp.text().catch(() => '');
-    let detail = `Failed to create task: ${resp.status}`;
-    try {
-      const parsed = JSON.parse(text);
-      detail = typeof parsed.detail === 'string' ? parsed.detail : JSON.stringify(parsed.detail) || detail;
-    } catch { /* ignore */ }
-    throw new Error(detail);
+    throw new Error(parseFrappeError(text, `Failed to create task: ${resp.status}`));
   }
   return resp.json();
 }
@@ -137,7 +161,8 @@ async function postAssign(taskId, assignedUser, assignedRole) {
     body: JSON.stringify(body),
   });
   if (!resp.ok) {
-    throw new Error(`Failed to assign task: ${resp.status}`);
+    const text = await resp.text().catch(() => '');
+    throw new Error(parseFrappeError(text, `Failed to save assignment. Please check the values and try again.`));
   }
   return resp.json();
 }
@@ -409,6 +434,7 @@ function TaskDetailDrawer({ task, loading, onClose, onUpdateState, onAddComment,
   const [assignRole, setAssignRole] = useState('');
   const [assignSaving, setAssignSaving] = useState(false);
   const [assignError, setAssignError] = useState(null);
+  const [completing, setCompleting] = useState(false);
   const commentInputRef = useRef(null);
 
   const isResolved = task ? RESOLVED_STATES.includes(task.canonical_state) : false;
@@ -773,10 +799,18 @@ function TaskDetailDrawer({ task, loading, onClose, onUpdateState, onAddComment,
               <div className="px-6 py-4 mt-auto">
                 <button
                   data-testid="complete-button"
-                  onClick={onComplete}
-                  className="w-full py-2.5 rounded-lg bg-[#FF6F61] text-white text-sm font-medium hover:bg-[#e5635a] transition-colors"
+                  disabled={completing}
+                  onClick={async () => {
+                    setCompleting(true);
+                    try {
+                      await onComplete();
+                    } finally {
+                      setCompleting(false);
+                    }
+                  }}
+                  className="w-full py-2.5 rounded-lg bg-[#FF6F61] text-white text-sm font-medium hover:bg-[#e5635a] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  Complete Task
+                  {completing ? 'Completing...' : 'Complete Task'}
                 </button>
               </div>
             )}
@@ -849,7 +883,7 @@ function ViewToggle({ viewMode, onViewChange }) {
 function CreateTaskModal({ open, onClose, onCreated }) {
   const [form, setForm] = useState({
     title: '', task_type: 'Action', priority: 'Medium',
-    assigned_user: '', assigned_role: '', due_at: '', source_system: '', description: '',
+    assigned_user: '', assigned_role: '', due_at: '', source_system: 'Manual', description: '',
   });
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState(null);
@@ -858,7 +892,7 @@ function CreateTaskModal({ open, onClose, onCreated }) {
     if (open) {
       setForm({
         title: '', task_type: 'Action', priority: 'Medium',
-        assigned_user: '', assigned_role: '', due_at: '', source_system: '', description: '',
+        assigned_user: '', assigned_role: '', due_at: '', source_system: 'Manual', description: '',
       });
       setError(null);
     }
@@ -951,7 +985,9 @@ function CreateTaskModal({ open, onClose, onCreated }) {
             </div>
             <div>
               <label className="text-xs text-gray-500 block mb-1">Source System</label>
-              <input type="text" value={form.source_system} onChange={(e) => handleChange('source_system', e.target.value)} className={inputClass} placeholder="e.g. Onboarding Workflow" />
+              <select data-testid="create-source-select" value={form.source_system} onChange={(e) => handleChange('source_system', e.target.value)} className={inputClass}>
+                {SOURCE_SYSTEM_OPTIONS.map((s) => <option key={s} value={s}>{s}</option>)}
+              </select>
             </div>
             <div>
               <label className="text-xs text-gray-500 block mb-1">Description</label>
@@ -1001,8 +1037,8 @@ function KanbanCard({ task, selected, onCardClick, index }) {
             <span className={cn('h-2 w-2 rounded-full shrink-0 mt-1', priorityColor)} />
             <span className="text-sm font-medium text-gray-900 line-clamp-2 min-w-0">{title}</span>
           </div>
-          <div className="flex items-center justify-between text-xs text-gray-400">
-            <span>
+          <div className="flex items-center gap-1 text-xs text-gray-400">
+            <span className="truncate">
               {is_unowned ? (
                 <span className="inline-flex items-center gap-1">
                   <span
@@ -1015,8 +1051,11 @@ function KanbanCard({ task, selected, onCardClick, index }) {
                 assigned_user || assigned_role || ''
               )}
             </span>
+            {due && (assigned_user || assigned_role || is_unowned) && (
+              <span className="shrink-0">&middot;</span>
+            )}
             {due && (
-              <span className={cn('tabular-nums', due.overdue ? 'text-red-500' : '')}>
+              <span className={cn('tabular-nums shrink-0', due.overdue ? 'text-red-500' : '')}>
                 {due.text}
               </span>
             )}
