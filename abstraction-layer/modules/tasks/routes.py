@@ -380,6 +380,62 @@ async def tasks_add_comment(
     return {"comments": updated_task.get("comments", [])}
 
 
+@router.get("/users")
+async def tasks_get_users(user: dict = Depends(get_current_user)):
+    """Return active system users eligible for task assignment."""
+    async with httpx.AsyncClient(base_url=FRAPPE_URL, headers=_headers()) as client:
+        resp = await client.get(
+            "/api/resource/User",
+            params={
+                "filters": json.dumps([
+                    ["enabled", "=", 1],
+                    ["user_type", "=", "System User"],
+                    ["name", "not in", ["Administrator", "Guest"]],
+                ]),
+                "fields": json.dumps(["name", "full_name", "first_name"]),
+                "limit_page_length": 100,
+            },
+            timeout=15,
+        )
+        if resp.status_code >= 400:
+            raise HTTPException(status_code=resp.status_code, detail=resp.json())
+        users = resp.json().get("data", [])
+        result = []
+        for u in users:
+            display = u.get("full_name") or u.get("first_name") or u["name"]
+            parts = display.strip().split()
+            initials = "".join(p[0].upper() for p in parts[:2])
+            result.append({
+                "email": u["name"],
+                "full_name": u.get("full_name", u["name"]),
+                "first_name": u.get("first_name", u["name"]),
+                "initials": initials or u["name"][:2].upper(),
+            })
+        return {"users": result}
+
+
+@router.get("/roles")
+async def tasks_get_roles(user: dict = Depends(get_current_user)):
+    """Return roles available for task assignment."""
+    EXCLUDED_ROLES = ["Administrator", "Guest", "All", "System Manager", "Desk User"]
+    async with httpx.AsyncClient(base_url=FRAPPE_URL, headers=_headers()) as client:
+        resp = await client.get(
+            "/api/resource/Role",
+            params={
+                "filters": json.dumps([
+                    ["name", "not in", EXCLUDED_ROLES],
+                ]),
+                "fields": json.dumps(["name"]),
+                "limit_page_length": 100,
+            },
+            timeout=15,
+        )
+        if resp.status_code >= 400:
+            raise HTTPException(status_code=resp.status_code, detail=resp.json())
+        roles = resp.json().get("data", [])
+        return {"roles": [{"name": r["name"]} for r in roles]}
+
+
 @router.post("/complete")
 async def tasks_complete(
     body: CompleteTaskBody,

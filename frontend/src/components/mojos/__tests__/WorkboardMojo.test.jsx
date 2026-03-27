@@ -867,6 +867,146 @@ describe('WorkboardMojo', () => {
     });
   });
 
+  // --- Round 3: Header parity tests ---
+
+  it('header renders mojo icon and "WorkboardMojo" title', async () => {
+    globalThis.fetch = mockFetchSuccess();
+    render(<WorkboardMojo />);
+    await waitFor(() => {
+      expect(screen.getAllByTestId('task-row')).toHaveLength(3);
+    });
+    expect(screen.getByTestId('mojo-icon')).toBeInTheDocument();
+    expect(screen.getByTestId('workboard-title')).toHaveTextContent('WorkboardMojo');
+    expect(screen.getByText('Tasks assigned to your team')).toBeInTheDocument();
+  });
+
+  it('view toggle shows pill-style List/Kanban segments', async () => {
+    globalThis.fetch = mockFetchSuccess();
+    render(<WorkboardMojo />);
+    await waitFor(() => {
+      expect(screen.getAllByTestId('task-row')).toHaveLength(3);
+    });
+    const toggle = screen.getByTestId('view-toggle');
+    expect(toggle).toBeInTheDocument();
+    // Pill container has border-radius via rounded-full class
+    expect(toggle.className).toContain('rounded-full');
+    expect(screen.getByTestId('view-toggle-list')).toHaveTextContent('List');
+    expect(screen.getByTestId('view-toggle-kanban')).toHaveTextContent('Kanban');
+  });
+
+  // --- Round 3: Unassigned row animation tests ---
+
+  it('truly unowned row (no assigned_user, no assigned_role) has unownedPulse animation class', async () => {
+    const tasksWithUnowned = [
+      ...MOCK_TASKS,
+      {
+        name: 'SM-TASK-UNOWNED',
+        title: 'Totally unowned task',
+        task_type: 'Action',
+        canonical_state: 'New',
+        priority: 'Medium',
+        due_at: null,
+        assigned_user: '',
+        assigned_role: '',
+        is_unowned: false,
+      },
+    ];
+    globalThis.fetch = mockFetchSuccess(tasksWithUnowned);
+    render(<WorkboardMojo />);
+    await waitFor(() => {
+      expect(screen.getAllByTestId('task-row')).toHaveLength(4);
+    });
+    // The unowned task row should have the animation class
+    const unownedRow = screen.getByText('Totally unowned task').closest('[data-testid="task-row"]');
+    expect(unownedRow.className).toContain('unowned-pulse-row');
+  });
+
+  it('owned row (assigned_user set) does NOT have animation class', async () => {
+    globalThis.fetch = mockFetchSuccess();
+    render(<WorkboardMojo />);
+    await waitFor(() => {
+      expect(screen.getAllByTestId('task-row')).toHaveLength(3);
+    });
+    const ownedRow = screen.getByText('Review quarterly report').closest('[data-testid="task-row"]');
+    expect(ownedRow.className).not.toContain('unowned-pulse-row');
+  });
+
+  it('unassigned badge shows for truly unowned tasks', async () => {
+    const tasksWithUnowned = [
+      ...MOCK_TASKS,
+      {
+        name: 'SM-TASK-UNOWNED2',
+        title: 'Badge test task',
+        task_type: 'Action',
+        canonical_state: 'New',
+        priority: 'Low',
+        due_at: null,
+        assigned_user: '',
+        assigned_role: '',
+        is_unowned: false,
+      },
+    ];
+    globalThis.fetch = mockFetchSuccess(tasksWithUnowned);
+    render(<WorkboardMojo />);
+    await waitFor(() => {
+      expect(screen.getAllByTestId('task-row')).toHaveLength(4);
+    });
+    const badges = screen.getAllByTestId('unassigned-badge');
+    expect(badges.length).toBeGreaterThanOrEqual(1);
+  });
+
+  // --- Round 3: AssignmentField in create modal ---
+
+  it('create modal shows AssignmentField with segmented toggle', async () => {
+    // Mock the /users and /roles endpoints too
+    const fetchMock = vi.fn((url) => {
+      if (url.includes('/api/modules/tasks/list')) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({ tasks: MOCK_TASKS }),
+          text: () => Promise.resolve(JSON.stringify({ tasks: MOCK_TASKS })),
+        });
+      }
+      if (url.includes('/api/modules/tasks/users')) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({
+            users: [
+              { email: 'alice@test.com', full_name: 'Alice Test', first_name: 'Alice', initials: 'AT' },
+            ],
+          }),
+        });
+      }
+      if (url.includes('/api/modules/tasks/roles')) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({
+            roles: [{ name: 'Support' }, { name: 'Finance' }],
+          }),
+        });
+      }
+      return Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve({}),
+        text: () => Promise.resolve(''),
+      });
+    });
+    globalThis.fetch = fetchMock;
+    render(<WorkboardMojo />);
+    await waitFor(() => {
+      expect(screen.getAllByTestId('task-row')).toHaveLength(3);
+    });
+    fireEvent.click(screen.getByTestId('new-task-button'));
+    await waitFor(() => {
+      expect(screen.getByTestId('create-task-modal')).toBeInTheDocument();
+    });
+    expect(screen.getByTestId('assignment-field')).toBeInTheDocument();
+    expect(screen.getByTestId('assignment-mode-toggle')).toBeInTheDocument();
+    expect(screen.getByTestId('assignment-mode-person')).toBeInTheDocument();
+    expect(screen.getByTestId('assignment-mode-role')).toBeInTheDocument();
+    expect(screen.getByTestId('assignment-mode-unassigned')).toBeInTheDocument();
+  });
+
   // --- BUG-006: parseFrappeError handles detail._server_messages ---
 
   it('parseFrappeError extracts message from detail._server_messages wrapper', async () => {
@@ -878,12 +1018,30 @@ describe('WorkboardMojo', () => {
         ])
       }
     });
-    const fetchMock = mockFetchSequence([
-      { ok: true, json: () => Promise.resolve({ tasks: MOCK_TASKS }), text: () => Promise.resolve('') },
-      { ok: true, json: () => Promise.resolve({ task: MOCK_FULL_TASK }), text: () => Promise.resolve('') },
-      // Assign fails with Frappe error
-      { ok: false, status: 417, text: () => Promise.resolve(frappeError), json: () => Promise.reject() },
-    ]);
+    let callIndex = 0;
+    const fetchMock = vi.fn((url) => {
+      if (url.includes('/api/modules/tasks/users')) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({ users: [{ email: 'notauser@fake.com', full_name: 'Fake User', first_name: 'Fake', initials: 'FU' }] }),
+        });
+      }
+      if (url.includes('/api/modules/tasks/roles')) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({ roles: [] }),
+        });
+      }
+      const responses = [
+        { ok: true, json: () => Promise.resolve({ tasks: MOCK_TASKS }), text: () => Promise.resolve('') },
+        { ok: true, json: () => Promise.resolve({ task: MOCK_FULL_TASK }), text: () => Promise.resolve('') },
+        // Assign fails with Frappe error
+        { ok: false, status: 417, text: () => Promise.resolve(frappeError), json: () => Promise.reject() },
+      ];
+      const resp = responses[callIndex] || responses[responses.length - 1];
+      callIndex++;
+      return Promise.resolve(resp);
+    });
     globalThis.fetch = fetchMock;
     render(<WorkboardMojo />);
     await waitFor(() => {
@@ -894,9 +1052,11 @@ describe('WorkboardMojo', () => {
     await waitFor(() => {
       expect(screen.getByTestId('edit-assign-button')).toBeInTheDocument();
     });
-    // Edit assignment
+    // Edit assignment — now uses AssignmentField; click person mode then save
     fireEvent.click(screen.getByTestId('edit-assign-button'));
-    fireEvent.change(screen.getByTestId('assign-user-input'), { target: { value: 'notauser@fake.com' } });
+    await waitFor(() => {
+      expect(screen.getByTestId('assign-edit-form')).toBeInTheDocument();
+    });
     fireEvent.click(screen.getByTestId('assign-save-button'));
     await waitFor(() => {
       // Should show parsed error, not "Failed to fetch"
