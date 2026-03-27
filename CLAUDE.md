@@ -147,9 +147,22 @@ Never emit `LOOP_COMPLETE` or mark a task done without running every gate.
 8. **n8n handles all cross-system operations.**
 9. **Background jobs use `frappe.enqueue()`.** Never Python threading.
 10. **New Mojo components go in `frontend/src/components/mojos/` only.**
-11. **Never install Frappe apps via bench without explicit story instruction.**
-    The frappe_types incident caused a VPS scheduler restart loop.
-    Create DocType files directly in existing apps instead.
+11. **Never run `bench install-app` or `bench get-app` without explicit story instruction.**
+    These commands add the app to `sites/apps.txt`, which makes Frappe try to
+    `import {app}.hooks` on every gunicorn request. If the Python package isn't
+    available to all worker processes, the entire Frappe Desk goes down with
+    `ModuleNotFoundError` — no partial failure, total outage.
+    History: `frappe_types` crashed the scheduler; `sm_widgets` crashed all of Desk.
+    **Instead:** Create DocType files directly in existing apps. If a new app is
+    truly needed, register it in `tabInstalled Application` via MariaDB only —
+    never in `apps.txt`.
+12. **`apps.txt` vs `tabInstalled Application` — know the difference.**
+    - `apps.txt` → Frappe imports `{app}.hooks` at startup. App MUST be pip-installed
+      in the bench venv. Adding an entry here without a working Python package = total outage.
+    - `tabInstalled Application` → database record for module routing and DocType discovery.
+      Safe to add via MariaDB INSERT. Does NOT trigger Python imports.
+    - For SM custom apps deployed via `docker cp`: add to `tabInstalled Application` only.
+      Never add to `apps.txt` unless the app is pip-installed in all Frappe containers.
 
 ---
 
