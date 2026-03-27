@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
 import { differenceInCalendarDays, parseISO, isToday, isTomorrow, isPast, format } from 'date-fns';
+import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 
 const API_BASE = (import.meta.env.VITE_FRAPPE_URL || 'http://localhost:8000') + '/api/modules/tasks';
 const SORT_STORAGE_KEY = 'workboard_sort_preference';
@@ -172,6 +173,8 @@ function compareTasks(a, b, field, direction) {
   return String(va).localeCompare(String(vb)) * dir;
 }
 
+// TODO: When task count exceeds ~100, move sorting server-side via order_by
+// query parameter to avoid client-side performance issues.
 function sortTasks(tasks, field, direction) {
   return [...tasks].sort((a, b) => compareTasks(a, b, field, direction));
 }
@@ -668,45 +671,53 @@ function ViewToggle({ viewMode, onViewChange }) {
   );
 }
 
-function KanbanCard({ task, selected, onCardClick }) {
+function KanbanCard({ task, selected, onCardClick, index }) {
   const { name, title, priority, due_at, assigned_user, assigned_role, is_unowned } = task;
   const due = formatDueDate(due_at);
   const priorityColor = PRIORITY_COLORS[priority] || PRIORITY_COLORS.Low;
 
   return (
-    <div
-      data-testid="kanban-card"
-      onClick={() => onCardClick(name)}
-      className={cn(
-        'bg-white rounded-lg border border-gray-200 p-3 cursor-pointer hover:border-gray-300 hover:shadow-sm transition-all',
-        selected && 'ring-1 ring-teal-500 border-teal-500'
-      )}
-    >
-      <div className="flex items-start gap-2 mb-2">
-        <span className={cn('h-2 w-2 rounded-full shrink-0 mt-1', priorityColor)} />
-        <span className="text-sm font-medium text-gray-900 line-clamp-2 min-w-0">{title}</span>
-      </div>
-      <div className="flex items-center justify-between text-xs text-gray-400">
-        <span>
-          {is_unowned ? (
-            <span className="inline-flex items-center gap-1">
-              <span
-                data-testid="kanban-unowned-pulse"
-                className="inline-block h-2 w-2 rounded-full bg-orange-400 animate-pulse"
-              />
-              {assigned_role || 'Unowned'}
-            </span>
-          ) : (
-            assigned_user || assigned_role || ''
+    <Draggable draggableId={name} index={index}>
+      {(provided, snapshot) => (
+        <div
+          ref={provided.innerRef}
+          {...provided.draggableProps}
+          {...provided.dragHandleProps}
+          data-testid="kanban-card"
+          onClick={() => onCardClick(name)}
+          className={cn(
+            'bg-white rounded-lg border border-gray-200 p-3 cursor-pointer hover:border-gray-300 transition-all',
+            selected && 'ring-1 ring-teal-500 border-teal-500',
+            snapshot.isDragging && 'shadow-lg border-teal-300'
           )}
-        </span>
-        {due && (
-          <span className={cn('tabular-nums', due.overdue ? 'text-red-500' : '')}>
-            {due.text}
-          </span>
-        )}
-      </div>
-    </div>
+        >
+          <div className="flex items-start gap-2 mb-2">
+            <span className={cn('h-2 w-2 rounded-full shrink-0 mt-1', priorityColor)} />
+            <span className="text-sm font-medium text-gray-900 line-clamp-2 min-w-0">{title}</span>
+          </div>
+          <div className="flex items-center justify-between text-xs text-gray-400">
+            <span>
+              {is_unowned ? (
+                <span className="inline-flex items-center gap-1">
+                  <span
+                    data-testid="kanban-unowned-pulse"
+                    className="inline-block h-2 w-2 rounded-full bg-orange-400 animate-pulse"
+                  />
+                  {assigned_role || 'Unowned'}
+                </span>
+              ) : (
+                assigned_user || assigned_role || ''
+              )}
+            </span>
+            {due && (
+              <span className={cn('tabular-nums', due.overdue ? 'text-red-500' : '')}>
+                {due.text}
+              </span>
+            )}
+          </div>
+        </div>
+      )}
+    </Draggable>
   );
 }
 
@@ -719,21 +730,34 @@ function KanbanColumn({ columnState, tasks, selectedTaskId, onCardClick }) {
           {tasks.length}
         </Badge>
       </div>
-      <div className="flex-1 space-y-2 px-1 overflow-y-auto">
-        {tasks.map((task) => (
-          <KanbanCard
-            key={task.name}
-            task={task}
-            selected={selectedTaskId === task.name}
-            onCardClick={onCardClick}
-          />
-        ))}
-      </div>
+      <Droppable droppableId={columnState}>
+        {(provided, snapshot) => (
+          <div
+            ref={provided.innerRef}
+            {...provided.droppableProps}
+            className={cn(
+              'flex-1 space-y-2 px-1 overflow-y-auto rounded-lg min-h-[60px] transition-colors',
+              snapshot.isDraggingOver && 'bg-teal-50'
+            )}
+          >
+            {tasks.map((task, index) => (
+              <KanbanCard
+                key={task.name}
+                task={task}
+                index={index}
+                selected={selectedTaskId === task.name}
+                onCardClick={onCardClick}
+              />
+            ))}
+            {provided.placeholder}
+          </div>
+        )}
+      </Droppable>
     </div>
   );
 }
 
-function KanbanBoard({ tasks, selectedTaskId, onCardClick }) {
+function KanbanBoard({ tasks, selectedTaskId, onCardClick, onDragEnd }) {
   const grouped = useMemo(() => {
     const groups = {};
     for (const col of KANBAN_COLUMNS) {
@@ -748,17 +772,19 @@ function KanbanBoard({ tasks, selectedTaskId, onCardClick }) {
   }, [tasks]);
 
   return (
-    <div data-testid="kanban-board" className="flex gap-3 p-3 overflow-x-auto h-full">
-      {KANBAN_COLUMNS.map((col) => (
-        <KanbanColumn
-          key={col}
-          columnState={col}
-          tasks={grouped[col]}
-          selectedTaskId={selectedTaskId}
-          onCardClick={onCardClick}
-        />
-      ))}
-    </div>
+    <DragDropContext onDragEnd={onDragEnd}>
+      <div data-testid="kanban-board" className="flex gap-3 p-3 overflow-x-auto h-full">
+        {KANBAN_COLUMNS.map((col) => (
+          <KanbanColumn
+            key={col}
+            columnState={col}
+            tasks={grouped[col]}
+            selectedTaskId={selectedTaskId}
+            onCardClick={onCardClick}
+          />
+        ))}
+      </div>
+    </DragDropContext>
   );
 }
 
@@ -832,6 +858,47 @@ export default function WorkboardMojo() {
     setViewMode(mode);
     saveViewPreference(mode);
   }, []);
+
+  const handleKanbanDragEnd = useCallback(async (result) => {
+    const { draggableId, source, destination } = result;
+    if (!destination || destination.droppableId === source.droppableId) return;
+
+    const newState = destination.droppableId;
+    const taskId = draggableId;
+
+    // Blocked requires a reason — prompt via drawer instead of dropping
+    if (REASON_REQUIRED_STATES.includes(newState)) {
+      setSelectedTaskId(taskId);
+      setDrawerLoading(true);
+      setDrawerTask(null);
+      try {
+        const data = await fetchTask(taskId);
+        setDrawerTask(data.task || data);
+      } catch {
+        showToast('Failed to load task details');
+        setSelectedTaskId(null);
+      } finally {
+        setDrawerLoading(false);
+      }
+      showToast(`Set status to ${newState} in the detail panel (reason required)`);
+      return;
+    }
+
+    // Optimistic update
+    const prevTasks = tasks;
+    setTasks((prev) =>
+      prev.map((t) =>
+        t.name === taskId ? { ...t, canonical_state: newState } : t
+      )
+    );
+
+    try {
+      await postUpdateState(taskId, newState, null);
+    } catch (err) {
+      setTasks(prevTasks);
+      showToast(err.message || 'Failed to update state');
+    }
+  }, [tasks, showToast]);
 
   const handleRowClick = useCallback(async (taskId) => {
     setSelectedTaskId(taskId);
@@ -962,6 +1029,7 @@ export default function WorkboardMojo() {
           tasks={tasks}
           selectedTaskId={selectedTaskId}
           onCardClick={handleRowClick}
+          onDragEnd={handleKanbanDragEnd}
         />
       )}
       <Toast message={toast.message} visible={toast.visible} />
