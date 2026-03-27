@@ -108,6 +108,35 @@ pytest tests/ --cov=. --cov-report=term-missing --cov-fail-under=70
 # Frappe — run from Frappe bench root (NOT from this repo)
 bench --site poc.sparkmojo.com migrate          # ALWAYS after any DocType change
 bench --site poc.sparkmojo.com console          # Interactive testing
+
+# POC deployment — run on server via ssh sparkmojo
+cd /home/ops/spark-mojo-platform && git pull
+sudo docker compose -f docker-compose.poc.yml build --no-cache poc-frontend   # frontend rebuild
+sudo docker compose -f docker-compose.poc.yml up -d poc-frontend              # restart frontend
+sudo docker compose -f docker-compose.poc.yml up -d poc-api                   # restart API
+# IMPORTANT: `up -d` must be a SINGLE LINE. If `-d` wraps to a new line the
+# shell runs `up` in attached mode and containers stop when the session ends.
+```
+
+---
+
+## Verifying Production Bundles
+
+Vite minifies all component and function names in production builds. **Never grep
+for a React component name** (e.g. `WorkboardMojo`) to verify it is in the bundle —
+the name will not survive minification.
+
+Instead, grep for **unique string literals** that the component defines:
+- API URL paths (e.g. `api/modules/tasks`)
+- localStorage keys (e.g. `workboard_sort_preference`)
+- Hard-coded display strings
+
+```bash
+# Wrong — will always return 0
+grep -c "WorkboardMojo" /usr/share/nginx/html/assets/index-*.js
+
+# Right — checks for a string literal the component must contain
+grep -c "api/modules/tasks" /usr/share/nginx/html/assets/index-*.js
 ```
 
 ---
