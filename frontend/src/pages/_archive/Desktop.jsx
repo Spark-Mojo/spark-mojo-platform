@@ -1,3 +1,5 @@
+// Archived: draggable widget desktop prototype.
+// May revisit as power-user mode in Phase 6+.
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { motion } from 'framer-motion';
 import {
