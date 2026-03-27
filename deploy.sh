@@ -374,10 +374,11 @@ phase_6() {
   # Verify index.html and bundle are in sync
   echo "  Verifying bundle hash sync..."
 
+  # Alpine sh in docker exec doesn't expand globs without sh -c
   BUNDLE=$(sudo docker exec "$FRONTEND_CONTAINER" \
-    ls /usr/share/nginx/html/assets/*.js 2>/dev/null | head -1 | xargs basename)
+    sh -c 'ls /usr/share/nginx/html/assets/*.js 2>/dev/null | head -1 | xargs basename' 2>/dev/null || echo "")
   REFERENCED=$(sudo docker exec "$FRONTEND_CONTAINER" \
-    grep -o 'assets/index-[^"]*\.js' /usr/share/nginx/html/index.html | head -1)
+    grep -o 'assets/index-[^"]*\.js' /usr/share/nginx/html/index.html 2>/dev/null | head -1 || echo "")
   REFERENCED_BASENAME=$(basename "$REFERENCED" 2>/dev/null || echo "")
 
   echo "  Bundle on disk: $BUNDLE"
