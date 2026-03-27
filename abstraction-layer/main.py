@@ -44,6 +44,19 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Global handler for unhandled httpx errors — converts them to proper
+# HTTPExceptions so CORS middleware adds headers and the browser can read the body.
+import httpx as _httpx
+
+@app.exception_handler(_httpx.HTTPStatusError)
+async def httpx_error_handler(request: Request, exc: _httpx.HTTPStatusError):
+    try:
+        detail = exc.response.json()
+    except Exception:
+        detail = {"error": exc.response.text or str(exc)}
+    raise HTTPException(status_code=exc.response.status_code or 502, detail=detail)
+
+
 # Dedicated capability routers (registered before generic catch-all)
 app.include_router(onboarding_router)
 app.include_router(google_auth_router)
