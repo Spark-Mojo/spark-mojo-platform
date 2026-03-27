@@ -182,6 +182,14 @@ phase_2() {
     done
 
     # Step 2b — Pip install in ALL containers
+    # Skip apps that have no pyproject.toml (not installable yet)
+    if [ ! -f "$FRAPPE_APPS_DIR/$APP/pyproject.toml" ] && [ ! -f "$FRAPPE_APPS_DIR/$APP/setup.py" ]; then
+      echo "  [2b] SKIP $APP — no pyproject.toml or setup.py (not a pip-installable app yet)"
+      echo "  [2c] SKIP $APP — not adding to apps.txt (no Python package)"
+      echo "  [2d] SKIP $APP — not adding to tabInstalled Application"
+      continue
+    fi
+
     echo "  [2b] Pip installing $APP..."
     for container in $ALL_FRAPPE_CONTAINERS; do
       if sudo docker ps --format '{{.Names}}' | grep -q "^${container}$"; then
@@ -219,7 +227,7 @@ if existing:
 else:
     frappe.get_doc({'doctype': 'Installed Application', 'app_name': '$APP', 'app_version': '0.0.1'}).insert(ignore_permissions=True)
     frappe.db.commit()
-    print('inserted')" 2>&1)
+    print('inserted')" 2>&1) || INSTALL_RESULT="bench_execute_failed"
     echo "    tabInstalled Application: $INSTALL_RESULT"
   done
 
