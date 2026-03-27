@@ -17,6 +17,7 @@ ALL_FRAPPE_CONTAINERS="$FRAPPE_BACKEND $FRAPPE_WORKERS"
 FRONTEND_CONTAINER="spark-mojo-platform-poc-frontend-1"
 FRAPPE_BENCH="/home/frappe/frappe-bench"
 FRAPPE_SITE="frontend"
+FRAPPE_APPS_DIR="frappe-apps"
 LOG_DIR="/home/ops/deploy-logs"
 START_TIME=$(date +%s)
 
@@ -110,6 +111,14 @@ phase_0() {
   fi
   echo "  Frappe backend: OK ($FRAPPE_BACKEND running)"
 
+  # Discover frappe apps
+  if [ -d "$FRAPPE_APPS_DIR" ]; then
+    DISCOVERED_APPS=$(ls -d "$FRAPPE_APPS_DIR"/*/ 2>/dev/null | xargs -I{} basename {} || true)
+    echo "  Frappe apps: $DISCOVERED_APPS"
+  else
+    echo "  Frappe apps: (none — $FRAPPE_APPS_DIR not found)"
+  fi
+
   echo "[Phase 0] Pre-flight PASSED"
 }
 
@@ -133,71 +142,93 @@ phase_1() {
 }
 
 # ══════════════════════════════════════════════════════════════════════════════
-# PHASE 2 — Sync sm_widgets into ALL Frappe containers
+# PHASE 2 — Sync ALL frappe-apps into Frappe containers
 # ══════════════════════════════════════════════════════════════════════════════
+#
+# Note: frappe-apps/ can also be volume-mounted into the Frappe containers
+# via compose.poc-apps.yml. When the volume mount is active, docker cp below
+# is a redundant safety sync — the mount is the canonical path.
+# Once volume mounts are confirmed stable, this phase can be reduced to just:
+#   pip install -e and apps.txt/tabInstalled Application checks.
+#
 phase_2() {
   echo ""
-  echo "[Phase 2] Syncing sm_widgets into Frappe containers..."
+  echo "[Phase 2] Syncing frappe-apps into Frappe containers..."
 
   cd "$DEPLOY_DIR"
 
-  # Step 2a — Copy app files into ALL containers
-  echo "  [2a] Copying sm_widgets app files..."
-  for container in $ALL_FRAPPE_CONTAINERS; do
-    if sudo docker ps --format '{{.Names}}' | grep -q "^${container}$"; then
-      sudo docker cp frappe-apps/sm_widgets "$container:$FRAPPE_BENCH/apps/"
-      echo "    Copied to $container"
-    else
-      echo "    SKIP: $container not running"
-    fi
-  done
-
-  # Step 2b — Pip install in ALL containers
-  echo "  [2b] Pip installing sm_widgets..."
-  for container in $ALL_FRAPPE_CONTAINERS; do
-    if sudo docker ps --format '{{.Names}}' | grep -q "^${container}$"; then
-      sudo docker exec "$container" bash -c \
-        "$FRAPPE_BENCH/env/bin/pip install -e $FRAPPE_BENCH/apps/sm_widgets -q" 2>&1 | tail -1
-      echo "    Installed in $container"
-    fi
-  done
-
-  # Step 2c — Ensure sm_widgets is in apps.txt
-  echo "  [2c] Checking apps.txt..."
-  if sudo docker exec "$FRAPPE_BACKEND" bash -c "grep -q sm_widgets $FRAPPE_BENCH/sites/apps.txt"; then
-    echo "    apps.txt: sm_widgets already present"
-  else
-    sudo docker exec "$FRAPPE_BACKEND" bash -c "echo sm_widgets >> $FRAPPE_BENCH/sites/apps.txt"
-    echo "    apps.txt: sm_widgets ADDED"
+  # Discover all app directories
+  APPS=$(ls -d "$FRAPPE_APPS_DIR"/*/ 2>/dev/null | xargs -I{} basename {} || true)
+  if [ -z "$APPS" ]; then
+    echo "  No apps found in $FRAPPE_APPS_DIR/ — skipping."
+    echo "[Phase 2] DONE (nothing to sync)"
+    return
   fi
+  echo "  Discovered apps: $APPS"
 
-  # apps.txt lives on a shared volume — but verify workers can see it too
-  for container in $FRAPPE_WORKERS; do
-    if sudo docker ps --format '{{.Names}}' | grep -q "^${container}$"; then
-      if ! sudo docker exec "$container" bash -c "grep -q sm_widgets $FRAPPE_BENCH/sites/apps.txt" 2>/dev/null; then
-        sudo docker exec "$container" bash -c "echo sm_widgets >> $FRAPPE_BENCH/sites/apps.txt" 2>/dev/null
-        echo "    apps.txt: sm_widgets added to $container"
+  for APP in $APPS; do
+    echo ""
+    echo "  ── Syncing $APP ──"
+
+    # Step 2a — Copy app files into ALL containers
+    echo "  [2a] Copying $APP app files..."
+    for container in $ALL_FRAPPE_CONTAINERS; do
+      if sudo docker ps --format '{{.Names}}' | grep -q "^${container}$"; then
+        sudo docker cp "$FRAPPE_APPS_DIR/$APP" "$container:$FRAPPE_BENCH/apps/"
+        echo "    Copied to $container"
+      else
+        echo "    SKIP: $container not running"
       fi
-    fi
-  done
+    done
 
-  # Step 2d — Ensure sm_widgets is in tabInstalled Application
-  echo "  [2d] Checking tabInstalled Application..."
-  INSTALL_RESULT=$(sudo docker exec "$FRAPPE_BACKEND" bench --site "$FRAPPE_SITE" execute \
-    "existing = frappe.db.get_value('Installed Application', {'app_name': 'sm_widgets'}, 'name')
+    # Step 2b — Pip install in ALL containers
+    echo "  [2b] Pip installing $APP..."
+    for container in $ALL_FRAPPE_CONTAINERS; do
+      if sudo docker ps --format '{{.Names}}' | grep -q "^${container}$"; then
+        sudo docker exec "$container" bash -c \
+          "$FRAPPE_BENCH/env/bin/pip install -e $FRAPPE_BENCH/apps/$APP -q 2>&1" | tail -1 || true
+        echo "    Installed in $container"
+      fi
+    done
+
+    # Step 2c — Ensure app is in apps.txt (on backend — shared volume propagates to workers)
+    echo "  [2c] Checking apps.txt for $APP..."
+    if sudo docker exec "$FRAPPE_BACKEND" bash -c "grep -q '^${APP}$' $FRAPPE_BENCH/sites/apps.txt"; then
+      echo "    apps.txt: $APP already present"
+    else
+      sudo docker exec "$FRAPPE_BACKEND" bash -c "echo $APP >> $FRAPPE_BENCH/sites/apps.txt"
+      echo "    apps.txt: $APP ADDED"
+    fi
+
+    # Verify workers can see it too (shared volume should propagate, but be safe)
+    for container in $FRAPPE_WORKERS; do
+      if sudo docker ps --format '{{.Names}}' | grep -q "^${container}$"; then
+        if ! sudo docker exec "$container" bash -c "grep -q '^${APP}$' $FRAPPE_BENCH/sites/apps.txt" 2>/dev/null; then
+          sudo docker exec "$container" bash -c "echo $APP >> $FRAPPE_BENCH/sites/apps.txt" 2>/dev/null || true
+          echo "    apps.txt: $APP added to $container"
+        fi
+      fi
+    done
+
+    # Step 2d — Ensure app is in tabInstalled Application
+    echo "  [2d] Checking tabInstalled Application for $APP..."
+    INSTALL_RESULT=$(sudo docker exec "$FRAPPE_BACKEND" bench --site "$FRAPPE_SITE" execute \
+      "existing = frappe.db.get_value('Installed Application', {'app_name': '$APP'}, 'name')
 if existing:
     print('already_present')
 else:
-    frappe.get_doc({'doctype': 'Installed Application', 'app_name': 'sm_widgets', 'app_version': '0.0.1'}).insert(ignore_permissions=True)
+    frappe.get_doc({'doctype': 'Installed Application', 'app_name': '$APP', 'app_version': '0.0.1'}).insert(ignore_permissions=True)
     frappe.db.commit()
     print('inserted')" 2>&1)
-  echo "    tabInstalled Application: $INSTALL_RESULT"
+    echo "    tabInstalled Application: $INSTALL_RESULT"
+  done
 
-  echo "[Phase 2] sm_widgets sync DONE"
+  echo ""
+  echo "[Phase 2] All apps synced"
 }
 
 # ══════════════════════════════════════════════════════════════════════════════
-# PHASE 3 — Run bench migrate
+# PHASE 3 — Run bench migrate (once, for all apps)
 # ══════════════════════════════════════════════════════════════════════════════
 phase_3() {
   echo ""
@@ -215,17 +246,34 @@ phase_3() {
     exit 1
   fi
 
-  # Verify SM Task exists
-  echo "  Verifying SM Task DocType..."
-  SM_TASK_CHECK=$(sudo docker exec "$FRAPPE_BACKEND" bench --site "$FRAPPE_SITE" execute \
-    "print(frappe.db.exists('DocType', 'SM Task'))" 2>&1)
+  # Verify DocTypes from VERIFY.txt files
+  echo "  Verifying DocTypes from VERIFY.txt..."
+  cd "$DEPLOY_DIR"
+  VERIFY_PASS=true
+  for APP_DIR in "$FRAPPE_APPS_DIR"/*/; do
+    APP=$(basename "$APP_DIR")
+    VERIFY_FILE="$APP_DIR/VERIFY.txt"
+    if [ -f "$VERIFY_FILE" ]; then
+      DOCTYPE=$(head -1 "$VERIFY_FILE" | tr -d '\r\n')
+      if [ -n "$DOCTYPE" ]; then
+        DT_CHECK=$(sudo docker exec "$FRAPPE_BACKEND" bench --site "$FRAPPE_SITE" execute \
+          "print(frappe.db.exists('DocType', '$DOCTYPE'))" 2>&1)
+        if echo "$DT_CHECK" | grep -q "$DOCTYPE"; then
+          echo "    $APP: $DOCTYPE EXISTS"
+        else
+          echo "    $APP: $DOCTYPE NOT FOUND"
+          echo "    Check app directory structure (see CLAUDE.md 'New DocType / Module Pattern')."
+          echo "    bench execute output: $DT_CHECK"
+          VERIFY_PASS=false
+        fi
+      fi
+    else
+      echo "    $APP: no VERIFY.txt — skipping DocType check"
+    fi
+  done
 
-  if echo "$SM_TASK_CHECK" | grep -q "SM Task"; then
-    echo "  SM Task DocType: EXISTS"
-  else
-    echo "ABORT: SM Task DocType not found after migrate."
-    echo "  Check app directory structure (see CLAUDE.md 'New DocType / Module Pattern')."
-    echo "  bench execute output: $SM_TASK_CHECK"
+  if [ "$VERIFY_PASS" = false ]; then
+    echo "ABORT: One or more DocType verifications failed after migrate."
     exit 1
   fi
 
@@ -349,83 +397,103 @@ phase_7() {
   echo "[Phase 7] End-to-end verification..."
   echo ""
 
+  cd "$DEPLOY_DIR"
   PASS_COUNT=0
   FAIL_COUNT=0
+  TOTAL_CHECKS=0
 
   # CHECK 1 — Frappe ping
+  TOTAL_CHECKS=$((TOTAL_CHECKS + 1))
   if curl -s --max-time 10 https://poc.sparkmojo.com/api/method/frappe.ping | grep -q "pong"; then
-    echo "  1/6  Frappe ping                  PASS"
+    echo "  Frappe ping                       PASS"
     PASS_COUNT=$((PASS_COUNT + 1))
   else
-    echo "  1/6  Frappe ping                  FAIL"
+    echo "  Frappe ping                       FAIL"
     FAIL_COUNT=$((FAIL_COUNT + 1))
   fi
 
   # CHECK 2 — Health endpoint
+  TOTAL_CHECKS=$((TOTAL_CHECKS + 1))
   HEALTH_RESULT=$(curl -s --max-time 10 https://poc.sparkmojo.com/health 2>/dev/null || echo "")
   if echo "$HEALTH_RESULT" | grep -q '"status"'; then
-    echo "  2/6  Health endpoint               PASS"
+    echo "  Health endpoint                    PASS"
     PASS_COUNT=$((PASS_COUNT + 1))
   else
-    echo "  2/6  Health endpoint               FAIL"
+    echo "  Health endpoint                    FAIL"
     echo "       Response: $(echo "$HEALTH_RESULT" | head -c 200)"
     FAIL_COUNT=$((FAIL_COUNT + 1))
   fi
 
-  # CHECK 3 — SM Task accessible via REST API
-  # A PermissionError proves the DocType exists and Frappe routes to it (auth required).
-  # DoesNotExistError means the DocType is missing — that's the real failure.
-  SM_API_RESULT=$(curl -s --max-time 10 "https://poc.sparkmojo.com/api/resource/SM%20Task?limit=1" 2>/dev/null || echo "")
-  if echo "$SM_API_RESULT" | grep -q '"data"'; then
-    echo "  3/6  SM Task REST API              PASS"
-    PASS_COUNT=$((PASS_COUNT + 1))
-  elif echo "$SM_API_RESULT" | grep -q "PermissionError"; then
-    echo "  3/6  SM Task REST API              PASS (auth required — DocType exists)"
-    PASS_COUNT=$((PASS_COUNT + 1))
-  else
-    echo "  3/6  SM Task REST API              FAIL"
-    echo "       Response: $(echo "$SM_API_RESULT" | head -c 200)"
-    FAIL_COUNT=$((FAIL_COUNT + 1))
-  fi
-
-  # CHECK 4 — Abstraction layer tasks/list (must NOT be Frappe DoesNotExistError)
+  # CHECK 3 — Abstraction layer tasks/list (must NOT be Frappe DoesNotExistError)
+  TOTAL_CHECKS=$((TOTAL_CHECKS + 1))
   AL_RESULT=$(curl -s --max-time 10 https://poc.sparkmojo.com/api/modules/tasks/list 2>/dev/null || echo "")
   if echo "$AL_RESULT" | python3 -c "import sys,json; d=json.load(sys.stdin); sys.exit(0 if 'DoesNotExistError' not in str(d) and 'exc_type' not in str(d) else 1)" 2>/dev/null; then
-    echo "  4/6  Abstraction layer tasks/list  PASS"
+    echo "  Abstraction layer tasks/list       PASS"
     PASS_COUNT=$((PASS_COUNT + 1))
   else
-    echo "  4/6  Abstraction layer tasks/list  FAIL"
+    echo "  Abstraction layer tasks/list       FAIL"
     echo "       Response: $(echo "$AL_RESULT" | head -c 200)"
     FAIL_COUNT=$((FAIL_COUNT + 1))
   fi
 
-  # CHECK 5 — Frontend loads with root element
+  # CHECK 4 — Frontend loads with root element
+  TOTAL_CHECKS=$((TOTAL_CHECKS + 1))
   FE_RESULT=$(curl -s --max-time 10 https://app.poc.sparkmojo.com 2>/dev/null || echo "")
   if echo "$FE_RESULT" | grep -q 'id="root"'; then
-    echo "  5/6  Frontend root element         PASS"
+    echo "  Frontend root element              PASS"
     PASS_COUNT=$((PASS_COUNT + 1))
   else
-    echo "  5/6  Frontend root element         FAIL"
+    echo "  Frontend root element              FAIL"
     FAIL_COUNT=$((FAIL_COUNT + 1))
   fi
 
-  # CHECK 6 — SM Task DocType exists in Frappe
-  SM_DT_RESULT=$(sudo docker exec "$FRAPPE_BACKEND" bench --site "$FRAPPE_SITE" execute \
-    "print(frappe.db.exists('DocType', 'SM Task'))" 2>/dev/null || echo "")
-  if echo "$SM_DT_RESULT" | grep -q "SM Task"; then
-    echo "  6/6  SM Task DocType               PASS"
-    PASS_COUNT=$((PASS_COUNT + 1))
-  else
-    echo "  6/6  SM Task DocType               FAIL"
-    echo "       Result: $SM_DT_RESULT"
-    FAIL_COUNT=$((FAIL_COUNT + 1))
-  fi
+  # CHECK 5+ — Per-app DocType checks from VERIFY.txt
+  for APP_DIR in "$FRAPPE_APPS_DIR"/*/; do
+    APP=$(basename "$APP_DIR")
+    VERIFY_FILE="$APP_DIR/VERIFY.txt"
+    if [ -f "$VERIFY_FILE" ]; then
+      DOCTYPE=$(head -1 "$VERIFY_FILE" | tr -d '\r\n')
+      if [ -n "$DOCTYPE" ]; then
+        TOTAL_CHECKS=$((TOTAL_CHECKS + 1))
+
+        # Check via Frappe REST API (PermissionError = DocType exists but auth needed)
+        ENCODED_DT=$(python3 -c "import urllib.parse; print(urllib.parse.quote('$DOCTYPE'))")
+        API_RESULT=$(curl -s --max-time 10 "https://poc.sparkmojo.com/api/resource/${ENCODED_DT}?limit=1" 2>/dev/null || echo "")
+        if echo "$API_RESULT" | grep -q '"data"'; then
+          echo "  $APP: $DOCTYPE API               PASS"
+          PASS_COUNT=$((PASS_COUNT + 1))
+        elif echo "$API_RESULT" | grep -q "PermissionError"; then
+          echo "  $APP: $DOCTYPE API               PASS (auth required)"
+          PASS_COUNT=$((PASS_COUNT + 1))
+        else
+          echo "  $APP: $DOCTYPE API               FAIL"
+          echo "       Response: $(echo "$API_RESULT" | head -c 200)"
+          FAIL_COUNT=$((FAIL_COUNT + 1))
+        fi
+
+        # Also check via bench execute
+        TOTAL_CHECKS=$((TOTAL_CHECKS + 1))
+        DT_RESULT=$(sudo docker exec "$FRAPPE_BACKEND" bench --site "$FRAPPE_SITE" execute \
+          "print(frappe.db.exists('DocType', '$DOCTYPE'))" 2>/dev/null || echo "")
+        if echo "$DT_RESULT" | grep -q "$DOCTYPE"; then
+          echo "  $APP: $DOCTYPE DocType            PASS"
+          PASS_COUNT=$((PASS_COUNT + 1))
+        else
+          echo "  $APP: $DOCTYPE DocType            FAIL"
+          echo "       Result: $DT_RESULT"
+          FAIL_COUNT=$((FAIL_COUNT + 1))
+        fi
+      fi
+    else
+      echo "  $APP: no VERIFY.txt — skipped"
+    fi
+  done
 
   # Summary
   echo ""
   echo "=========================================="
   ELAPSED=$(( $(date +%s) - START_TIME ))
-  echo "  Results: $PASS_COUNT/6 passed, $FAIL_COUNT/6 failed"
+  echo "  Results: $PASS_COUNT/$TOTAL_CHECKS passed, $FAIL_COUNT/$TOTAL_CHECKS failed"
   echo "  Elapsed: ${ELAPSED}s"
   echo "  Log: $LOG_FILE"
   echo "=========================================="
