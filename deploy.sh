@@ -373,9 +373,14 @@ phase_7() {
   fi
 
   # CHECK 3 — SM Task accessible via REST API
+  # A PermissionError proves the DocType exists and Frappe routes to it (auth required).
+  # DoesNotExistError means the DocType is missing — that's the real failure.
   SM_API_RESULT=$(curl -s --max-time 10 "https://poc.sparkmojo.com/api/resource/SM%20Task?limit=1" 2>/dev/null || echo "")
   if echo "$SM_API_RESULT" | grep -q '"data"'; then
     echo "  3/6  SM Task REST API              PASS"
+    PASS_COUNT=$((PASS_COUNT + 1))
+  elif echo "$SM_API_RESULT" | grep -q "PermissionError"; then
+    echo "  3/6  SM Task REST API              PASS (auth required — DocType exists)"
     PASS_COUNT=$((PASS_COUNT + 1))
   else
     echo "  3/6  SM Task REST API              FAIL"
