@@ -5,7 +5,7 @@ import * as Collapsible from '@radix-ui/react-collapsible';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
-import { differenceInCalendarDays, parseISO, isToday, isTomorrow, isPast, format } from 'date-fns';
+import { parseISO, isToday, isTomorrow, isPast, format } from 'date-fns';
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 
 const API_BASE = (import.meta.env.VITE_FRAPPE_URL || 'http://localhost:8000') + '/api/modules/tasks';
@@ -108,31 +108,46 @@ async function postComplete(taskId, completionNote) {
   return resp.json();
 }
 
+function extractServerMessages(raw) {
+  if (!raw) return null;
+  try {
+    const msgs = typeof raw === 'string' ? JSON.parse(raw) : raw;
+    if (!Array.isArray(msgs) || msgs.length === 0) return null;
+    const first = typeof msgs[0] === 'string' ? JSON.parse(msgs[0]) : msgs[0];
+    const msg = first?.message || (typeof first === 'string' ? first : null);
+    if (!msg) return null;
+    return msg.replace(/^[\w.]+Error:\s*/i, '').trim() || null;
+  } catch { return null; }
+}
+
 function parseFrappeError(text, fallback) {
   if (!text) return fallback;
   try {
-    const parsed = JSON.parse(text);
-    // Frappe-style: { detail: "..." } or { detail: { message: "..." } }
-    if (parsed.detail) {
-      if (typeof parsed.detail === 'string') return parsed.detail;
-      if (parsed.detail.message) return parsed.detail.message;
+    const parsed = typeof text === 'string' ? JSON.parse(text) : text;
+
+    // Check top-level _server_messages
+    const topMsg = extractServerMessages(parsed._server_messages);
+    if (topMsg) return topMsg;
+
+    // Check nested detail._server_messages (abstraction layer wrapper)
+    if (parsed.detail && typeof parsed.detail === 'object') {
+      const nestedMsg = extractServerMessages(parsed.detail._server_messages);
+      if (nestedMsg) return nestedMsg;
+      if (parsed.detail.message) return String(parsed.detail.message).replace(/^[\w.]+Error:\s*/i, '').trim();
       if (parsed.detail.error) return parsed.detail.error;
     }
-    // Frappe exc_type style: { exc_type: "ValidationError", message: "..." }
+    if (typeof parsed.detail === 'string') return parsed.detail;
+
+    // Frappe exc_type style: { message: "..." }
     if (parsed.message) {
-      // Strip Python exception class prefixes like "ValidationError: ..."
-      const msg = String(parsed.message).replace(/^[\w.]+Error:\s*/i, '');
-      return msg || fallback;
-    }
-    // _server_messages format (Frappe)
-    if (parsed._server_messages) {
-      try {
-        const msgs = JSON.parse(parsed._server_messages);
-        const first = typeof msgs[0] === 'string' ? JSON.parse(msgs[0]) : msgs[0];
-        return first.message || fallback;
-      } catch { /* ignore */ }
+      return String(parsed.message).replace(/^[\w.]+Error:\s*/i, '').trim() || fallback;
     }
   } catch { /* not JSON */ }
+
+  // Handle network-level errors
+  if (text && typeof text === 'object' && text.message === 'Failed to fetch') {
+    return 'Could not connect — please check your connection and try again';
+  }
   return fallback;
 }
 
@@ -173,6 +188,30 @@ const TYPE_COLORS = {
   Approval: 'bg-orange-100 text-orange-800',
 };
 
+const TYPE_BADGE_STYLES = {
+  Action:   { bg: '#E6F2F2', text: '#006666' },
+  Review:   { bg: '#FFF8E6', text: '#B45309' },
+  Approval: { bg: '#FFF0EE', text: '#FF6F61' },
+};
+
+const STATUS_COLORS = {
+  'New':         { bg: '#F1F5F9', text: '#64748B' },
+  'Ready':       { bg: '#E6F2F2', text: '#006666' },
+  'In Progress': { bg: '#EFF6FF', text: '#2563EB' },
+  'Waiting':     { bg: '#FFF8E6', text: '#B45309' },
+  'Blocked':     { bg: '#FFF0EE', text: '#DC2626' },
+  'Failed':      { bg: '#FEE2E2', text: '#B91C1C' },
+  'Completed':   { bg: '#F0FDF4', text: '#16A34A' },
+  'Canceled':    { bg: '#F8FAFC', text: '#94A3B8' },
+};
+
+const PRIORITY_STRIPE = {
+  Urgent: '#E53935',
+  High:   '#FF6F61',
+  Medium: '#FFB300',
+  Low:    '#B0BEC5',
+};
+
 const PRIORITY_COLORS = {
   Urgent: 'bg-red-500',
   High: 'bg-orange-400',
@@ -180,28 +219,42 @@ const PRIORITY_COLORS = {
   Low: 'bg-gray-400',
 };
 
-const PRIORITY_ORDER = { Urgent: 0, High: 1, Medium: 2, Low: 3 };
+const FILTER_TABS = ['All', 'Action', 'Review', 'Approval'];
 
-const SORT_OPTIONS = [
-  { key: 'due_at', label: 'Due Date' },
-  { key: 'priority', label: 'Priority' },
-  { key: 'created_at', label: 'Created Date' },
-  { key: 'canonical_state', label: 'Status' },
+const TABLE_COLUMNS = [
+  { key: 'title', label: 'TASK', sortable: true, width: 'flex-1 min-w-0' },
+  { key: 'task_type', label: 'TYPE', sortable: true, width: 'w-[90px]' },
+  { key: 'canonical_state', label: 'STATUS', sortable: true, width: 'w-[100px]' },
+  { key: 'source_system', label: 'SOURCE', sortable: false, width: 'w-[90px]' },
+  { key: 'due_at', label: 'DUE DATE', sortable: true, width: 'w-[100px]' },
+  { key: 'assigned_user', label: 'ASSIGNED', sortable: false, width: 'w-[130px]' },
+  { key: '_actions', label: 'ACTIONS', sortable: false, width: 'w-[80px]' },
 ];
 
-function truncateTitle(title, max = 60) {
-  if (!title) return '';
-  return title.length > max ? title.slice(0, max) + '...' : title;
-}
+const PRIORITY_ORDER = { Urgent: 0, High: 1, Medium: 2, Low: 3 };
 
 function formatDueDate(dueAt) {
   if (!dueAt) return null;
   const date = parseISO(dueAt);
-  if (isToday(date)) return { text: 'Today', overdue: false };
-  if (isTomorrow(date)) return { text: 'Tomorrow', overdue: false };
-  if (isPast(date)) return { text: 'Overdue', overdue: true };
-  const days = differenceInCalendarDays(date, new Date());
-  return { text: `${days} days`, overdue: false };
+  if (isToday(date)) return { text: 'Today', overdue: false, warn: true };
+  if (isTomorrow(date)) return { text: 'Tomorrow', overdue: false, warn: true };
+  if (isPast(date)) return { text: 'Overdue', overdue: true, warn: false };
+  return { text: format(date, 'MMM d'), overdue: false, warn: false };
+}
+
+function getInitials(name) {
+  if (!name) return '?';
+  const parts = name.replace(/@.*$/, '').split(/[.\-_\s]+/).filter(Boolean);
+  if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
+  return (parts[0] || '?').slice(0, 2).toUpperCase();
+}
+
+function getFirstName(email) {
+  if (!email) return '';
+  const local = email.split('@')[0];
+  const parts = local.split(/[.\-_]+/);
+  const name = parts[0] || '';
+  return name.charAt(0).toUpperCase() + name.slice(1);
 }
 
 function formatTimestamp(ts) {
@@ -290,136 +343,233 @@ function DrawerSkeleton() {
   );
 }
 
-function SortToolbar({ sortField, sortDirection, onSortChange }) {
+function StatsBar({ tasks }) {
+  const stats = useMemo(() => {
+    let active = 0, urgent = 0, overdue = 0, waiting = 0;
+    for (const t of tasks) {
+      if (!RESOLVED_STATES.includes(t.canonical_state)) {
+        active++;
+        if (t.priority === 'Urgent') urgent++;
+        if (t.due_at && isPast(parseISO(t.due_at)) && !isToday(parseISO(t.due_at))) overdue++;
+        if (t.canonical_state === 'Waiting') waiting++;
+      }
+    }
+    return { active, urgent, overdue, waiting };
+  }, [tasks]);
+
+  const cards = [
+    { label: 'Active Tasks', value: stats.active, testId: 'stat-active' },
+    { label: 'Urgent', value: stats.urgent, testId: 'stat-urgent' },
+    { label: 'Overdue', value: stats.overdue, testId: 'stat-overdue' },
+    { label: 'Waiting', value: stats.waiting, testId: 'stat-waiting' },
+  ];
+
   return (
-    <div data-testid="sort-toolbar" className="flex items-center gap-2 px-4 py-2 border-b border-gray-200">
-      {SORT_OPTIONS.map((opt) => (
+    <div data-testid="stats-bar" className="grid grid-cols-4 gap-3 px-4 py-3">
+      {cards.map((c) => (
+        <div key={c.testId} data-testid={c.testId} className="bg-white rounded-lg border border-[#E2E8EB] px-4 py-3">
+          <div className="text-[28px] font-bold text-[#006666] leading-tight">{c.value}</div>
+          <div className="text-[11px] text-[#6B7A84] mt-0.5">{c.label}</div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function FilterTabs({ activeTab, onTabChange, showCompleted, onToggleCompleted }) {
+  return (
+    <div data-testid="filter-tabs" className="flex items-center gap-1 px-4 py-2 border-b border-[#E2E8EB]">
+      {FILTER_TABS.map((tab) => (
         <button
-          key={opt.key}
-          data-testid={`sort-chip-${opt.key}`}
-          onClick={() => onSortChange(opt.key, opt.key === sortField ? sortDirection : 'asc')}
+          key={tab}
+          data-testid={`filter-tab-${tab.toLowerCase()}`}
+          onClick={() => onTabChange(tab)}
           className={cn(
-            'text-xs px-2.5 py-1 rounded-full font-medium transition-colors',
-            opt.key === sortField
-              ? 'bg-teal-600 text-white'
-              : 'bg-white text-gray-600 border border-gray-200 hover:border-gray-300'
+            'text-xs px-3 py-1.5 font-medium transition-colors border-b-2',
+            activeTab === tab
+              ? 'border-[#006666] text-[#006666]'
+              : 'border-transparent text-[#6B7A84] hover:text-[#34424A]'
           )}
         >
-          {opt.label}
+          {tab}
         </button>
       ))}
+      <div className="flex-1" />
       <button
-        data-testid="sort-direction-toggle"
-        onClick={() => onSortChange(sortField, sortDirection === 'asc' ? 'desc' : 'asc')}
-        className="text-xs text-gray-400 hover:text-gray-600 ml-1 px-1.5 py-1"
-        aria-label={`Sort ${sortDirection === 'asc' ? 'descending' : 'ascending'}`}
+        data-testid="filter-show-completed"
+        onClick={onToggleCompleted}
+        className={cn(
+          'text-xs px-3 py-1.5 font-medium transition-colors border-b-2',
+          showCompleted
+            ? 'border-[#006666] text-[#006666]'
+            : 'border-transparent text-[#6B7A84] hover:text-[#34424A]'
+        )}
       >
-        {sortDirection === 'asc' ? '\u2191' : '\u2193'}
+        Show Completed
       </button>
     </div>
   );
 }
 
-function TaskRow({ task, claimingId, onClaim, selected, onRowClick }) {
+function ColumnHeaders({ sortField, sortDirection, onSortChange }) {
+  return (
+    <div data-testid="column-headers" className="flex items-center gap-2 px-3 py-2.5 bg-[#F0F4F5] border-b border-[#E2E8EB]" style={{ paddingLeft: 'calc(4px + 12px)' }}>
+      {TABLE_COLUMNS.map((col) => (
+        <div
+          key={col.key}
+          data-testid={`col-header-${col.key}`}
+          className={cn('shrink-0 flex items-center gap-1', col.width, col.sortable && 'cursor-pointer select-none')}
+          onClick={col.sortable ? () => {
+            if (sortField === col.key) {
+              onSortChange(col.key, sortDirection === 'asc' ? 'desc' : 'asc');
+            } else {
+              onSortChange(col.key, 'asc');
+            }
+          } : undefined}
+        >
+          <span className="text-[11px] font-bold text-[#6B7A84] uppercase tracking-wider">{col.label}</span>
+          {col.sortable && (
+            <span className={cn('text-[10px]', sortField === col.key ? 'text-[#006666]' : 'text-[#B0BEC5]')}>
+              {sortField === col.key ? (sortDirection === 'asc' ? '\u2191' : '\u2193') : '\u2195'}
+            </span>
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function TaskRow({ task, claimingId, onClaim, selected, onRowClick, onViewClick }) {
   const { name, title, task_type, canonical_state, priority, due_at, source_system, assigned_user, assigned_role, is_unowned } = task;
   const due = formatDueDate(due_at);
-  const typeColor = TYPE_COLORS[task_type] || 'bg-[var(--color-slate,#34424A)] text-white';
-  const priorityColor = PRIORITY_COLORS[priority] || PRIORITY_COLORS.Low;
   const isClaiming = claimingId === name;
   const isResolved = RESOLVED_STATES.includes(canonical_state);
+  const stripeColor = PRIORITY_STRIPE[priority] || PRIORITY_STRIPE.Low;
+  const typeBadge = TYPE_BADGE_STYLES[task_type] || { bg: '#F1F5F9', text: '#64748B' };
+  const statusBadge = STATUS_COLORS[canonical_state] || STATUS_COLORS.New;
 
   return (
     <div
       data-testid="task-row"
       onClick={() => onRowClick(name)}
       className={cn(
-        'flex items-center gap-3 px-3 py-2.5 hover:bg-gray-50 transition-colors cursor-pointer',
-        selected && 'bg-gray-50',
-        due?.overdue && 'border-l-[3px] border-l-red-500',
+        'flex items-center gap-2 px-3 h-[52px] border-b border-[#E2E8EB] transition-colors cursor-pointer',
+        selected ? 'bg-[#f0f7f7]' : 'hover:bg-[#f5fafa]',
         isResolved && 'opacity-60'
       )}
+      style={{ borderLeft: `4px solid ${isResolved ? '#B0BEC5' : stripeColor}` }}
     >
-      {/* Priority dot */}
-      <span
-        data-testid="priority-dot"
-        className={cn('h-2.5 w-2.5 rounded-full shrink-0', priorityColor)}
-      />
+      {/* TASK — title + ID */}
+      <div className="flex-1 min-w-0 pr-2">
+        <div className={cn('text-sm font-medium text-[#34424A] truncate', isResolved && 'line-through')}>
+          {title}
+        </div>
+        <div className="text-[11px] text-[#94A3B8]">{name}</div>
+      </div>
 
-      {/* Title */}
-      <span className={cn(
-        'flex-1 text-sm font-medium text-gray-900 truncate min-w-0',
-        isResolved && 'line-through'
-      )}>
-        {truncateTitle(title)}
-      </span>
+      {/* TYPE badge */}
+      <div className="w-[90px] shrink-0">
+        {task_type && (
+          <span
+            data-testid="type-badge"
+            className="inline-block text-[10px] font-medium px-2 py-0.5 rounded-full"
+            style={{ backgroundColor: typeBadge.bg, color: typeBadge.text }}
+          >
+            {task_type}
+          </span>
+        )}
+      </div>
 
-      {/* Task type badge */}
-      <Badge className={cn('text-[10px] px-2 py-0.5 rounded-full shrink-0 border-0 font-medium', typeColor)}>
-        {task_type || 'Task'}
-      </Badge>
-
-      {/* State badge */}
-      <Badge className="text-[10px] px-2 py-0.5 rounded-full shrink-0 font-medium bg-slate-100 text-slate-700 border-0">
-        {canonical_state || 'New'}
-      </Badge>
-
-      {/* Due date */}
-      {due && (
+      {/* STATUS badge */}
+      <div className="w-[100px] shrink-0">
         <span
-          data-testid="due-date"
-          className={cn(
-            'text-xs shrink-0 font-mono tabular-nums',
-            due.overdue ? 'text-red-500 font-medium' : 'text-gray-500'
-          )}
+          data-testid="status-badge"
+          className="inline-block text-[10px] font-medium px-2 py-0.5 rounded-full"
+          style={{ backgroundColor: statusBadge.bg, color: statusBadge.text }}
         >
-          {due.text}
+          {canonical_state || 'New'}
         </span>
-      )}
+      </div>
 
-      {/* Source system badge */}
-      {source_system && (
-        <Badge
-          data-testid="source-system-badge"
-          className="text-[10px] px-2 py-0.5 rounded-full shrink-0 font-normal bg-gray-100 text-gray-500 border-0"
-        >
-          {source_system}
-        </Badge>
-      )}
+      {/* SOURCE */}
+      <div className="w-[90px] shrink-0">
+        {source_system && (
+          <span
+            data-testid="source-badge"
+            className="inline-block text-[10px] px-2 py-0.5 rounded-full border border-[#E2E8EB] text-[#6B7A84]"
+          >
+            {source_system}
+          </span>
+        )}
+      </div>
 
-      {/* Assigned user / role */}
-      <span className="text-xs text-gray-400 shrink-0 w-20 text-right truncate">
-        {is_unowned ? (
-          <span className="inline-flex items-center gap-1">
-            <span
-              data-testid="unowned-pulse"
-              className="inline-block h-2 w-2 rounded-full bg-orange-400 animate-pulse"
-            />
-            {assigned_role || 'Unowned'}
+      {/* DUE DATE */}
+      <div className="w-[100px] shrink-0">
+        {due ? (
+          <span
+            data-testid="due-date"
+            className={cn(
+              'text-xs tabular-nums',
+              due.overdue ? 'text-[#FF6F61] font-medium' : due.warn ? 'text-[#B45309] font-medium' : 'text-[#34424A]'
+            )}
+          >
+            {due.text}
           </span>
         ) : (
-          assigned_user || assigned_role || ''
+          <span className="text-xs text-[#B0BEC5]">&mdash;</span>
         )}
-      </span>
+      </div>
 
-      {/* Claim button — hidden for resolved tasks */}
-      {is_unowned && !isResolved && (
-        <button
-          data-testid="claim-button"
-          disabled={isClaiming}
-          onClick={(e) => { e.stopPropagation(); onClaim(name); }}
-          className={cn(
-            'text-xs px-2.5 py-1 rounded font-medium shrink-0 transition-colors',
-            'text-teal-600 hover:text-teal-800 hover:bg-teal-50',
-            isClaiming && 'opacity-50 cursor-not-allowed'
-          )}
-        >
-          {isClaiming ? (
-            <span data-testid="claim-spinner" className="inline-block h-3 w-3 border-2 border-teal-200 border-t-teal-600 rounded-full animate-spin" />
-          ) : (
-            'Claim'
-          )}
-        </button>
-      )}
+      {/* ASSIGNED — initials avatar + name */}
+      <div className="w-[130px] shrink-0 flex items-center gap-1.5">
+        {is_unowned ? (
+          <span className="inline-flex items-center gap-1.5">
+            <span className="flex items-center justify-center h-6 w-6 rounded-full bg-[#E2E8EB] text-[#6B7A84]">
+              <span data-testid="unowned-pulse" className="inline-block h-2 w-2 rounded-full bg-orange-400 animate-pulse" />
+            </span>
+            <span className="text-xs text-[#6B7A84] italic truncate">{assigned_role || 'Unowned'}</span>
+          </span>
+        ) : assigned_user ? (
+          <span className="inline-flex items-center gap-1.5">
+            <span className="flex items-center justify-center h-6 w-6 rounded-full bg-[#006666] text-white text-[10px] font-bold shrink-0">
+              {getInitials(assigned_user)}
+            </span>
+            <span className="text-xs text-[#34424A] truncate">{getFirstName(assigned_user)}</span>
+          </span>
+        ) : assigned_role ? (
+          <span className="text-xs text-[#6B7A84] italic truncate">{assigned_role}</span>
+        ) : (
+          <span className="text-xs text-[#B0BEC5]">&mdash;</span>
+        )}
+      </div>
+
+      {/* ACTIONS — View or Claim */}
+      <div className="w-[80px] shrink-0 flex justify-end">
+        {is_unowned && !isResolved ? (
+          <button
+            data-testid="claim-button"
+            disabled={isClaiming}
+            onClick={(e) => { e.stopPropagation(); onClaim(name); }}
+            className={cn(
+              'text-[11px] px-3 py-1 rounded border font-medium transition-colors',
+              'border-[#006666] text-[#006666] hover:bg-[#006666] hover:text-white',
+              isClaiming && 'opacity-50 cursor-not-allowed'
+            )}
+          >
+            {isClaiming ? (
+              <span data-testid="claim-spinner" className="inline-block h-3 w-3 border-2 border-teal-200 border-t-teal-600 rounded-full animate-spin" />
+            ) : 'Claim'}
+          </button>
+        ) : (
+          <button
+            data-testid="view-button"
+            onClick={(e) => { e.stopPropagation(); onViewClick(name); }}
+            className="text-[11px] px-3 py-1 rounded border border-[#006666] text-[#006666] hover:bg-[#006666] hover:text-white font-medium transition-colors"
+          >
+            View
+          </button>
+        )}
+      </div>
     </div>
   );
 }
@@ -1143,6 +1293,7 @@ export default function WorkboardMojo() {
   const [sortPref, setSortPref] = useState(loadSortPreference);
   const [viewMode, setViewMode] = useState(loadViewPreference);
   const [showCompleted, setShowCompleted] = useState(false);
+  const [filterTab, setFilterTab] = useState('All');
   const [createModalOpen, setCreateModalOpen] = useState(false);
 
   // Drawer state
@@ -1347,9 +1498,17 @@ export default function WorkboardMojo() {
     );
   }, [drawerTask]);
 
+  const filtered = useMemo(() => {
+    let result = tasks;
+    if (filterTab !== 'All') {
+      result = result.filter((t) => t.task_type === filterTab);
+    }
+    return result;
+  }, [tasks, filterTab]);
+
   const sorted = useMemo(
-    () => sortTasks(tasks, sortPref.field, sortPref.direction),
-    [tasks, sortPref.field, sortPref.direction]
+    () => sortTasks(filtered, sortPref.field, sortPref.direction),
+    [filtered, sortPref.field, sortPref.direction]
   );
 
   if (loading) return <LoadingSkeleton />;
@@ -1362,7 +1521,7 @@ export default function WorkboardMojo() {
     );
   }
 
-  if (sorted.length === 0) {
+  if (tasks.length === 0) {
     return (
       <div data-testid="empty-state" className="flex flex-col items-center justify-center h-full p-8 gap-3">
         <div className="w-16 h-16 rounded-full bg-gray-100 flex items-center justify-center">
@@ -1376,56 +1535,71 @@ export default function WorkboardMojo() {
   }
 
   return (
-    <div className="relative flex flex-col h-full bg-gray-50 text-gray-900 overflow-hidden">
-      <div className="bg-white border-b border-gray-200 px-4 py-2.5 flex items-center justify-between flex-shrink-0">
-        <h2 className="text-base font-semibold text-gray-900">
+    <div className="relative flex flex-col h-full bg-[#F8F9FA] text-[#34424A] overflow-hidden">
+      {/* Header bar */}
+      <div className="bg-white border-b border-[#E2E8EB] px-4 py-2.5 flex items-center justify-between flex-shrink-0">
+        <h2 className="text-base font-semibold text-[#34424A]">
           Workboard
         </h2>
         <div className="flex items-center gap-2">
           <button
-            data-testid="toggle-completed"
-            onClick={handleToggleCompleted}
-            className={cn(
-              'text-xs px-2.5 py-1 rounded transition-colors',
-              showCompleted
-                ? 'bg-gray-200 text-gray-700'
-                : 'text-gray-400 hover:text-gray-600 hover:bg-gray-100'
-            )}
-          >
-            {showCompleted ? 'Hide Completed' : 'Show Completed'}
-          </button>
-          <button
             data-testid="new-task-button"
             onClick={() => setCreateModalOpen(true)}
-            className="text-xs px-2.5 py-1 rounded bg-[var(--color-primary,#006666)] text-white hover:opacity-90 transition-colors"
+            className="text-xs px-3 py-1.5 rounded-md bg-[#006666] text-white hover:opacity-90 transition-colors font-medium"
           >
             + New Task
           </button>
           <ViewToggle viewMode={viewMode} onViewChange={handleViewChange} />
         </div>
       </div>
-      {viewMode === 'list' && (
-        <SortToolbar
-          sortField={sortPref.field}
-          sortDirection={sortPref.direction}
-          onSortChange={handleSortChange}
-        />
-      )}
+
       {viewMode === 'list' ? (
-        <div className="flex-1 overflow-y-auto">
-          <div className="bg-white rounded-lg border border-gray-200 mx-3 mt-3 overflow-hidden divide-y divide-gray-100">
-          {sorted.map((task) => (
-            <TaskRow
-              key={task.name}
-              task={task}
-              claimingId={claimingId}
-              onClaim={handleClaim}
-              selected={selectedTaskId === task.name}
-              onRowClick={handleRowClick}
-            />
-          ))}
+        <>
+          {/* Stats bar */}
+          <StatsBar tasks={tasks} />
+
+          {/* Filter tabs */}
+          <FilterTabs
+            activeTab={filterTab}
+            onTabChange={setFilterTab}
+            showCompleted={showCompleted}
+            onToggleCompleted={handleToggleCompleted}
+          />
+
+          {/* Column headers */}
+          <ColumnHeaders
+            sortField={sortPref.field}
+            sortDirection={sortPref.direction}
+            onSortChange={handleSortChange}
+          />
+
+          {/* Table body */}
+          <div className="flex-1 overflow-y-auto">
+            <div className="bg-white">
+              {sorted.map((task) => (
+                <TaskRow
+                  key={task.name}
+                  task={task}
+                  claimingId={claimingId}
+                  onClaim={handleClaim}
+                  selected={selectedTaskId === task.name}
+                  onRowClick={handleRowClick}
+                  onViewClick={handleRowClick}
+                />
+              ))}
+              {sorted.length === 0 && (
+                <div className="py-8 text-center text-sm text-[#94A3B8]">
+                  No tasks match the current filter.
+                </div>
+              )}
+            </div>
           </div>
-        </div>
+
+          {/* Table footer */}
+          <div data-testid="table-footer" className="bg-white border-t border-[#E2E8EB] px-4 py-2 flex-shrink-0">
+            <span className="text-xs text-[#6B7A84]">Showing {sorted.length} task{sorted.length !== 1 ? 's' : ''}</span>
+          </div>
+        </>
       ) : (
         <KanbanBoard
           tasks={tasks}
