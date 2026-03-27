@@ -162,15 +162,14 @@ describe('WorkboardMojo', () => {
     expect(overdueBadges.length).toBeGreaterThanOrEqual(1);
   });
 
-  it('shows pulsing indicator for unowned tasks', async () => {
+  it('shows unassigned badge for tasks without assigned_user', async () => {
     globalThis.fetch = mockFetchSuccess();
     render(<WorkboardMojo />);
     await waitFor(() => {
       expect(screen.getAllByTestId('task-row')).toHaveLength(3);
     });
-    const pulses = screen.getAllByTestId('unowned-pulse');
-    expect(pulses.length).toBeGreaterThanOrEqual(1);
-    expect(pulses[0]).toHaveClass('animate-pulse');
+    const badges = screen.getAllByTestId('unassigned-badge');
+    expect(badges.length).toBeGreaterThanOrEqual(1);
   });
 
   // --- Stats bar tests ---
@@ -181,10 +180,13 @@ describe('WorkboardMojo', () => {
     await waitFor(() => {
       expect(screen.getByTestId('stats-bar')).toBeInTheDocument();
     });
-    expect(screen.getByTestId('stat-active')).toHaveTextContent('3');
-    expect(screen.getByTestId('stat-urgent')).toHaveTextContent('1');
-    expect(screen.getByTestId('stat-overdue')).toHaveTextContent('1');
-    expect(screen.getByTestId('stat-waiting')).toHaveTextContent('0');
+    // Count-up animation — wait for final values to settle
+    await waitFor(() => {
+      expect(screen.getByTestId('stat-active').textContent).toMatch(/^3/);
+      expect(screen.getByTestId('stat-urgent').textContent).toMatch(/^1/);
+      expect(screen.getByTestId('stat-overdue').textContent).toMatch(/^1/);
+      expect(screen.getByTestId('stat-waiting').textContent).toMatch(/^0/);
+    });
   });
 
   // --- Filter tabs tests ---
@@ -258,7 +260,7 @@ describe('WorkboardMojo', () => {
 
   // --- Priority stripe tests ---
 
-  it('renders left priority stripe on each row', async () => {
+  it('renders left priority stripe on owned rows', async () => {
     globalThis.fetch = mockFetchSuccess();
     render(<WorkboardMojo />);
     await waitFor(() => {
@@ -269,9 +271,8 @@ describe('WorkboardMojo', () => {
     expect(rows[0].style.borderLeft).toMatch(/rgb\(229,\s*57,\s*53\)/);
     // SM-TASK-001 (High) — coral stripe (rgb(255, 111, 97))
     expect(rows[1].style.borderLeft).toMatch(/rgb\(255,\s*111,\s*97\)/);
-    // SM-TASK-003 (Medium) — gold stripe (rgb(255, 179, 0))
-    expect(rows[2].style.borderLeft).toMatch(/rgb\(255,\s*179,\s*0\)/);
-
+    // SM-TASK-003 (no assigned_user) — border controlled by unowned-pulse-row animation class, not inline style
+    expect(rows[2].className).toContain('unowned-pulse-row');
   });
 
   // --- View button tests ---
@@ -364,7 +365,6 @@ describe('WorkboardMojo', () => {
     await waitFor(() => {
       expect(screen.queryByTestId('claim-button')).not.toBeInTheDocument();
     });
-    expect(screen.queryByTestId('unowned-pulse')).not.toBeInTheDocument();
   });
 
   it('shows "already claimed" toast on 409 response', async () => {
@@ -869,18 +869,17 @@ describe('WorkboardMojo', () => {
 
   // --- Round 3: Header parity tests ---
 
-  it('header renders mojo icon and "WorkboardMojo" title', async () => {
+  it('header renders mojo icon and "Workboard" title', async () => {
     globalThis.fetch = mockFetchSuccess();
     render(<WorkboardMojo />);
     await waitFor(() => {
       expect(screen.getAllByTestId('task-row')).toHaveLength(3);
     });
     expect(screen.getByTestId('mojo-icon')).toBeInTheDocument();
-    expect(screen.getByTestId('workboard-title')).toHaveTextContent('WorkboardMojo');
-    expect(screen.getByText('Tasks assigned to your team')).toBeInTheDocument();
+    expect(screen.getByTestId('workboard-title')).toHaveTextContent('Workboard');
   });
 
-  it('view toggle shows pill-style List/Kanban segments', async () => {
+  it('view toggle shows individual pill-style List/Kanban buttons', async () => {
     globalThis.fetch = mockFetchSuccess();
     render(<WorkboardMojo />);
     await waitFor(() => {
@@ -888,37 +887,34 @@ describe('WorkboardMojo', () => {
     });
     const toggle = screen.getByTestId('view-toggle');
     expect(toggle).toBeInTheDocument();
-    // Pill container has border-radius via rounded-full class
-    expect(toggle.className).toContain('rounded-full');
+    // Individual pills, not a connected segmented control
+    expect(toggle.className).not.toContain('rounded-full');
     expect(screen.getByTestId('view-toggle-list')).toHaveTextContent('List');
     expect(screen.getByTestId('view-toggle-kanban')).toHaveTextContent('Kanban');
   });
 
   // --- Round 3: Unassigned row animation tests ---
 
-  it('truly unowned row (no assigned_user, no assigned_role) has unownedPulse animation class', async () => {
-    const tasksWithUnowned = [
-      ...MOCK_TASKS,
-      {
-        name: 'SM-TASK-UNOWNED',
-        title: 'Totally unowned task',
-        task_type: 'Action',
-        canonical_state: 'New',
-        priority: 'Medium',
-        due_at: null,
-        assigned_user: '',
-        assigned_role: '',
-        is_unowned: false,
-      },
-    ];
-    globalThis.fetch = mockFetchSuccess(tasksWithUnowned);
+  it('role-queue task (assigned_role set, no assigned_user) has unownedPulse animation class', async () => {
+    globalThis.fetch = mockFetchSuccess();
     render(<WorkboardMojo />);
     await waitFor(() => {
-      expect(screen.getAllByTestId('task-row')).toHaveLength(4);
+      expect(screen.getAllByTestId('task-row')).toHaveLength(3);
     });
-    // The unowned task row should have the animation class
-    const unownedRow = screen.getByText('Totally unowned task').closest('[data-testid="task-row"]');
-    expect(unownedRow.className).toContain('unowned-pulse-row');
+    // SM-TASK-003 has assigned_role='Support' but no assigned_user — should animate
+    const roleQueueRow = screen.getByText('Process customer refund').closest('[data-testid="task-row"]');
+    expect(roleQueueRow.className).toContain('unowned-pulse-row');
+  });
+
+  it('role-queue task shows Claim button', async () => {
+    globalThis.fetch = mockFetchSuccess();
+    render(<WorkboardMojo />);
+    await waitFor(() => {
+      expect(screen.getAllByTestId('task-row')).toHaveLength(3);
+    });
+    // SM-TASK-003 has no assigned_user — should show Claim
+    const claimButtons = screen.getAllByTestId('claim-button');
+    expect(claimButtons).toHaveLength(1);
   });
 
   it('owned row (assigned_user set) does NOT have animation class', async () => {
@@ -931,7 +927,32 @@ describe('WorkboardMojo', () => {
     expect(ownedRow.className).not.toContain('unowned-pulse-row');
   });
 
-  it('unassigned badge shows for truly unowned tasks', async () => {
+  it('assigned task (assigned_user set) shows View button and has no animation', async () => {
+    globalThis.fetch = mockFetchSuccess();
+    render(<WorkboardMojo />);
+    await waitFor(() => {
+      expect(screen.getAllByTestId('task-row')).toHaveLength(3);
+    });
+    const ownedRow = screen.getByText('Review quarterly report').closest('[data-testid="task-row"]');
+    expect(ownedRow.className).not.toContain('unowned-pulse-row');
+    // Owned rows show View buttons
+    const viewButtons = screen.getAllByTestId('view-button');
+    expect(viewButtons).toHaveLength(2);
+  });
+
+  it('unassigned badge shows role name when role is set', async () => {
+    globalThis.fetch = mockFetchSuccess();
+    render(<WorkboardMojo />);
+    await waitFor(() => {
+      expect(screen.getAllByTestId('task-row')).toHaveLength(3);
+    });
+    // SM-TASK-003 has assigned_role='Support' — badge should show "⚠ Support"
+    const badges = screen.getAllByTestId('unassigned-badge');
+    expect(badges.length).toBeGreaterThanOrEqual(1);
+    expect(badges[0].textContent).toContain('Support');
+  });
+
+  it('fully unassigned task badge shows "Unassigned"', async () => {
     const tasksWithUnowned = [
       ...MOCK_TASKS,
       {
@@ -952,7 +973,10 @@ describe('WorkboardMojo', () => {
       expect(screen.getAllByTestId('task-row')).toHaveLength(4);
     });
     const badges = screen.getAllByTestId('unassigned-badge');
-    expect(badges.length).toBeGreaterThanOrEqual(1);
+    // One should say "Unassigned" (no role), one should say "Support" (role set)
+    const texts = badges.map(b => b.textContent);
+    expect(texts.some(t => t.includes('Unassigned'))).toBe(true);
+    expect(texts.some(t => t.includes('Support'))).toBe(true);
   });
 
   // --- Round 3: AssignmentField in create modal ---

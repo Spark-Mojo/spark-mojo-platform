@@ -222,7 +222,7 @@ const PRIORITY_COLORS = {
 
 const FILTER_TABS = ['All', 'Action', 'Review', 'Approval'];
 
-const isUnowned = (task) => !task.assigned_user && !task.assigned_role;
+const isUnownedByUser = (task) => !task.assigned_user;
 
 const TABLE_COLUMNS = [
   { key: 'title', label: 'TASK', sortable: true, width: 'flex-1 min-w-0' },
@@ -346,6 +346,59 @@ function DrawerSkeleton() {
   );
 }
 
+function useCountUp(target, duration = 600) {
+  const [count, setCount] = useState(0);
+  const prevTarget = useRef(target);
+
+  useEffect(() => {
+    if (target === 0) { setCount(0); return; }
+    const from = prevTarget.current === target ? 0 : prevTarget.current;
+    prevTarget.current = target;
+    const start = performance.now();
+    let raf;
+    const step = (now) => {
+      const elapsed = now - start;
+      const progress = Math.min(elapsed / duration, 1);
+      const eased = 1 - Math.pow(1 - progress, 3); // ease-out cubic
+      setCount(Math.round(from + (target - from) * eased));
+      if (progress < 1) raf = requestAnimationFrame(step);
+    };
+    raf = requestAnimationFrame(step);
+    return () => { if (raf) cancelAnimationFrame(raf); };
+  }, [target, duration]);
+  return count;
+}
+
+function StatCard({ label, value, testId, iconSvg, iconBg }) {
+  const display = useCountUp(value, 600);
+  return (
+    <div data-testid={testId} className="flex items-center gap-3 bg-white rounded-lg border border-[#E2E8EB] p-3 flex-1 min-w-0">
+      <div className={cn('p-2 rounded-lg', iconBg)}>
+        {iconSvg}
+      </div>
+      <div className="min-w-0">
+        <div className="text-xl font-bold text-gray-900">{display}</div>
+        <div className="text-xs text-gray-500 truncate">{label}</div>
+      </div>
+    </div>
+  );
+}
+
+const STAT_ICONS = {
+  active: (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M8 1a7 7 0 100 14A7 7 0 008 1z" stroke="currentColor" strokeWidth="1.5"/><path d="M5.5 8l2 2 3.5-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+  ),
+  urgent: (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M8 1.5L14.5 13H1.5L8 1.5z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round"/><path d="M8 6v3M8 11h.01" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
+  ),
+  overdue: (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="6.5" stroke="currentColor" strokeWidth="1.5"/><path d="M8 4.5V8l2.5 1.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+  ),
+  waiting: (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="6.5" stroke="currentColor" strokeWidth="1.5"/><path d="M6 6v4M10 6v4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
+  ),
+};
+
 function StatsBar({ tasks }) {
   const stats = useMemo(() => {
     let active = 0, urgent = 0, overdue = 0, waiting = 0;
@@ -361,19 +414,16 @@ function StatsBar({ tasks }) {
   }, [tasks]);
 
   const cards = [
-    { label: 'Active Tasks', value: stats.active, testId: 'stat-active' },
-    { label: 'Urgent', value: stats.urgent, testId: 'stat-urgent' },
-    { label: 'Overdue', value: stats.overdue, testId: 'stat-overdue' },
-    { label: 'Waiting', value: stats.waiting, testId: 'stat-waiting' },
+    { label: 'Active Tasks', value: stats.active, testId: 'stat-active', iconSvg: STAT_ICONS.active, iconBg: 'bg-teal-100 text-teal-700' },
+    { label: 'Urgent', value: stats.urgent, testId: 'stat-urgent', iconSvg: STAT_ICONS.urgent, iconBg: 'bg-red-100 text-red-700' },
+    { label: 'Overdue', value: stats.overdue, testId: 'stat-overdue', iconSvg: STAT_ICONS.overdue, iconBg: 'bg-amber-100 text-amber-700' },
+    { label: 'Waiting', value: stats.waiting, testId: 'stat-waiting', iconSvg: STAT_ICONS.waiting, iconBg: 'bg-slate-100 text-slate-700' },
   ];
 
   return (
-    <div data-testid="stats-bar" className="grid grid-cols-4 gap-3 px-4 py-3">
+    <div data-testid="stats-bar" className="flex gap-3 px-4 py-3">
       {cards.map((c) => (
-        <div key={c.testId} data-testid={c.testId} className="bg-white rounded-lg border border-[#E2E8EB] px-4 py-3">
-          <div className="text-[28px] font-bold text-[#006666] leading-tight">{c.value}</div>
-          <div className="text-[11px] text-[#6B7A84] mt-0.5">{c.label}</div>
-        </div>
+        <StatCard key={c.testId} {...c} />
       ))}
     </div>
   );
@@ -443,14 +493,14 @@ function ColumnHeaders({ sortField, sortDirection, onSortChange }) {
 }
 
 function TaskRow({ task, claimingId, onClaim, selected, onRowClick, onViewClick }) {
-  const { name, title, task_type, canonical_state, priority, due_at, source_system, assigned_user, assigned_role, is_unowned } = task;
+  const { name, title, task_type, canonical_state, priority, due_at, source_system, assigned_user, assigned_role } = task;
   const due = formatDueDate(due_at);
   const isClaiming = claimingId === name;
   const isResolved = RESOLVED_STATES.includes(canonical_state);
   const stripeColor = PRIORITY_STRIPE[priority] || PRIORITY_STRIPE.Low;
   const typeBadge = TYPE_BADGE_STYLES[task_type] || { bg: '#F1F5F9', text: '#64748B' };
   const statusBadge = STATUS_COLORS[canonical_state] || STATUS_COLORS.New;
-  const unowned = isUnowned(task);
+  const unowned = isUnownedByUser(task);
 
   return (
     <div
@@ -531,38 +581,27 @@ function TaskRow({ task, claimingId, onClaim, selected, onRowClick, onViewClick 
 
       {/* ASSIGNED — initials avatar + name */}
       <div className="w-[130px] shrink-0 flex items-center gap-1.5">
-        {unowned ? (
-          <span
-            data-testid="unassigned-badge"
-            className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-white text-[11px] font-bold"
-            style={{ backgroundColor: '#FF6F61' }}
-          >
-            &#9888; Unassigned
-          </span>
-        ) : is_unowned ? (
-          <span className="inline-flex items-center gap-1.5">
-            <span className="flex items-center justify-center h-6 w-6 rounded-full bg-[#E2E8EB] text-[#6B7A84]">
-              <span data-testid="unowned-pulse" className="inline-block h-2 w-2 rounded-full bg-orange-400 animate-pulse" />
-            </span>
-            <span className="text-xs text-[#6B7A84] italic truncate">{assigned_role || 'Unowned'}</span>
-          </span>
-        ) : assigned_user ? (
+        {assigned_user ? (
           <span className="inline-flex items-center gap-1.5">
             <span className="flex items-center justify-center h-6 w-6 rounded-full bg-[#006666] text-white text-[10px] font-bold shrink-0">
               {getInitials(assigned_user)}
             </span>
             <span className="text-xs text-[#34424A] truncate">{getFirstName(assigned_user)}</span>
           </span>
-        ) : assigned_role ? (
-          <span className="text-xs text-[#6B7A84] italic truncate">{assigned_role}</span>
         ) : (
-          <span className="text-xs text-[#B0BEC5]">&mdash;</span>
+          <span
+            data-testid="unassigned-badge"
+            className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-white text-[11px] font-bold"
+            style={{ backgroundColor: '#FF6F61' }}
+          >
+            &#9888; {assigned_role || 'Unassigned'}
+          </span>
         )}
       </div>
 
       {/* ACTIONS — View or Claim */}
       <div className="w-[80px] shrink-0 flex justify-end">
-        {is_unowned && !isResolved ? (
+        {!assigned_user && !isResolved ? (
           <button
             data-testid="claim-button"
             disabled={isClaiming}
@@ -1000,34 +1039,32 @@ function saveViewPreference(mode) {
 
 function ViewToggle({ viewMode, onViewChange }) {
   return (
-    <div data-testid="view-toggle" className="inline-flex rounded-full border border-[#006666] overflow-hidden" style={{ height: 34 }}>
+    <div data-testid="view-toggle" className="flex items-center gap-1">
       <button
         data-testid="view-toggle-list"
         onClick={() => onViewChange('list')}
         className={cn(
-          'px-3 text-[13px] font-medium transition-colors whitespace-nowrap',
+          'px-3 py-1.5 rounded text-sm font-medium transition-colors',
           viewMode === 'list'
-            ? 'bg-[#006666] text-white'
-            : 'bg-white text-[#34424A] hover:bg-[#f0f7f7]'
+            ? 'bg-teal-100 text-teal-700'
+            : 'text-gray-500 hover:text-gray-700'
         )}
         aria-label="List view"
-        style={{ fontFamily: 'Inter, sans-serif' }}
       >
-        &#9776; List
+        List
       </button>
       <button
         data-testid="view-toggle-kanban"
         onClick={() => onViewChange('kanban')}
         className={cn(
-          'px-3 text-[13px] font-medium transition-colors whitespace-nowrap',
+          'px-3 py-1.5 rounded text-sm font-medium transition-colors',
           viewMode === 'kanban'
-            ? 'bg-[#006666] text-white'
-            : 'bg-white text-[#34424A] hover:bg-[#f0f7f7]'
+            ? 'bg-teal-100 text-teal-700'
+            : 'text-gray-500 hover:text-gray-700'
         )}
         aria-label="Kanban view"
-        style={{ fontFamily: 'Inter, sans-serif' }}
       >
-        &#8862; Kanban
+        Kanban
       </button>
     </div>
   );
@@ -1168,10 +1205,10 @@ function CreateTaskModal({ open, onClose, onCreated }) {
 }
 
 function KanbanCard({ task, selected, onCardClick, index }) {
-  const { name, title, priority, due_at, assigned_user, assigned_role, is_unowned } = task;
+  const { name, title, priority, due_at, assigned_user, assigned_role } = task;
   const due = formatDueDate(due_at);
   const priorityColor = PRIORITY_COLORS[priority] || PRIORITY_COLORS.Low;
-  const unowned = isUnowned(task);
+  const unowned = isUnownedByUser(task);
 
   return (
     <Draggable draggableId={name} index={index}>
@@ -1195,19 +1232,19 @@ function KanbanCard({ task, selected, onCardClick, index }) {
           </div>
           <div className="flex items-center gap-1 text-xs text-gray-400">
             <span className="truncate">
-              {is_unowned ? (
+              {unowned ? (
                 <span className="inline-flex items-center gap-1">
                   <span
                     data-testid="kanban-unowned-pulse"
                     className="inline-block h-2 w-2 rounded-full bg-orange-400 animate-pulse"
                   />
-                  {assigned_role || 'Unowned'}
+                  {assigned_role || 'Unassigned'}
                 </span>
               ) : (
                 assigned_user || assigned_role || ''
               )}
             </span>
-            {due && (assigned_user || assigned_role || is_unowned) && (
+            {due && (assigned_user || assigned_role || unowned) && (
               <span className="shrink-0">&middot;</span>
             )}
             {due && (
@@ -1568,32 +1605,21 @@ export default function WorkboardMojo() {
       `}</style>
       {/* Header bar */}
       <div className="bg-white border-b border-[#E2E8EB] px-4 py-2.5 flex items-center justify-between flex-shrink-0">
-        <motion.div
-          className="flex items-center gap-2"
-          initial={{ opacity: 0, y: 8 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.3, ease: 'easeOut' }}
-        >
-          {/* Mojo icon — teal circle with checkmark */}
-          <div data-testid="mojo-icon" className="flex items-center justify-center h-8 w-8 rounded-full bg-[#006666] text-white shrink-0">
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M3.5 8.5L6.5 11.5L12.5 4.5" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+        <div className="flex items-center gap-2">
+          {/* Mojo icon — teal checkmark, same size as Onboarding's UserCheck */}
+          <div data-testid="mojo-icon" className="text-[#006666] shrink-0">
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="9" stroke="#006666" strokeWidth="2"/><path d="M6 10.5L8.5 13L14 7" stroke="#006666" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
           </div>
-          <div>
-            <h2 data-testid="workboard-title" className="text-base text-[#34424A] leading-tight" style={{ fontFamily: "'Montserrat', sans-serif", fontWeight: 600 }}>
-              WorkboardMojo
-            </h2>
-            <p className="text-[12px] text-[#6B7A84] leading-tight" style={{ fontFamily: "'Nunito Sans', sans-serif", fontWeight: 400 }}>
-              Tasks assigned to your team
-            </p>
-          </div>
-        </motion.div>
-        <div className="flex items-center gap-3">
+          <h2 data-testid="workboard-title" className="text-base font-semibold text-[#34424A]">
+            Workboard
+          </h2>
+        </div>
+        <div className="flex items-center gap-1">
           <ViewToggle viewMode={viewMode} onViewChange={handleViewChange} />
           <button
             data-testid="new-task-button"
             onClick={() => setCreateModalOpen(true)}
-            className="text-[13px] font-medium rounded-lg bg-[#006666] text-white hover:opacity-90 transition-colors whitespace-nowrap"
-            style={{ height: 34, paddingLeft: 12, paddingRight: 12 }}
+            className="ml-2 px-3 py-1.5 rounded text-sm font-medium bg-[#006666] text-white hover:opacity-90 transition-colors whitespace-nowrap"
           >
             + New Task
           </button>
