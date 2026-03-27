@@ -7,6 +7,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
 import { parseISO, isToday, isTomorrow, isPast, format } from 'date-fns';
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
+import AssignmentField from '@/components/ui/AssignmentField';
 
 const API_BASE = (import.meta.env.VITE_FRAPPE_URL || 'http://localhost:8000') + '/api/modules/tasks';
 const SORT_STORAGE_KEY = 'workboard_sort_preference';
@@ -220,6 +221,8 @@ const PRIORITY_COLORS = {
 };
 
 const FILTER_TABS = ['All', 'Action', 'Review', 'Approval'];
+
+const isUnowned = (task) => !task.assigned_user && !task.assigned_role;
 
 const TABLE_COLUMNS = [
   { key: 'title', label: 'TASK', sortable: true, width: 'flex-1 min-w-0' },
@@ -447,6 +450,7 @@ function TaskRow({ task, claimingId, onClaim, selected, onRowClick, onViewClick 
   const stripeColor = PRIORITY_STRIPE[priority] || PRIORITY_STRIPE.Low;
   const typeBadge = TYPE_BADGE_STYLES[task_type] || { bg: '#F1F5F9', text: '#64748B' };
   const statusBadge = STATUS_COLORS[canonical_state] || STATUS_COLORS.New;
+  const unowned = isUnowned(task);
 
   return (
     <div
@@ -455,9 +459,14 @@ function TaskRow({ task, claimingId, onClaim, selected, onRowClick, onViewClick 
       className={cn(
         'flex items-center gap-2 px-3 h-[52px] border-b border-[#E2E8EB] transition-colors cursor-pointer',
         selected ? 'bg-[#f0f7f7]' : 'hover:bg-[#f5fafa]',
-        isResolved && 'opacity-60'
+        isResolved && 'opacity-60',
+        unowned && !isResolved && 'unowned-pulse-row'
       )}
-      style={{ borderLeft: `4px solid ${isResolved ? '#B0BEC5' : stripeColor}` }}
+      style={{
+        borderLeft: unowned && !isResolved
+          ? undefined
+          : `4px solid ${isResolved ? '#B0BEC5' : stripeColor}`,
+      }}
     >
       {/* TASK — title + ID */}
       <div className="flex-1 min-w-0 pr-2">
@@ -522,7 +531,15 @@ function TaskRow({ task, claimingId, onClaim, selected, onRowClick, onViewClick 
 
       {/* ASSIGNED — initials avatar + name */}
       <div className="w-[130px] shrink-0 flex items-center gap-1.5">
-        {is_unowned ? (
+        {unowned ? (
+          <span
+            data-testid="unassigned-badge"
+            className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-white text-[11px] font-bold"
+            style={{ backgroundColor: '#FF6F61' }}
+          >
+            &#9888; Unassigned
+          </span>
+        ) : is_unowned ? (
           <span className="inline-flex items-center gap-1.5">
             <span className="flex items-center justify-center h-6 w-6 rounded-full bg-[#E2E8EB] text-[#6B7A84]">
               <span data-testid="unowned-pulse" className="inline-block h-2 w-2 rounded-full bg-orange-400 animate-pulse" />
@@ -795,28 +812,12 @@ function TaskDetailDrawer({ task, loading, onClose, onUpdateState, onAddComment,
               {/* Inline assign edit form */}
               {editingAssign ? (
                 <div data-testid="assign-edit-form" className="space-y-2 bg-gray-50 rounded-lg p-3">
-                  <div>
-                    <label className="text-[10px] text-gray-500 block mb-0.5">Assigned User</label>
-                    <input
-                      data-testid="assign-user-input"
-                      type="email"
-                      value={assignUser}
-                      onChange={(e) => setAssignUser(e.target.value)}
-                      placeholder="user@example.com"
-                      className="w-full border border-gray-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:border-teal-400"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-[10px] text-gray-500 block mb-0.5">Assigned Role</label>
-                    <input
-                      data-testid="assign-role-input"
-                      type="text"
-                      value={assignRole}
-                      onChange={(e) => setAssignRole(e.target.value)}
-                      placeholder="e.g. Support, Finance"
-                      className="w-full border border-gray-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:border-teal-400"
-                    />
-                  </div>
+                  <AssignmentField
+                    assignedUser={assignUser}
+                    assignedRole={assignRole}
+                    onUserChange={(email) => setAssignUser(email || '')}
+                    onRoleChange={(role) => setAssignRole(role || '')}
+                  />
                   {assignError && <p className="text-red-500 text-xs">{assignError}</p>}
                   <div className="flex gap-2">
                     <button
@@ -999,32 +1000,34 @@ function saveViewPreference(mode) {
 
 function ViewToggle({ viewMode, onViewChange }) {
   return (
-    <div data-testid="view-toggle" className="flex items-center gap-1">
+    <div data-testid="view-toggle" className="inline-flex rounded-full border border-[#006666] overflow-hidden" style={{ height: 34 }}>
       <button
         data-testid="view-toggle-list"
         onClick={() => onViewChange('list')}
         className={cn(
-          'text-xs px-2 py-1 rounded transition-colors',
+          'px-3 text-[13px] font-medium transition-colors whitespace-nowrap',
           viewMode === 'list'
-            ? 'bg-teal-600 text-white'
-            : 'text-gray-400 hover:text-gray-600 hover:bg-gray-100'
+            ? 'bg-[#006666] text-white'
+            : 'bg-white text-[#34424A] hover:bg-[#f0f7f7]'
         )}
         aria-label="List view"
+        style={{ fontFamily: 'Inter, sans-serif' }}
       >
-        &#9776;
+        &#9776; List
       </button>
       <button
         data-testid="view-toggle-kanban"
         onClick={() => onViewChange('kanban')}
         className={cn(
-          'text-xs px-2 py-1 rounded transition-colors',
+          'px-3 text-[13px] font-medium transition-colors whitespace-nowrap',
           viewMode === 'kanban'
-            ? 'bg-teal-600 text-white'
-            : 'text-gray-400 hover:text-gray-600 hover:bg-gray-100'
+            ? 'bg-[#006666] text-white'
+            : 'bg-white text-[#34424A] hover:bg-[#f0f7f7]'
         )}
         aria-label="Kanban view"
+        style={{ fontFamily: 'Inter, sans-serif' }}
       >
-        &#9707;
+        &#8862; Kanban
       </button>
     </div>
   );
@@ -1122,12 +1125,13 @@ function CreateTaskModal({ open, onClose, onCreated }) {
               </select>
             </div>
             <div>
-              <label className="text-xs text-gray-500 block mb-1">Assigned User</label>
-              <input type="email" value={form.assigned_user} onChange={(e) => handleChange('assigned_user', e.target.value)} className={inputClass} placeholder="user@example.com" />
-            </div>
-            <div>
-              <label className="text-xs text-gray-500 block mb-1">Assigned Role</label>
-              <input type="text" value={form.assigned_role} onChange={(e) => handleChange('assigned_role', e.target.value)} className={inputClass} placeholder="e.g. Support, Finance" />
+              <label className="text-xs text-gray-500 block mb-1">Assignment</label>
+              <AssignmentField
+                assignedUser={form.assigned_user}
+                assignedRole={form.assigned_role}
+                onUserChange={(email) => handleChange('assigned_user', email || '')}
+                onRoleChange={(role) => handleChange('assigned_role', role || '')}
+              />
             </div>
             <div>
               <label className="text-xs text-gray-500 block mb-1">Due Date</label>
@@ -1167,6 +1171,7 @@ function KanbanCard({ task, selected, onCardClick, index }) {
   const { name, title, priority, due_at, assigned_user, assigned_role, is_unowned } = task;
   const due = formatDueDate(due_at);
   const priorityColor = PRIORITY_COLORS[priority] || PRIORITY_COLORS.Low;
+  const unowned = isUnowned(task);
 
   return (
     <Draggable draggableId={name} index={index}>
@@ -1180,7 +1185,8 @@ function KanbanCard({ task, selected, onCardClick, index }) {
           className={cn(
             'bg-white rounded-lg border border-gray-200 p-3 cursor-pointer hover:border-gray-300 transition-all',
             selected && 'ring-1 ring-teal-500 border-teal-500',
-            snapshot.isDragging && 'shadow-lg border-teal-300'
+            snapshot.isDragging && 'shadow-lg border-teal-300',
+            unowned && 'unowned-pulse-card'
           )}
         >
           <div className="flex items-start gap-2 mb-2">
@@ -1536,20 +1542,61 @@ export default function WorkboardMojo() {
 
   return (
     <div className="relative flex flex-col h-full bg-[#F8F9FA] text-[#34424A] overflow-hidden">
+      <style>{`
+        @keyframes unownedPulse {
+          0%   { background-color: #ffffff; }
+          30%  { background-color: #fff0ee; }
+          60%  { background-color: #fff8e6; }
+          100% { background-color: #ffffff; }
+        }
+        @keyframes borderPulse {
+          0%, 50%  { border-left-color: #FF6F61; }
+          51%, 100% { border-left-color: #FFB300; }
+        }
+        @keyframes borderPulseTop {
+          0%, 50%  { border-top-color: #FF6F61; }
+          51%, 100% { border-top-color: #FFB300; }
+        }
+        .unowned-pulse-row {
+          animation: unownedPulse 2s infinite, borderPulse 1s infinite;
+          border-left: 8px solid #FF6F61 !important;
+        }
+        .unowned-pulse-card {
+          animation: unownedPulse 2s infinite, borderPulseTop 1s infinite;
+          border-top: 8px solid #FF6F61 !important;
+        }
+      `}</style>
       {/* Header bar */}
       <div className="bg-white border-b border-[#E2E8EB] px-4 py-2.5 flex items-center justify-between flex-shrink-0">
-        <h2 className="text-base font-semibold text-[#34424A]">
-          Workboard
-        </h2>
-        <div className="flex items-center gap-2">
+        <motion.div
+          className="flex items-center gap-2"
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3, ease: 'easeOut' }}
+        >
+          {/* Mojo icon — teal circle with checkmark */}
+          <div data-testid="mojo-icon" className="flex items-center justify-center h-8 w-8 rounded-full bg-[#006666] text-white shrink-0">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M3.5 8.5L6.5 11.5L12.5 4.5" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+          </div>
+          <div>
+            <h2 data-testid="workboard-title" className="text-base text-[#34424A] leading-tight" style={{ fontFamily: "'Montserrat', sans-serif", fontWeight: 600 }}>
+              WorkboardMojo
+            </h2>
+            <p className="text-[12px] text-[#6B7A84] leading-tight" style={{ fontFamily: "'Nunito Sans', sans-serif", fontWeight: 400 }}>
+              Tasks assigned to your team
+            </p>
+          </div>
+        </motion.div>
+        <div className="flex items-center gap-3">
+          <ViewToggle viewMode={viewMode} onViewChange={handleViewChange} />
           <button
             data-testid="new-task-button"
             onClick={() => setCreateModalOpen(true)}
-            className="text-xs px-3 py-1.5 rounded-md bg-[#006666] text-white hover:opacity-90 transition-colors font-medium"
+            className="text-[13px] font-medium rounded-lg bg-[#006666] text-white hover:opacity-90 transition-colors whitespace-nowrap"
+            style={{ height: 34, paddingLeft: 12, paddingRight: 12 }}
           >
             + New Task
           </button>
-          <ViewToggle viewMode={viewMode} onViewChange={handleViewChange} />
         </div>
       </div>
 
