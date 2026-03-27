@@ -109,14 +109,68 @@ pytest tests/ --cov=. --cov-report=term-missing --cov-fail-under=70
 bench --site poc.sparkmojo.com migrate          # ALWAYS after any DocType change
 bench --site poc.sparkmojo.com console          # Interactive testing
 
-# POC deployment — run on server via ssh sparkmojo
-cd /home/ops/spark-mojo-platform && git pull
-sudo docker compose -f docker-compose.poc.yml build --no-cache poc-frontend   # frontend rebuild
-sudo docker compose -f docker-compose.poc.yml up -d poc-frontend              # restart frontend
-sudo docker compose -f docker-compose.poc.yml up -d poc-api                   # restart API
-# IMPORTANT: `up -d` must be a SINGLE LINE. If `-d` wraps to a new line the
-# shell runs `up` in attached mode and containers stop when the session ends.
+# POC deployment — use deploy.sh (see Deployment section below)
 ```
+
+---
+
+## Deployment — Always Deploy to Production
+
+**After every code change, deploy to the POC VPS.** Do not leave changes
+undeployed unless the user explicitly says not to deploy.
+
+### If SSH is available (Claude can run `ssh sparkmojo`):
+
+Deploy automatically — do not ask the user for permission to deploy:
+
+```bash
+ssh sparkmojo 'cd /home/ops/spark-mojo-platform && git pull origin main && ./deploy.sh'
+```
+
+For frontend-only changes, use `--phase 6` instead of a full deploy:
+
+```bash
+ssh sparkmojo 'cd /home/ops/spark-mojo-platform && git pull origin main && ./deploy.sh --phase 6'
+```
+
+After deploying, run `--verify-only` and report the results:
+
+```bash
+ssh sparkmojo 'cd /home/ops/spark-mojo-platform && ./deploy.sh --verify-only'
+```
+
+### If SSH is NOT available (user must deploy manually):
+
+Tell the user clearly: **"This change is committed and pushed but NOT deployed.
+Run these commands on the VPS to deploy:"**
+
+Then give them these exact steps:
+
+```
+1. SSH into the VPS:
+     ssh sparkmojo
+
+2. Pull and deploy:
+     cd /home/ops/spark-mojo-platform
+     git pull origin main
+     ./deploy.sh
+
+3. If deploy.sh is not executable:
+     chmod +x deploy.sh && ./deploy.sh
+
+4. Verify (if deploy.sh didn't run Phase 7):
+     ./deploy.sh --verify-only
+```
+
+### deploy.sh flags reference
+
+| Command | What it does |
+|---------|-------------|
+| `./deploy.sh` | Full deploy — all 7 phases |
+| `./deploy.sh --verify-only` | Check current state, no changes |
+| `./deploy.sh --phase 2` | Sync frappe-apps only |
+| `./deploy.sh --phase 3` | bench migrate only |
+| `./deploy.sh --phase 6` | Frontend rebuild only |
 
 ---
 
