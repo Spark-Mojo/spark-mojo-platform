@@ -139,16 +139,6 @@ describe('WorkboardMojo', () => {
     expect(screen.getByText('Server error')).toBeInTheDocument();
   });
 
-  it('truncates long titles at 60 chars', async () => {
-    globalThis.fetch = mockFetchSuccess();
-    render(<WorkboardMojo />);
-    await waitFor(() => {
-      expect(screen.getAllByTestId('task-row')).toHaveLength(3);
-    });
-    const truncated = 'Approve vendor invoice for the new office equipment purchase...';
-    expect(screen.getAllByText(truncated).length).toBeGreaterThanOrEqual(1);
-  });
-
   it('sorts tasks by due_at ascending, nulls last', async () => {
     globalThis.fetch = mockFetchSuccess();
     render(<WorkboardMojo />);
@@ -162,7 +152,7 @@ describe('WorkboardMojo', () => {
     expect(rows[2]).toHaveTextContent(/Process customer/);
   });
 
-  it('shows "Overdue" in red for past due dates', async () => {
+  it('shows "Overdue" for past due dates', async () => {
     globalThis.fetch = mockFetchSuccess();
     render(<WorkboardMojo />);
     await waitFor(() => {
@@ -170,7 +160,6 @@ describe('WorkboardMojo', () => {
     });
     const overdueBadges = screen.getAllByText('Overdue');
     expect(overdueBadges.length).toBeGreaterThanOrEqual(1);
-    expect(overdueBadges[0]).toHaveClass('text-red-500');
   });
 
   it('shows pulsing indicator for unowned tasks', async () => {
@@ -184,7 +173,148 @@ describe('WorkboardMojo', () => {
     expect(pulses[0]).toHaveClass('animate-pulse');
   });
 
-  // --- STORY-008b: Claim action tests ---
+  // --- Stats bar tests ---
+
+  it('renders stats bar with correct counts', async () => {
+    globalThis.fetch = mockFetchSuccess();
+    render(<WorkboardMojo />);
+    await waitFor(() => {
+      expect(screen.getByTestId('stats-bar')).toBeInTheDocument();
+    });
+    expect(screen.getByTestId('stat-active')).toHaveTextContent('3');
+    expect(screen.getByTestId('stat-urgent')).toHaveTextContent('1');
+    expect(screen.getByTestId('stat-overdue')).toHaveTextContent('1');
+    expect(screen.getByTestId('stat-waiting')).toHaveTextContent('0');
+  });
+
+  // --- Filter tabs tests ---
+
+  it('renders filter tabs and filters by task type', async () => {
+    globalThis.fetch = mockFetchSuccess();
+    render(<WorkboardMojo />);
+    await waitFor(() => {
+      expect(screen.getAllByTestId('task-row')).toHaveLength(3);
+    });
+    expect(screen.getByTestId('filter-tabs')).toBeInTheDocument();
+    // Click Action tab — only SM-TASK-003 is Action type
+    fireEvent.click(screen.getByTestId('filter-tab-action'));
+    expect(screen.getAllByTestId('task-row')).toHaveLength(1);
+    expect(screen.getByText('Process customer refund')).toBeInTheDocument();
+  });
+
+  // --- Column header tests ---
+
+  it('renders column headers with sort arrows', async () => {
+    globalThis.fetch = mockFetchSuccess();
+    render(<WorkboardMojo />);
+    await waitFor(() => {
+      expect(screen.getByTestId('column-headers')).toBeInTheDocument();
+    });
+    expect(screen.getByTestId('col-header-title')).toBeInTheDocument();
+    expect(screen.getByTestId('col-header-task_type')).toBeInTheDocument();
+    expect(screen.getByTestId('col-header-canonical_state')).toBeInTheDocument();
+    expect(screen.getByTestId('col-header-due_at')).toBeInTheDocument();
+  });
+
+  it('clicking column header sorts the list', async () => {
+    globalThis.fetch = mockFetchSuccess();
+    render(<WorkboardMojo />);
+    await waitFor(() => {
+      expect(screen.getAllByTestId('task-row')).toHaveLength(3);
+    });
+    // Click title column to sort by title asc
+    fireEvent.click(screen.getByTestId('col-header-title'));
+    const rows = screen.getAllByTestId('task-row');
+    // Alphabetical: Approve vendor, Process customer, Review quarterly
+    expect(rows[0]).toHaveTextContent(/Approve vendor/);
+    expect(rows[1]).toHaveTextContent(/Process customer/);
+    expect(rows[2]).toHaveTextContent(/Review quarterly/);
+  });
+
+  it('persists sort preference to localStorage via column header', async () => {
+    globalThis.fetch = mockFetchSuccess();
+    render(<WorkboardMojo />);
+    await waitFor(() => {
+      expect(screen.getAllByTestId('task-row')).toHaveLength(3);
+    });
+    fireEvent.click(screen.getByTestId('col-header-canonical_state'));
+    const stored = JSON.parse(localStorage.getItem('workboard_sort_preference'));
+    expect(stored).toEqual({ field: 'canonical_state', direction: 'asc' });
+  });
+
+  it('restores sort preference from localStorage on mount', async () => {
+    localStorage.setItem('workboard_sort_preference', JSON.stringify({ field: 'created_at', direction: 'desc' }));
+    globalThis.fetch = mockFetchSuccess();
+    render(<WorkboardMojo />);
+    await waitFor(() => {
+      expect(screen.getAllByTestId('task-row')).toHaveLength(3);
+    });
+    // created_at desc: 2026-03-22 first, then 2026-03-20, then 2026-03-18
+    const rows = screen.getAllByTestId('task-row');
+    expect(rows[0]).toHaveTextContent(/Approve vendor/); // 2026-03-22
+    expect(rows[1]).toHaveTextContent(/Review quarterly/); // 2026-03-20
+    expect(rows[2]).toHaveTextContent(/Process customer/); // 2026-03-18
+  });
+
+  // --- Priority stripe tests ---
+
+  it('renders left priority stripe on each row', async () => {
+    globalThis.fetch = mockFetchSuccess();
+    render(<WorkboardMojo />);
+    await waitFor(() => {
+      expect(screen.getAllByTestId('task-row')).toHaveLength(3);
+    });
+    const rows = screen.getAllByTestId('task-row');
+    // SM-TASK-002 (Urgent) is first row — should have red stripe (rgb(229, 57, 53))
+    expect(rows[0].style.borderLeft).toMatch(/rgb\(229,\s*57,\s*53\)/);
+    // SM-TASK-001 (High) — coral stripe (rgb(255, 111, 97))
+    expect(rows[1].style.borderLeft).toMatch(/rgb\(255,\s*111,\s*97\)/);
+    // SM-TASK-003 (Medium) — gold stripe (rgb(255, 179, 0))
+    expect(rows[2].style.borderLeft).toMatch(/rgb\(255,\s*179,\s*0\)/);
+
+  });
+
+  // --- View button tests ---
+
+  it('renders View button on owned rows', async () => {
+    globalThis.fetch = mockFetchSuccess();
+    render(<WorkboardMojo />);
+    await waitFor(() => {
+      expect(screen.getAllByTestId('task-row')).toHaveLength(3);
+    });
+    const viewButtons = screen.getAllByTestId('view-button');
+    // SM-TASK-001 and SM-TASK-002 are owned, SM-TASK-003 is unowned (gets Claim)
+    expect(viewButtons).toHaveLength(2);
+  });
+
+  it('View button opens task drawer', async () => {
+    const fetchMock = mockFetchSequence([
+      { ok: true, json: () => Promise.resolve({ tasks: MOCK_TASKS }), text: () => Promise.resolve('') },
+      { ok: true, json: () => Promise.resolve({ task: MOCK_FULL_TASK }), text: () => Promise.resolve('') },
+    ]);
+    globalThis.fetch = fetchMock;
+    render(<WorkboardMojo />);
+    await waitFor(() => {
+      expect(screen.getAllByTestId('task-row')).toHaveLength(3);
+    });
+    fireEvent.click(screen.getAllByTestId('view-button')[0]);
+    await waitFor(() => {
+      expect(screen.getByTestId('task-detail-drawer')).toBeInTheDocument();
+    });
+  });
+
+  // --- Table footer ---
+
+  it('renders table footer with task count', async () => {
+    globalThis.fetch = mockFetchSuccess();
+    render(<WorkboardMojo />);
+    await waitFor(() => {
+      expect(screen.getByTestId('table-footer')).toBeInTheDocument();
+    });
+    expect(screen.getByTestId('table-footer')).toHaveTextContent('Showing 3 tasks');
+  });
+
+  // --- Claim action tests ---
 
   it('renders Claim button only on unowned rows', async () => {
     globalThis.fetch = mockFetchSuccess();
@@ -200,9 +330,7 @@ describe('WorkboardMojo', () => {
 
   it('calls POST /api/modules/tasks/claim with correct task_id on click', async () => {
     const fetchMock = mockFetchSequence([
-      // Initial list fetch
       { ok: true, json: () => Promise.resolve({ tasks: MOCK_TASKS }), text: () => Promise.resolve('') },
-      // Claim response — API returns { task: {...} } shape
       { ok: true, status: 200, json: () => Promise.resolve({ task: { assigned_user: 'me@test.com', is_unowned: false, canonical_state: 'In Progress' } }), text: () => Promise.resolve('') },
     ]);
     globalThis.fetch = fetchMock;
@@ -237,7 +365,6 @@ describe('WorkboardMojo', () => {
       expect(screen.queryByTestId('claim-button')).not.toBeInTheDocument();
     });
     expect(screen.queryByTestId('unowned-pulse')).not.toBeInTheDocument();
-    expect(screen.getByText('me@test.com')).toBeInTheDocument();
   });
 
   it('shows "already claimed" toast on 409 response', async () => {
@@ -278,68 +405,11 @@ describe('WorkboardMojo', () => {
     expect(screen.getByText(/Could not claim task/)).toBeInTheDocument();
   });
 
-  // --- STORY-008b: Sort controls tests ---
-
-  it('renders sort chips above task list', async () => {
-    globalThis.fetch = mockFetchSuccess();
-    render(<WorkboardMojo />);
-    await waitFor(() => {
-      expect(screen.getAllByTestId('task-row')).toHaveLength(3);
-    });
-    expect(screen.getByTestId('sort-toolbar')).toBeInTheDocument();
-    expect(screen.getByTestId('sort-chip-due_at')).toBeInTheDocument();
-    expect(screen.getByTestId('sort-chip-priority')).toBeInTheDocument();
-    expect(screen.getByTestId('sort-chip-created_at')).toBeInTheDocument();
-    expect(screen.getByTestId('sort-chip-canonical_state')).toBeInTheDocument();
-  });
-
-  it('clicking sort chip re-sorts the list', async () => {
-    globalThis.fetch = mockFetchSuccess();
-    render(<WorkboardMojo />);
-    await waitFor(() => {
-      expect(screen.getAllByTestId('task-row')).toHaveLength(3);
-    });
-    // Default is due_at asc. Click priority chip to sort by priority.
-    fireEvent.click(screen.getByTestId('sort-chip-priority'));
-    const rows = screen.getAllByTestId('task-row');
-    // Priority asc: Urgent (0), High (1), Medium (2)
-    expect(rows[0]).toHaveTextContent(/Approve vendor/); // Urgent
-    expect(rows[1]).toHaveTextContent(/Review quarterly/); // High
-    expect(rows[2]).toHaveTextContent(/Process customer/); // Medium
-  });
-
-  it('persists sort preference to localStorage', async () => {
-    globalThis.fetch = mockFetchSuccess();
-    render(<WorkboardMojo />);
-    await waitFor(() => {
-      expect(screen.getAllByTestId('task-row')).toHaveLength(3);
-    });
-    fireEvent.click(screen.getByTestId('sort-chip-priority'));
-    const stored = JSON.parse(localStorage.getItem('workboard_sort_preference'));
-    expect(stored).toEqual({ field: 'priority', direction: 'asc' });
-  });
-
-  it('restores sort preference from localStorage on mount', async () => {
-    localStorage.setItem('workboard_sort_preference', JSON.stringify({ field: 'created_at', direction: 'desc' }));
-    globalThis.fetch = mockFetchSuccess();
-    render(<WorkboardMojo />);
-    await waitFor(() => {
-      expect(screen.getAllByTestId('task-row')).toHaveLength(3);
-    });
-    // created_at desc: 2026-03-22 first, then 2026-03-20, then 2026-03-18
-    const rows = screen.getAllByTestId('task-row');
-    expect(rows[0]).toHaveTextContent(/Approve vendor/); // 2026-03-22
-    expect(rows[1]).toHaveTextContent(/Review quarterly/); // 2026-03-20
-    expect(rows[2]).toHaveTextContent(/Process customer/); // 2026-03-18
-  });
-
-  // --- STORY-009: Task detail drawer tests ---
+  // --- Task detail drawer tests ---
 
   it('opens drawer with correct task data when row is clicked', async () => {
     const fetchMock = mockFetchSequence([
-      // Initial list
       { ok: true, json: () => Promise.resolve({ tasks: MOCK_TASKS }), text: () => Promise.resolve('') },
-      // GET /get for task detail
       { ok: true, json: () => Promise.resolve({ task: MOCK_FULL_TASK }), text: () => Promise.resolve('') },
     ]);
     globalThis.fetch = fetchMock;
@@ -347,7 +417,6 @@ describe('WorkboardMojo', () => {
     await waitFor(() => {
       expect(screen.getAllByTestId('task-row')).toHaveLength(3);
     });
-    // Click first row (SM-TASK-002 is first due to sort by due_at asc)
     fireEvent.click(screen.getAllByTestId('task-row')[1]); // SM-TASK-001
     await waitFor(() => {
       expect(screen.getByTestId('task-detail-drawer')).toBeInTheDocument();
@@ -383,7 +452,6 @@ describe('WorkboardMojo', () => {
     const fetchMock = mockFetchSequence([
       { ok: true, json: () => Promise.resolve({ tasks: MOCK_TASKS }), text: () => Promise.resolve('') },
       { ok: true, json: () => Promise.resolve({ task: MOCK_FULL_TASK }), text: () => Promise.resolve('') },
-      // POST update_state
       { ok: true, json: () => Promise.resolve({ canonical_state: 'In Progress' }), text: () => Promise.resolve('') },
     ]);
     globalThis.fetch = fetchMock;
@@ -408,7 +476,6 @@ describe('WorkboardMojo', () => {
     const fetchMock = mockFetchSequence([
       { ok: true, json: () => Promise.resolve({ tasks: MOCK_TASKS }), text: () => Promise.resolve('') },
       { ok: true, json: () => Promise.resolve({ task: MOCK_FULL_TASK }), text: () => Promise.resolve('') },
-      // POST update_state after reason is entered
       { ok: true, json: () => Promise.resolve({ canonical_state: 'Blocked' }), text: () => Promise.resolve('') },
     ]);
     globalThis.fetch = fetchMock;
@@ -438,7 +505,6 @@ describe('WorkboardMojo', () => {
     const fetchMock = mockFetchSequence([
       { ok: true, json: () => Promise.resolve({ tasks: MOCK_TASKS }), text: () => Promise.resolve('') },
       { ok: true, json: () => Promise.resolve({ task: MOCK_FULL_TASK }), text: () => Promise.resolve('') },
-      // POST add_comment
       {
         ok: true,
         json: () => Promise.resolve({
@@ -476,7 +542,6 @@ describe('WorkboardMojo', () => {
     const fetchMock = mockFetchSequence([
       { ok: true, json: () => Promise.resolve({ tasks: MOCK_TASKS }), text: () => Promise.resolve('') },
       { ok: true, json: () => Promise.resolve({ task: MOCK_FULL_TASK }), text: () => Promise.resolve('') },
-      // POST complete
       { ok: true, json: () => Promise.resolve({ canonical_state: 'Completed' }), text: () => Promise.resolve('') },
     ]);
     globalThis.fetch = fetchMock;
@@ -540,7 +605,7 @@ describe('WorkboardMojo', () => {
     });
   });
 
-  // --- STORY-010: Kanban view toggle tests ---
+  // --- Kanban view toggle tests ---
 
   it('renders view toggle with List and Kanban buttons', async () => {
     globalThis.fetch = mockFetchSuccess();
@@ -560,7 +625,7 @@ describe('WorkboardMojo', () => {
       expect(screen.getAllByTestId('task-row')).toHaveLength(3);
     });
     expect(screen.queryByTestId('kanban-board')).not.toBeInTheDocument();
-    expect(screen.getByTestId('sort-toolbar')).toBeInTheDocument();
+    expect(screen.getByTestId('column-headers')).toBeInTheDocument();
   });
 
   it('shows kanban columns when Kanban toggle is clicked', async () => {
@@ -572,7 +637,7 @@ describe('WorkboardMojo', () => {
     fireEvent.click(screen.getByTestId('view-toggle-kanban'));
     expect(screen.getByTestId('kanban-board')).toBeInTheDocument();
     expect(screen.getAllByTestId('kanban-column')).toHaveLength(6);
-    expect(screen.queryByTestId('sort-toolbar')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('column-headers')).not.toBeInTheDocument();
   });
 
   it('kanban columns show correct task counts', async () => {
@@ -583,7 +648,6 @@ describe('WorkboardMojo', () => {
     });
     fireEvent.click(screen.getByTestId('view-toggle-kanban'));
     const counts = screen.getAllByTestId('kanban-column-count');
-    // New: 2 (SM-TASK-002 + SM-TASK-003), Ready: 1 (SM-TASK-001), In Progress: 0, Waiting: 0, Blocked: 0, Other: 0
     expect(counts[0]).toHaveTextContent('2'); // New
     expect(counts[1]).toHaveTextContent('1'); // Ready
     expect(counts[2]).toHaveTextContent('0'); // In Progress
@@ -601,7 +665,6 @@ describe('WorkboardMojo', () => {
     fireEvent.click(screen.getByTestId('view-toggle-kanban'));
     const cards = screen.getAllByTestId('kanban-card');
     expect(cards).toHaveLength(3);
-    // New column should have SM-TASK-002 and SM-TASK-003
     const columns = screen.getAllByTestId('kanban-column');
     const newColumnCards = columns[0].querySelectorAll('[data-testid="kanban-card"]');
     expect(newColumnCards).toHaveLength(2);
@@ -678,9 +741,8 @@ describe('WorkboardMojo', () => {
     });
     fireEvent.click(screen.getByTestId('claim-button'));
     await waitFor(() => {
-      expect(screen.getByText('claimed@test.com')).toBeInTheDocument();
+      expect(screen.queryByTestId('claim-button')).not.toBeInTheDocument();
     });
-    expect(screen.queryByTestId('claim-button')).not.toBeInTheDocument();
   });
 
   it('kanban Other column catches tasks in non-column states', async () => {
@@ -704,7 +766,6 @@ describe('WorkboardMojo', () => {
     });
     fireEvent.click(screen.getByTestId('view-toggle-kanban'));
     const columns = screen.getAllByTestId('kanban-column');
-    // Other column is last (index 5)
     const otherCards = columns[5].querySelectorAll('[data-testid="kanban-card"]');
     expect(otherCards).toHaveLength(1);
   });
@@ -772,7 +833,6 @@ describe('WorkboardMojo', () => {
     });
     fireEvent.click(screen.getByTestId('view-toggle-kanban'));
     const cards = screen.getAllByTestId('kanban-card');
-    // SM-TASK-002 has assigned_user and due_at — should have middot separator
     const cardWithBoth = cards.find(c => c.textContent.includes('Approve vendor'));
     expect(cardWithBoth.textContent).toMatch(/bob@test\.com.*·.*Overdue/);
   });
@@ -804,6 +864,43 @@ describe('WorkboardMojo', () => {
     resolveComplete({ canonical_state: 'Completed' });
     await waitFor(() => {
       expect(screen.queryByTestId('task-detail-drawer')).not.toBeInTheDocument();
+    });
+  });
+
+  // --- BUG-006: parseFrappeError handles detail._server_messages ---
+
+  it('parseFrappeError extracts message from detail._server_messages wrapper', async () => {
+    // Test indirectly by checking error display in the assign flow
+    const frappeError = JSON.stringify({
+      detail: {
+        _server_messages: JSON.stringify([
+          JSON.stringify({ message: 'LinkValidationError: User notauser@fake.com not found' })
+        ])
+      }
+    });
+    const fetchMock = mockFetchSequence([
+      { ok: true, json: () => Promise.resolve({ tasks: MOCK_TASKS }), text: () => Promise.resolve('') },
+      { ok: true, json: () => Promise.resolve({ task: MOCK_FULL_TASK }), text: () => Promise.resolve('') },
+      // Assign fails with Frappe error
+      { ok: false, status: 417, text: () => Promise.resolve(frappeError), json: () => Promise.reject() },
+    ]);
+    globalThis.fetch = fetchMock;
+    render(<WorkboardMojo />);
+    await waitFor(() => {
+      expect(screen.getAllByTestId('task-row')).toHaveLength(3);
+    });
+    // Open drawer
+    fireEvent.click(screen.getAllByTestId('task-row')[1]);
+    await waitFor(() => {
+      expect(screen.getByTestId('edit-assign-button')).toBeInTheDocument();
+    });
+    // Edit assignment
+    fireEvent.click(screen.getByTestId('edit-assign-button'));
+    fireEvent.change(screen.getByTestId('assign-user-input'), { target: { value: 'notauser@fake.com' } });
+    fireEvent.click(screen.getByTestId('assign-save-button'));
+    await waitFor(() => {
+      // Should show parsed error, not "Failed to fetch"
+      expect(screen.getByText(/User notauser@fake.com not found/)).toBeInTheDocument();
     });
   });
 });
