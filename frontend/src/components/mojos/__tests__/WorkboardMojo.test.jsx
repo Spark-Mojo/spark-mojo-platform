@@ -1218,6 +1218,78 @@ describe('WorkboardMojo', () => {
     expect(screen.getByTestId('inline-toast')).toBeInTheDocument();
   });
 
+  // --- Round 6: Due date editing in drawer ---
+
+  it('drawer edit mode renders due_date input', async () => {
+    const fetchMock = mockFetchSequence([
+      { ok: true, json: () => Promise.resolve({ tasks: MOCK_TASKS }), text: () => Promise.resolve('') },
+      { ok: true, json: () => Promise.resolve({ task: MOCK_FULL_TASK }), text: () => Promise.resolve('') },
+    ]);
+    globalThis.fetch = fetchMock;
+    render(<WorkboardMojo />);
+    await waitFor(() => {
+      expect(screen.getAllByTestId('task-row')).toHaveLength(3);
+    });
+    fireEvent.click(screen.getAllByTestId('task-row')[1]);
+    await waitFor(() => {
+      expect(screen.getByTestId('edit-assign-button')).toBeInTheDocument();
+    });
+    fireEvent.click(screen.getByTestId('edit-assign-button'));
+    await waitFor(() => {
+      expect(screen.getByTestId('assign-due-date-input')).toBeInTheDocument();
+    });
+    // Should have the task's due_at value (YYYY-MM-DD)
+    expect(screen.getByTestId('assign-due-date-input').value).toBe('2026-03-28');
+  });
+
+  // --- Round 6: Surgical claim rollback ---
+
+  it('failed claim on task B does NOT revert already-claimed task A', async () => {
+    const twoUnclaimed = [
+      { ...MOCK_TASKS[0], assigned_user: '', name: 'TASK-A', title: 'Task A' },
+      { ...MOCK_TASKS[1], assigned_user: '', name: 'TASK-B', title: 'Task B' },
+    ];
+    let claimCallCount = 0;
+    globalThis.fetch = vi.fn((url) => {
+      if (url.includes('/api/modules/tasks/users'))
+        return Promise.resolve({ ok: true, json: () => Promise.resolve({ users: [] }) });
+      if (url.includes('/api/modules/tasks/roles'))
+        return Promise.resolve({ ok: true, json: () => Promise.resolve({ roles: [] }) });
+      if (url.includes('/api/modules/tasks/claim')) {
+        claimCallCount++;
+        if (claimCallCount === 1) {
+          return Promise.resolve({
+            ok: true, json: () => Promise.resolve({ task: { ...twoUnclaimed[0], assigned_user: 'me@test.com' } }),
+            text: () => Promise.resolve(''),
+          });
+        }
+        return Promise.resolve({
+          ok: false, status: 500, json: () => Promise.reject(),
+          text: () => Promise.resolve('Server error'),
+        });
+      }
+      return Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve({ tasks: twoUnclaimed }),
+        text: () => Promise.resolve(JSON.stringify({ tasks: twoUnclaimed })),
+      });
+    });
+    render(<WorkboardMojo />);
+    await waitFor(() => {
+      expect(screen.getAllByTestId('task-row')).toHaveLength(2);
+    });
+    const claimButtons = screen.getAllByTestId('claim-button');
+    expect(claimButtons).toHaveLength(2);
+    fireEvent.click(claimButtons[0]); // Task A (succeeds)
+    fireEvent.click(claimButtons[1]); // Task B (fails)
+    await waitFor(() => {
+      expect(screen.getByTestId('claim-button')).toBeInTheDocument();
+    });
+    // Task A should NOT be rolled back — View button should exist
+    const viewButtons = screen.getAllByTestId('view-button');
+    expect(viewButtons.length).toBeGreaterThanOrEqual(1);
+  });
+
   // --- BUG-006: parseFrappeError handles detail._server_messages ---
 
   it('parseFrappeError extracts message from detail._server_messages wrapper', async () => {
