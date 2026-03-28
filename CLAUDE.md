@@ -83,10 +83,13 @@ spark-mojo-platform/
 │   │   │   └── frappe-client.js     # Frappe REST client — DO NOT MODIFY
 │   │   ├── components/
 │   │   │   ├── mojos/               # NEW Mojo components go here
+│   │   │   ├── mojo-patterns/       # Spark Mojo composite patterns
 │   │   │   ├── ui/                  # shadcn/Radix UI primitives
 │   │   │   └── [legacy folders]     # Pre-migration — do not touch
 │   │   ├── pages/
 │   │   │   └── Desktop.jsx          # Desktop canvas — DO NOT MODIFY STRUCTURE
+│   │   ├── styles/
+│   │   │   └── tokens.css           # Design tokens (colors, glass, typography, spacing)
 │   │   └── types/                   # Static TS type files — reference only
 │   ├── package.json
 │   ├── vite.config.js
@@ -551,4 +554,37 @@ Then deploy per the Deployment section above.
 
 ---
 
-*Last updated: March 27, 2026 — Session 7 (documentation rationalization)*
+---
+
+## Design System (ADR-2026-03-28)
+
+**Visual North Star:** Ein UI (https://ui.eindev.ir/) — liquid glass aesthetic.
+**Light mode is the default** working environment. Dark mode is opt-in via `[data-theme="dark"]`.
+
+### Component Architecture
+```
+src/components/
+├── ui/              ← shadcn/ui base components (themed with glass tokens)
+├── charts/          ← shadcn/ui chart components (install when data viz mojos begin)
+├── magicui/         ← Magic UI animation accents (selective use only)
+├── mojo-patterns/   ← Spark Mojo composite patterns
+└── mojos/           ← Individual mojo implementations
+```
+
+### Design System Rules
+1. All mojos MUST import from `components/ui/`, `components/charts/`, or `components/mojo-patterns/`. Never create custom implementations of shared components.
+2. All colors MUST reference design tokens (`var(--sm-teal)`), never raw hex values in component files.
+3. All typography MUST use the token font stack: Montserrat (display), Nunito Sans (body), Inter (UI controls).
+4. All surface components MUST use liquid glass treatment from `styles/tokens.css`.
+5. New shared components require a COMPONENT_INVENTORY.md entry before implementation.
+6. Magic UI components are accent only — they enhance, never replace base components.
+
+### Key Files
+- `frontend/src/styles/tokens.css` — all design tokens (colors, glass, typography, spacing)
+- `ADR-design-system.md` — architecture decision record
+- `COMPONENT_INVENTORY.md` — component catalog with props and specs
+- `frontend/src/pages/Library.jsx` — dev-only component showcase (visible in dev mode only)
+
+---
+
+*Last updated: March 28, 2026 — Night 1 (design system foundation)*
