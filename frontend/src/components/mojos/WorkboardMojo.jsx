@@ -166,10 +166,11 @@ async function postCreateTask(data) {
   return resp.json();
 }
 
-async function postAssign(taskId, assignedUser, assignedRole) {
+async function postAssign(taskId, assignedUser, assignedRole, dueAt) {
   const body = { task_id: taskId };
   if (assignedUser !== undefined) body.assigned_user = assignedUser;
   if (assignedRole !== undefined) body.assigned_role = assignedRole;
+  if (dueAt !== undefined) body.due_at = dueAt;
   const resp = await fetch(`${API_BASE}/assign`, {
     method: 'POST',
     credentials: 'include',
@@ -351,7 +352,7 @@ function useCountUp(target, duration = 600) {
   const prevTarget = useRef(target);
 
   useEffect(() => {
-    if (target === 0) { setCount(0); return; }
+    if (target === 0) { setCount(0); prevTarget.current = 0; return; }
     const from = prevTarget.current === target ? 0 : prevTarget.current;
     prevTarget.current = target;
     const start = performance.now();
@@ -652,6 +653,7 @@ function TaskDetailDrawer({ task, loading, onClose, onUpdateState, onAddComment,
   const [editingAssign, setEditingAssign] = useState(false);
   const [assignUser, setAssignUser] = useState('');
   const [assignRole, setAssignRole] = useState('');
+  const [assignDueAt, setAssignDueAt] = useState('');
   const [assignSaving, setAssignSaving] = useState(false);
   const [assignError, setAssignError] = useState(null);
   const [completing, setCompleting] = useState(false);
@@ -663,6 +665,7 @@ function TaskDetailDrawer({ task, loading, onClose, onUpdateState, onAddComment,
     if (task) {
       setAssignUser(task.assigned_user || '');
       setAssignRole(task.assigned_role || '');
+      setAssignDueAt(task.due_at ? task.due_at.slice(0, 10) : '');
       setEditingAssign(false);
       setAssignError(null);
     }
@@ -706,6 +709,7 @@ function TaskDetailDrawer({ task, loading, onClose, onUpdateState, onAddComment,
   const handleStartEditAssign = () => {
     setAssignUser(task?.assigned_user || '');
     setAssignRole(task?.assigned_role || '');
+    setAssignDueAt(task?.due_at ? task.due_at.slice(0, 10) : '');
     setEditingAssign(true);
     setAssignError(null);
   };
@@ -719,7 +723,7 @@ function TaskDetailDrawer({ task, loading, onClose, onUpdateState, onAddComment,
     setAssignSaving(true);
     setAssignError(null);
     try {
-      await onAssign(assignUser, assignRole);
+      await onAssign(assignUser, assignRole, assignDueAt);
       setEditingAssign(false);
     } catch (err) {
       setAssignError(err.message);
@@ -871,6 +875,16 @@ function TaskDetailDrawer({ task, loading, onClose, onUpdateState, onAddComment,
                     onUserChange={(email) => setAssignUser(email || '')}
                     onRoleChange={(role) => setAssignRole(role || '')}
                   />
+                  <div>
+                    <label className="text-[10px] text-gray-500 block mb-0.5">Due Date</label>
+                    <input
+                      data-testid="assign-due-date-input"
+                      type="date"
+                      value={assignDueAt}
+                      onChange={(e) => setAssignDueAt(e.target.value)}
+                      className="w-full border border-gray-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:border-teal-400"
+                    />
+                  </div>
                   {assignError && <p className="text-red-500 text-xs">{assignError}</p>}
                   <div className="flex gap-2">
                     <button
@@ -1388,8 +1402,8 @@ export default function WorkboardMojo() {
   const handleClaim = useCallback(async (taskId) => {
     setClaimingId(taskId);
 
-    // Snapshot for rollback
-    const prevTasks = tasks;
+    // Capture only this task's prior assigned_user for surgical rollback
+    const priorUser = tasks.find((t) => t.name === taskId)?.assigned_user || '';
 
     // Optimistic update — use placeholder email; real value comes from API
     setTasks((prev) =>
@@ -1411,8 +1425,14 @@ export default function WorkboardMojo() {
         )
       );
     } catch (err) {
-      // Rollback
-      setTasks(prevTasks);
+      // Surgical rollback — only revert this task, leave others untouched
+      setTasks((prev) =>
+        prev.map((t) =>
+          t.name === taskId
+            ? { ...t, assigned_user: priorUser }
+            : t
+        )
+      );
       showToast(err.message || 'Failed to claim task — please try again');
       if (err.status === 409) {
         fetchTasks(showCompleted).then(setTasks).catch(() => {});
@@ -1558,15 +1578,15 @@ export default function WorkboardMojo() {
     }
   }, [drawerTask, showToast, handleCloseDrawer, showCompleted]);
 
-  const handleAssign = useCallback(async (assignedUser, assignedRole) => {
+  const handleAssign = useCallback(async (assignedUser, assignedRole, dueAt) => {
     if (!drawerTask) return;
-    const result = await postAssign(drawerTask.name, assignedUser, assignedRole);
+    const result = await postAssign(drawerTask.name, assignedUser, assignedRole, dueAt);
     const updated = result.task || result;
-    setDrawerTask((prev) => prev ? { ...prev, assigned_user: updated.assigned_user, assigned_role: updated.assigned_role } : prev);
+    setDrawerTask((prev) => prev ? { ...prev, assigned_user: updated.assigned_user, assigned_role: updated.assigned_role, due_at: updated.due_at } : prev);
     setTasks((prev) =>
       prev.map((t) =>
         t.name === drawerTask.name
-          ? { ...t, assigned_user: updated.assigned_user, assigned_role: updated.assigned_role, is_unowned: !updated.assigned_user && !!updated.assigned_role }
+          ? { ...t, assigned_user: updated.assigned_user, assigned_role: updated.assigned_role, due_at: updated.due_at, is_unowned: !updated.assigned_user && !!updated.assigned_role }
           : t
       )
     );

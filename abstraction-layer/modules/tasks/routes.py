@@ -42,6 +42,7 @@ class AssignTaskBody(BaseModel):
     assigned_user: Optional[str] = None
     assigned_role: Optional[str] = None
     assigned_team: Optional[str] = None
+    due_at: Optional[str] = None
 
 
 class UpdateStateBody(BaseModel):
@@ -289,6 +290,8 @@ async def tasks_assign(
             update["assigned_role"] = body.assigned_role
         if body.assigned_team is not None:
             update["assigned_team"] = body.assigned_team
+        if body.due_at is not None:
+            update["due_at"] = body.due_at or None
 
         # Save
         put_resp = await client.put(
