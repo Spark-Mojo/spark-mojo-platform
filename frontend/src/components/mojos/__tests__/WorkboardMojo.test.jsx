@@ -16,6 +16,7 @@ const MOCK_TASKS = [
     due_at: new Date(Date.now() + 86400000 * 3).toISOString(), // 3 days out
     created_at: '2026-03-20T10:00:00.000Z',
     assigned_user: 'alice@test.com',
+    source_system: 'EHR',
     is_unowned: false,
   },
   {
@@ -27,6 +28,7 @@ const MOCK_TASKS = [
     due_at: new Date(Date.now() - 86400000).toISOString(), // yesterday — overdue
     created_at: '2026-03-22T08:00:00.000Z',
     assigned_user: 'bob@test.com',
+    source_system: 'Manual',
     is_unowned: false,
   },
   {
@@ -38,6 +40,7 @@ const MOCK_TASKS = [
     due_at: null, // no due date — sorts last
     created_at: '2026-03-18T12:00:00.000Z',
     assigned_role: 'Support',
+    source_system: 'EHR',
     is_unowned: true,
   },
 ];
@@ -887,10 +890,10 @@ describe('WorkboardMojo', () => {
     });
     const toggle = screen.getByTestId('view-toggle');
     expect(toggle).toBeInTheDocument();
-    // Individual pills, not a connected segmented control
-    expect(toggle.className).not.toContain('rounded-full');
     expect(screen.getByTestId('view-toggle-list')).toHaveTextContent('List');
     expect(screen.getByTestId('view-toggle-kanban')).toHaveTextContent('Kanban');
+    // Active button uses solid teal pill
+    expect(screen.getByTestId('view-toggle-list').className).toContain('rounded-full');
   });
 
   // --- Round 3: Unassigned row animation tests ---
@@ -1029,6 +1032,190 @@ describe('WorkboardMojo', () => {
     expect(screen.getByTestId('assignment-mode-person')).toBeInTheDocument();
     expect(screen.getByTestId('assignment-mode-role')).toBeInTheDocument();
     expect(screen.getByTestId('assignment-mode-unassigned')).toBeInTheDocument();
+  });
+
+  // --- Round 5: Active tab pill color ---
+
+  it('active List tab has solid teal background (not a tint)', async () => {
+    globalThis.fetch = mockFetchSuccess();
+    render(<WorkboardMojo />);
+    await waitFor(() => {
+      expect(screen.getAllByTestId('task-row')).toHaveLength(3);
+    });
+    const listBtn = screen.getByTestId('view-toggle-list');
+    expect(listBtn.className).toContain('bg-[#006666]');
+    expect(listBtn.className).toContain('text-white');
+    expect(listBtn.className).not.toContain('bg-teal-100');
+  });
+
+  // --- Round 5: Source filter ---
+
+  it('source filter dropdown renders with correct options', async () => {
+    globalThis.fetch = mockFetchSuccess();
+    render(<WorkboardMojo />);
+    await waitFor(() => {
+      expect(screen.getAllByTestId('task-row')).toHaveLength(3);
+    });
+    const sourceSelect = screen.getByTestId('source-filter');
+    expect(sourceSelect).toBeInTheDocument();
+    // Should have All Sources + EHR + Manual (derived from mock tasks)
+    const options = sourceSelect.querySelectorAll('option');
+    expect(options).toHaveLength(3); // All Sources, EHR, Manual
+  });
+
+  it('selecting a source filters the task list', async () => {
+    globalThis.fetch = mockFetchSuccess();
+    render(<WorkboardMojo />);
+    await waitFor(() => {
+      expect(screen.getAllByTestId('task-row')).toHaveLength(3);
+    });
+    fireEvent.change(screen.getByTestId('source-filter'), { target: { value: 'Manual' } });
+    expect(screen.getAllByTestId('task-row')).toHaveLength(1);
+    expect(screen.getByText(/Approve vendor/)).toBeInTheDocument();
+  });
+
+  it('source filter stacks with type tab filter', async () => {
+    globalThis.fetch = mockFetchSuccess();
+    render(<WorkboardMojo />);
+    await waitFor(() => {
+      expect(screen.getAllByTestId('task-row')).toHaveLength(3);
+    });
+    // Filter to EHR: SM-TASK-001 (Review/EHR) + SM-TASK-003 (Action/EHR) = 2
+    fireEvent.change(screen.getByTestId('source-filter'), { target: { value: 'EHR' } });
+    expect(screen.getAllByTestId('task-row')).toHaveLength(2);
+    // Then filter to Action type: only SM-TASK-003
+    fireEvent.click(screen.getByTestId('filter-tab-action'));
+    expect(screen.getAllByTestId('task-row')).toHaveLength(1);
+    expect(screen.getByText('Process customer refund')).toBeInTheDocument();
+  });
+
+  // --- Round 5: Unclaimed alert banner ---
+
+  it('unclaimed banner renders when unclaimed tasks exist', async () => {
+    globalThis.fetch = mockFetchSuccess();
+    render(<WorkboardMojo />);
+    await waitFor(() => {
+      expect(screen.getAllByTestId('task-row')).toHaveLength(3);
+    });
+    const banner = screen.getByTestId('unclaimed-banner');
+    expect(banner).toBeInTheDocument();
+    // SM-TASK-003 has no assigned_user → 1 unclaimed
+    expect(banner.textContent).toContain('1 task unclaimed');
+  });
+
+  it('unclaimed banner does NOT render when all tasks are claimed', async () => {
+    const allClaimed = MOCK_TASKS.map(t => ({ ...t, assigned_user: 'someone@test.com' }));
+    globalThis.fetch = mockFetchSuccess(allClaimed);
+    render(<WorkboardMojo />);
+    await waitFor(() => {
+      expect(screen.getAllByTestId('task-row')).toHaveLength(3);
+    });
+    expect(screen.queryByTestId('unclaimed-banner')).not.toBeInTheDocument();
+  });
+
+  it('clicking "View unclaimed" sets unclaimed-only view', async () => {
+    globalThis.fetch = mockFetchSuccess();
+    render(<WorkboardMojo />);
+    await waitFor(() => {
+      expect(screen.getAllByTestId('task-row')).toHaveLength(3);
+    });
+    fireEvent.click(screen.getByTestId('view-unclaimed-link'));
+    // Only unclaimed tasks visible
+    expect(screen.getAllByTestId('task-row')).toHaveLength(1);
+    expect(screen.getByText('Process customer refund')).toBeInTheDocument();
+    // Banner switches to "Showing N unclaimed" mode
+    expect(screen.getByTestId('clear-unclaimed-filter')).toBeInTheDocument();
+  });
+
+  it('banner count reflects full task list, not filtered subset', async () => {
+    globalThis.fetch = mockFetchSuccess();
+    render(<WorkboardMojo />);
+    await waitFor(() => {
+      expect(screen.getAllByTestId('task-row')).toHaveLength(3);
+    });
+    // Filter to Review type (no unclaimed Review tasks)
+    fireEvent.click(screen.getByTestId('filter-tab-review'));
+    // Banner should still show total unclaimed count (1)
+    const banner = screen.getByTestId('unclaimed-banner');
+    expect(banner.textContent).toContain('1 task unclaimed');
+  });
+
+  // --- Round 5: Optimistic claim ---
+
+  it('task row updates immediately on Claim click (before mock resolves)', async () => {
+    let resolveClaimFn;
+    const claimPromise = new Promise((resolve) => { resolveClaimFn = resolve; });
+    let callIndex = 0;
+    globalThis.fetch = vi.fn((url) => {
+      if (url.includes('/api/modules/tasks/users')) {
+        return Promise.resolve({ ok: true, json: () => Promise.resolve({ users: [] }) });
+      }
+      if (url.includes('/api/modules/tasks/roles')) {
+        return Promise.resolve({ ok: true, json: () => Promise.resolve({ roles: [] }) });
+      }
+      if (url.includes('/api/modules/tasks/claim')) {
+        return claimPromise;
+      }
+      return Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve({ tasks: MOCK_TASKS }),
+        text: () => Promise.resolve(JSON.stringify({ tasks: MOCK_TASKS })),
+      });
+    });
+    render(<WorkboardMojo />);
+    await waitFor(() => {
+      expect(screen.getAllByTestId('task-row')).toHaveLength(3);
+    });
+    // SM-TASK-003 should show Claim button (no assigned_user)
+    const claimBtn = screen.getByTestId('claim-button');
+    fireEvent.click(claimBtn);
+    // Immediately — before the API resolves — the row should no longer have Claim
+    await waitFor(() => {
+      expect(screen.queryByTestId('claim-button')).not.toBeInTheDocument();
+    });
+    // Resolve the claim
+    resolveClaimFn({
+      ok: true,
+      json: () => Promise.resolve({ task: { ...MOCK_TASKS[2], assigned_user: 'me@test.com' } }),
+      text: () => Promise.resolve(''),
+    });
+  });
+
+  it('rollback occurs when claim API returns error', async () => {
+    let callIndex = 0;
+    globalThis.fetch = vi.fn((url) => {
+      if (url.includes('/api/modules/tasks/users')) {
+        return Promise.resolve({ ok: true, json: () => Promise.resolve({ users: [] }) });
+      }
+      if (url.includes('/api/modules/tasks/roles')) {
+        return Promise.resolve({ ok: true, json: () => Promise.resolve({ roles: [] }) });
+      }
+      if (url.includes('/api/modules/tasks/claim')) {
+        return Promise.resolve({
+          ok: false,
+          status: 500,
+          json: () => Promise.reject(),
+          text: () => Promise.resolve('Server Error'),
+        });
+      }
+      return Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve({ tasks: MOCK_TASKS }),
+        text: () => Promise.resolve(JSON.stringify({ tasks: MOCK_TASKS })),
+      });
+    });
+    render(<WorkboardMojo />);
+    await waitFor(() => {
+      expect(screen.getAllByTestId('task-row')).toHaveLength(3);
+    });
+    const claimBtn = screen.getByTestId('claim-button');
+    fireEvent.click(claimBtn);
+    // After rollback, Claim button should reappear
+    await waitFor(() => {
+      expect(screen.getByTestId('claim-button')).toBeInTheDocument();
+    });
+    // Error toast should appear
+    expect(screen.getByTestId('inline-toast')).toBeInTheDocument();
   });
 
   // --- BUG-006: parseFrappeError handles detail._server_messages ---

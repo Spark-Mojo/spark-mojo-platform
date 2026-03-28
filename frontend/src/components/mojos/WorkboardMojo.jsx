@@ -429,7 +429,7 @@ function StatsBar({ tasks }) {
   );
 }
 
-function FilterTabs({ activeTab, onTabChange, showCompleted, onToggleCompleted }) {
+function FilterTabs({ activeTab, onTabChange, showCompleted, onToggleCompleted, sourceFilter, onSourceFilterChange, sourceOptions }) {
   return (
     <div data-testid="filter-tabs" className="flex items-center gap-1 px-4 py-2 border-b border-[#E2E8EB]">
       {FILTER_TABS.map((tab) => (
@@ -448,6 +448,20 @@ function FilterTabs({ activeTab, onTabChange, showCompleted, onToggleCompleted }
         </button>
       ))}
       <div className="flex-1" />
+      {sourceOptions.length > 0 && (
+        <select
+          data-testid="source-filter"
+          value={sourceFilter}
+          onChange={(e) => onSourceFilterChange(e.target.value)}
+          className="text-xs px-2 py-1.5 font-medium text-[#34424A] bg-transparent border-none focus:outline-none focus:ring-1 focus:ring-teal-400 rounded cursor-pointer"
+          style={{ fontFamily: 'Inter, sans-serif' }}
+        >
+          <option value="">All Sources</option>
+          {sourceOptions.map((s) => (
+            <option key={s} value={s}>{s}</option>
+          ))}
+        </select>
+      )}
       <button
         data-testid="filter-show-completed"
         onClick={onToggleCompleted}
@@ -1044,10 +1058,10 @@ function ViewToggle({ viewMode, onViewChange }) {
         data-testid="view-toggle-list"
         onClick={() => onViewChange('list')}
         className={cn(
-          'px-3 py-1.5 rounded text-sm font-medium transition-colors',
+          'px-3 py-1.5 rounded-full text-sm font-medium transition-colors',
           viewMode === 'list'
-            ? 'bg-teal-100 text-teal-700'
-            : 'text-gray-500 hover:text-gray-700'
+            ? 'bg-[#006666] text-white'
+            : 'text-[#34424A] hover:text-gray-700'
         )}
         aria-label="List view"
       >
@@ -1057,10 +1071,10 @@ function ViewToggle({ viewMode, onViewChange }) {
         data-testid="view-toggle-kanban"
         onClick={() => onViewChange('kanban')}
         className={cn(
-          'px-3 py-1.5 rounded text-sm font-medium transition-colors',
+          'px-3 py-1.5 rounded-full text-sm font-medium transition-colors',
           viewMode === 'kanban'
-            ? 'bg-teal-100 text-teal-700'
-            : 'text-gray-500 hover:text-gray-700'
+            ? 'bg-[#006666] text-white'
+            : 'text-[#34424A] hover:text-gray-700'
         )}
         aria-label="Kanban view"
       >
@@ -1337,6 +1351,8 @@ export default function WorkboardMojo() {
   const [viewMode, setViewMode] = useState(loadViewPreference);
   const [showCompleted, setShowCompleted] = useState(false);
   const [filterTab, setFilterTab] = useState('All');
+  const [sourceFilter, setSourceFilter] = useState('');
+  const [showUnclaimedOnly, setShowUnclaimedOnly] = useState(false);
   const [createModalOpen, setCreateModalOpen] = useState(false);
 
   // Drawer state
@@ -1371,6 +1387,19 @@ export default function WorkboardMojo() {
 
   const handleClaim = useCallback(async (taskId) => {
     setClaimingId(taskId);
+
+    // Snapshot for rollback
+    const prevTasks = tasks;
+
+    // Optimistic update — use placeholder email; real value comes from API
+    setTasks((prev) =>
+      prev.map((t) =>
+        t.name === taskId
+          ? { ...t, assigned_user: t.assigned_user || 'claiming...', is_unowned: false }
+          : t
+      )
+    );
+
     try {
       const result = await postClaim(taskId);
       const updatedTask = result.task || result;
@@ -1382,14 +1411,16 @@ export default function WorkboardMojo() {
         )
       );
     } catch (err) {
-      showToast(err.message);
+      // Rollback
+      setTasks(prevTasks);
+      showToast(err.message || 'Failed to claim task — please try again');
       if (err.status === 409) {
         fetchTasks(showCompleted).then(setTasks).catch(() => {});
       }
     } finally {
       setClaimingId(null);
     }
-  }, [showToast, showCompleted]);
+  }, [tasks, showToast, showCompleted]);
 
   const handleSortChange = useCallback((field, direction) => {
     setSortPref({ field, direction });
@@ -1541,13 +1572,24 @@ export default function WorkboardMojo() {
     );
   }, [drawerTask]);
 
+  const unclaimedCount = useMemo(() =>
+    tasks.filter((t) => !t.assigned_user && !RESOLVED_STATES.includes(t.canonical_state)).length,
+    [tasks]
+  );
+
+  const sourceOptions = useMemo(() =>
+    [...new Set(tasks.map((t) => t.source_system).filter(Boolean))].sort(),
+    [tasks]
+  );
+
   const filtered = useMemo(() => {
-    let result = tasks;
-    if (filterTab !== 'All') {
-      result = result.filter((t) => t.task_type === filterTab);
-    }
-    return result;
-  }, [tasks, filterTab]);
+    return tasks.filter((t) => {
+      const matchesType = filterTab === 'All' || t.task_type === filterTab;
+      const matchesSource = !sourceFilter || t.source_system === sourceFilter;
+      const matchesUnclaimed = !showUnclaimedOnly || !t.assigned_user;
+      return matchesType && matchesSource && matchesUnclaimed;
+    });
+  }, [tasks, filterTab, sourceFilter, showUnclaimedOnly]);
 
   const sorted = useMemo(
     () => sortTasks(filtered, sortPref.field, sortPref.direction),
@@ -1637,7 +1679,55 @@ export default function WorkboardMojo() {
             onTabChange={setFilterTab}
             showCompleted={showCompleted}
             onToggleCompleted={handleToggleCompleted}
+            sourceFilter={sourceFilter}
+            onSourceFilterChange={setSourceFilter}
+            sourceOptions={sourceOptions}
           />
+
+          {/* Unclaimed alert banner */}
+          {unclaimedCount > 0 && (
+            <div
+              data-testid="unclaimed-banner"
+              style={{
+                background: 'rgba(255, 111, 97, 0.12)',
+                borderLeft: '4px solid #FF6F61',
+                padding: '8px 16px',
+                fontSize: '13px',
+                fontFamily: 'Inter, sans-serif',
+                color: '#34424A',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+              }}
+            >
+              <span>&#9888;</span>
+              {!showUnclaimedOnly ? (
+                <>
+                  <span>{unclaimedCount} task{unclaimedCount !== 1 ? 's' : ''} unclaimed</span>
+                  <span>&mdash;</span>
+                  <button
+                    data-testid="view-unclaimed-link"
+                    onClick={() => { setShowUnclaimedOnly(true); setFilterTab('All'); }}
+                    style={{ color: '#006666', textDecoration: 'underline', background: 'none', border: 'none', cursor: 'pointer', font: 'inherit' }}
+                  >
+                    View unclaimed &rarr;
+                  </button>
+                </>
+              ) : (
+                <>
+                  <span>Showing {unclaimedCount} unclaimed task{unclaimedCount !== 1 ? 's' : ''}</span>
+                  <span>&middot;</span>
+                  <button
+                    data-testid="clear-unclaimed-filter"
+                    onClick={() => setShowUnclaimedOnly(false)}
+                    style={{ color: '#006666', textDecoration: 'underline', background: 'none', border: 'none', cursor: 'pointer', font: 'inherit' }}
+                  >
+                    Clear filter &times;
+                  </button>
+                </>
+              )}
+            </div>
+          )}
 
           {/* Column headers */}
           <ColumnHeaders
