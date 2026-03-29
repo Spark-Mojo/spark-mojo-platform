@@ -6,7 +6,7 @@ function Skeleton({
 }) {
   return (
     <div
-      className={cn("animate-pulse rounded-md bg-primary/15", className)}
+      className={cn("animate-pulse rounded-md bg-[var(--sm-track-bg)]", className)}
       {...props} />
   );
 }

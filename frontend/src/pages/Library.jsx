@@ -236,7 +236,7 @@ export default function Library() {
 
   return (
     <TooltipProvider>
-      <div className="min-h-screen p-8" style={{ backgroundColor: 'var(--sm-offwhite)' }}>
+      <div className="min-h-screen p-8">
         {/* Page Header */}
         <div className="flex items-center justify-between mb-10">
           <div>
@@ -524,7 +524,7 @@ export default function Library() {
 
           {/* Table */}
           <SubSection title="Table">
-            <div className="rounded-lg border border-border overflow-hidden max-w-lg">
+            <div className="rounded-lg border border-[var(--sm-control-border)] overflow-hidden max-w-lg">
               <Table>
                 <TableHeader>
                   <TableRow>
