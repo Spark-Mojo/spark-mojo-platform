@@ -1,10 +1,3 @@
-# Ralph Orchestrator — Spark Mojo Platform
-# Session 5: Task & Workboard Management
-#
-# Run with: ralph run --config hats.yml
-#
-# Flow: health_check → story_planner → builder → verifier → committer
-
 cli:
   backend: "claude"
 
@@ -16,188 +9,158 @@ event_loop:
 
 core:
   guardrails:
-    - "Story specs live at /Users/jamesilsley/GitHub/sparkmojo-internal/platform/feature-library/stories/"
-    - "CLAUDE.md is the project context — read it first every hat activation"
-    - "Never install Frappe apps via bench — frappe_types caused a VPS restart loop"
-    - "Never use frappe.db.set_value() — always frappe.get_doc().save()"
-    - "Never call Frappe directly from React — always through abstraction layer"
-    - "SM Task is a custom DocType in sm_widgets — NOT an ERPNext Task extension (DECISION-014)"
-    - "Frontend is JSX not TypeScript — never create .ts or .tsx files"
+    - "Absolute path to repo: /Users/jamesilsley/GitHub/spark-mojo-platform"
+    - "Absolute path to frontend: /Users/jamesilsley/GitHub/spark-mojo-platform/frontend"
+    - "Absolute path to governance repo: /Users/jamesilsley/GitHub/sparkmojo-internal"
+    - "Package manager is pnpm. Never use npm or yarn."
+    - "Language is JavaScript JSX. NOT TypeScript. If shadcn generates .tsx files, convert them to .jsx."
+    - "DO NOT modify OnboardingMojo.jsx or WorkboardMojo.jsx. They are off-limits tonight."
+    - "DO NOT modify frappe-client.js or any backend/abstraction-layer files."
+    - "DO NOT delete or modify existing content in CLAUDE.md. Only APPEND new sections."
+    - "DO NOT alter existing routes in pages/index.jsx. Only ADD the /library route alongside them."
+    - "NO raw hex color values in new component files. All colors via var(--sm-*) tokens."
+    - "All glass surfaces use token variables, never hardcoded rgba values."
+    - "Visual north star: Ein UI (ui.eindev.ir) liquid glass aesthetic. Light mode is default."
+    - "ADR spec: /Users/jamesilsley/GitHub/spark-mojo-platform/ADR-design-system.md"
+    - "Component spec: /Users/jamesilsley/GitHub/spark-mojo-platform/COMPONENT_INVENTORY.md"
+    - "Read CLAUDE.md FIRST every session: /Users/jamesilsley/GitHub/spark-mojo-platform/CLAUDE.md"
 
 hats:
   health_check:
-    name: "🏥 Health Check"
-    description: "Runs once at session start. Verifies lint, build, and Python imports pass before any build work begins. Halts the session if baseline is broken."
+    name: "Health Check"
+    description: "Verifies baseline health of the repo before any build work begins."
     triggers: ["session.start"]
     publishes: ["health.ok", "health.blocked"]
     max_activations: 1
     instructions: |
-      You are the Health Check. Run once before any build work starts.
-      Read CLAUDE.md first for project context.
+      Read /Users/jamesilsley/GitHub/spark-mojo-platform/CLAUDE.md first.
+      Then run baseline checks in order. If any fail, write HEALTH-BLOCKED.md and emit health.blocked.
 
-      Run these baseline checks in order:
-
-      1. From frontend/ directory:
-         cd /Users/jamesilsley/GitHub/spark-mojo-platform/frontend && pnpm run lint
-         PASS: exits 0 with 0 errors
-         FAIL: write HEALTH-BLOCKED.md at repo root with exact errors. Emit health.blocked. Stop.
-
-      2. From frontend/ directory:
-         cd /Users/jamesilsley/GitHub/spark-mojo-platform/frontend && pnpm run build
+      1. cd /Users/jamesilsley/GitHub/spark-mojo-platform/frontend && pnpm run lint
          PASS: exits 0
-         FAIL: write HEALTH-BLOCKED.md with exact errors. Emit health.blocked. Stop.
+      2. cd /Users/jamesilsley/GitHub/spark-mojo-platform/frontend && pnpm run build
+         PASS: exits 0
 
-      3. From abstraction-layer/ directory:
-         cd /Users/jamesilsley/GitHub/spark-mojo-platform/abstraction-layer && python -c "import fastapi; import httpx; print('OK')"
-         PASS: prints OK
-         FAIL: write HEALTH-BLOCKED.md explaining missing packages. Emit health.blocked. Stop.
+      If lint fails due to legacy files in src/components/desktop/:
+        Verify eslint.config.js ignores that directory. If not, add the ignore. Re-run lint.
 
-      If all three pass:
-      ralph emit "health.ok" "lint clean, build ok, python imports ok"
+      If all pass:
+        ralph emit "health.ok" "lint clean, build ok"
 
-  story_planner:
-    name: "📋 Story Planner"
-    description: "Reads the next unbuilt story from PROMPT.md, confirms dependencies, and writes a concrete unambiguous build plan before any code is written."
-    triggers: ["health.ok", "story.committed"]
+  task_planner:
+    name: "Task Planner"
+    description: "Reads next uncompleted task from PROMPT.md and creates a build plan."
+    triggers: ["health.ok", "task.committed"]
     publishes: ["plan.ready", "queue.complete"]
     instructions: |
-      You are the Story Planner. Determine the next story and produce a build plan.
+      Read /Users/jamesilsley/GitHub/spark-mojo-platform/PROMPT.md.
+      Find the first TASK-NN without a TASK-NN-COMPLETE marker file at repo root.
 
-      GOVERNANCE REPO is at: /Users/jamesilsley/GitHub/sparkmojo-internal
-      STORY FILES are at: /Users/jamesilsley/GitHub/sparkmojo-internal/platform/feature-library/stories/
+      If all tasks are done (TASK-01-COMPLETE through TASK-06-COMPLETE all exist):
+        print LOOP_COMPLETE
+        ralph emit "queue.complete" "All 6 tasks complete"
+        Stop.
 
-      Step 1 — Find the next story.
-      Read PROMPT.md. Find the first story that does not have a STORY-NNN-COMPLETE
-      marker file at the repo root (/Users/jamesilsley/GitHub/spark-mojo-platform/).
-      If all stories have COMPLETE markers: print LOOP_COMPLETE. Emit queue.complete. Stop.
+      Read the full task spec from PROMPT.md.
+      Read /Users/jamesilsley/GitHub/spark-mojo-platform/ADR-design-system.md for architecture context.
+      Read /Users/jamesilsley/GitHub/spark-mojo-platform/COMPONENT_INVENTORY.md for component specs.
+      Read /Users/jamesilsley/GitHub/spark-mojo-platform/CLAUDE.md for conventions.
 
-      Step 2 — Read the story spec.
-      Read the full story file:
-      /Users/jamesilsley/GitHub/sparkmojo-internal/platform/feature-library/stories/STORY-NNN.md
-      Also read:
-      /Users/jamesilsley/GitHub/sparkmojo-internal/platform/WORKING_AGREEMENT.md
-      /Users/jamesilsley/GitHub/sparkmojo-internal/platform/feature-library/TASK-WORKBOARD.md
-      /Users/jamesilsley/GitHub/sparkmojo-internal/platform/decisions/DECISION-014-sm-task-custom-doctype.md
+      Write PLAN-TASK-NN.md at repo root with:
+        - Task number and name
+        - Files to create or modify (with absolute paths)
+        - Dependencies (which previous tasks must be done)
+        - Specific gate commands for this task
 
-      Step 3 — Write the plan to PLAN-STORY-NNN.md at repo root:
-      - Story ID and title
-      - Story type: Frappe DocType | Python API | React Frontend
-      - Every file to create or modify (exact absolute paths)
-      - Every field/endpoint/component (exact names and types)
-      - Quality gate to run (per CLAUDE.md Definition of Done)
-      - Dependency check: confirm prior story COMPLETE marker exists if required
+      If anything is ambiguous:
+        Write BLOCKED.md with the specific question.
+        ralph emit "plan.ready" "TASK-NN: blocked on ambiguity, see BLOCKED.md"
 
-      Step 4 — Check for ambiguity.
-      If ANY structural decision cannot be resolved from the story file, CLAUDE.md,
-      TASK-WORKBOARD.md, or a file in platform/decisions/ — write BLOCKED-STORY-NNN.md
-      with the exact question. Emit plan.ready anyway so builder can skip it.
-
-      Emit: ralph emit "plan.ready" "STORY-NNN: N files, type: [doctype|api|frontend]"
+      ralph emit "plan.ready" "TASK-NN: [summary], [N] files"
 
   builder:
-    name: "🔨 Builder"
-    description: "Implements exactly what the story plan specifies. Runs fast quality gates after each significant change. Emits build.ready when fast gates pass."
+    name: "Builder"
+    description: "Implements the current task plan. Runs fast gates after each change."
     triggers: ["plan.ready", "build.retry"]
     publishes: ["build.ready", "build.blocked"]
     instructions: |
-      You are the Builder. Read PLAN-STORY-NNN.md at the repo root first.
-      If it contains a BLOCKED notice, write BLOCKED-STORY-NNN.md and emit build.blocked.
+      Read PLAN-TASK-NN.md from /Users/jamesilsley/GitHub/spark-mojo-platform/ root.
+      If BLOCKED.md exists for this task, skip to next task — emit build.blocked.
 
-      Create the story branch:
-      git checkout -b story/STORY-NNN-short-description
+      Build exactly what the plan says. Nothing more. Nothing less.
 
-      REPO ROOT: /Users/jamesilsley/GitHub/spark-mojo-platform/
-      FRAPPE APPS: /Users/jamesilsley/GitHub/spark-mojo-platform/frappe-apps/
-      ABSTRACTION LAYER: /Users/jamesilsley/GitHub/spark-mojo-platform/abstraction-layer/
-      FRONTEND: /Users/jamesilsley/GitHub/spark-mojo-platform/frontend/
+      Key rules during build:
+      - shadcn/ui may generate TypeScript (.tsx). Convert ALL to JavaScript (.jsx) — remove type annotations, rename files.
+      - Every surface component must use var(--sm-glass-bg), var(--sm-glass-border), backdrop-filter: blur(var(--sm-glass-blur-*)).
+      - Light mode is the DEFAULT. Glass surfaces are frosted white (bg-white/70) on light canvas. NOT dark glass.
+      - No raw hex values. Use var(--sm-*) tokens only.
+      - Import base components from ../ui/ — never recreate primitives.
+      - Library page must be gated: only render when import.meta.env.DEV === true.
+      - DO NOT modify existing content in CLAUDE.md — only APPEND.
+      - DO NOT alter existing routes in pages/index.jsx — only ADD the library route.
+      - Preserve existing AssignmentField.jsx in components/ui/ (move to mojo-patterns, update imports).
 
-      Build exactly what the plan specifies. Nothing more. Nothing less.
+      Run fast gate after each significant file creation:
+        cd /Users/jamesilsley/GitHub/spark-mojo-platform/frontend && pnpm run lint
 
-      FRAPPE DOCTYPE STORIES (STORY-003, 004, 005):
-      - SM Task is a CUSTOM DocType in sm_widgets — NOT ERPNext Task extension (DECISION-014)
-      - Create DocType JSON at: frappe-apps/sm_widgets/sm_widgets/doctype/sm_task/sm_task.json
-      - Create controller at: frappe-apps/sm_widgets/sm_widgets/doctype/sm_task/sm_task.py
-      - NEVER use frappe.db.set_value() — always frappe.get_doc().save()
-      - NEVER install a Frappe app via bench
-      - Run after every change: bench --site poc.sparkmojo.com migrate (must exit 0)
-
-      PYTHON API STORIES (STORY-006, 007):
-      - Create: abstraction-layer/routes/tasks.py
-      - Register router in: abstraction-layer/main.py
-      - Write tests in: abstraction-layer/tests/test_tasks.py
-      - Fast gate: cd abstraction-layer && pytest tests/test_tasks.py -v
-
-      REACT FRONTEND STORIES (STORY-008a, 008b, 009, 010):
-      - Create files in: frontend/src/components/mojos/ ONLY
-      - NEVER modify: Desktop.jsx, frappe-client.js, or any legacy component folder
-      - NEVER create .ts or .tsx files
-      - Write tests in: frontend/src/components/mojos/__tests__/
-      - Fast gate: cd frontend && pnpm run lint && pnpm run test
-
-      When fast gates pass:
-      ralph emit "build.ready" "STORY-NNN: implementation complete, fast gates passing"
+      When the task implementation is complete and fast gates pass:
+        ralph emit "build.ready" "TASK-NN: complete, lint passes"
 
   verifier:
-    name: "✅ Verifier"
-    description: "Runs the full quality gate suite for the completed story. The only hat that can mark a story done. Sends failing stories back to the builder with exact failure details."
+    name: "Verifier"
+    description: "Runs full gate suite for the current task. Only hat that can mark tasks done."
     triggers: ["build.ready"]
     publishes: ["task.done", "build.retry"]
     instructions: |
-      You are the Verifier. Run ALL gates. A story is only done when every gate passes.
-      Read PLAN-STORY-NNN.md to know which gate type applies.
+      Run ALL gates for the current task:
 
-      FRAPPE DOCTYPE GATE:
-      1. bench --site poc.sparkmojo.com migrate
-         PASS: exit 0, no errors
-         FAIL: ralph emit "build.retry" "migrate failed: [exact error]"
-      2. In bench console: frappe.get_meta('SM Task').fields
-         PASS: all fields from story spec present
-         FAIL: ralph emit "build.retry" "missing fields: [list]"
-      3. Test hooks in bench console:
-         frappe.get_doc({'doctype':'SM Task','title':'T','task_type':'Action','executor_type':'Human','canonical_state':'Blocked'}).insert()
-         PASS: raises frappe.ValidationError
-         frappe.get_doc({'doctype':'SM Task','title':'T2','task_type':'Action','executor_type':'Human','canonical_state':'In Progress'}).insert()
-         PASS: started_at auto-populated
-         FAIL: ralph emit "build.retry" "hook failed: [exact error]"
-
-      PYTHON API GATE:
-      1. cd abstraction-layer && pytest tests/ -v
-         PASS: 0 failures
-         FAIL: ralph emit "build.retry" "tests failed: [test names and errors]"
-      2. cd abstraction-layer && pytest tests/ --cov=. --cov-report=term-missing --cov-fail-under=70
-         PASS: coverage >= 70%
-         FAIL: ralph emit "build.retry" "coverage [N]% below 70%"
-      3. uvicorn main:app --port 8001 & sleep 2 && curl -s http://localhost:8001/health && kill %1
-         PASS: response contains status ok
-         FAIL: ralph emit "build.retry" "health endpoint: [error]"
-
-      REACT FRONTEND GATE:
-      1. cd frontend && pnpm run lint
-         PASS: 0 warnings, 0 errors
-         FAIL: ralph emit "build.retry" "lint: [exact output]"
-      2. cd frontend && pnpm run test
-         PASS: 0 failures
-         FAIL: ralph emit "build.retry" "tests failed: [names]"
-      3. cd frontend && pnpm run build
+      1. cd /Users/jamesilsley/GitHub/spark-mojo-platform/frontend && pnpm run lint
          PASS: exits 0
-         FAIL: ralph emit "build.retry" "build: [error]"
 
-      If ALL gates pass:
-      touch STORY-NNN-COMPLETE
-      ralph emit "task.done" "STORY-NNN: [gate results summary]"
+      2. cd /Users/jamesilsley/GitHub/spark-mojo-platform/frontend && pnpm run build
+         PASS: exits 0
+
+      3. For TASK-03 and later: check for raw hex values in new component files
+         grep -rn '#[0-9a-fA-F]\{3,8\}' /Users/jamesilsley/GitHub/spark-mojo-platform/frontend/src/components/mojo-patterns/ --include='*.jsx' --include='*.js' | grep -v '//' | grep -v 'comment'
+         PASS: returns empty (no raw hex outside comments)
+
+      4. For TASK-05: verify library route exists and imports all mojo-pattern components
+         grep -l 'MojoHeader\|StatsCardRow\|FilterTabBar\|StatusBadge\|KanbanBoard\|DataTable\|TaskDetailDrawer\|AssignmentField' /Users/jamesilsley/GitHub/spark-mojo-platform/frontend/src/pages/Library.jsx
+         PASS: file exists and matches
+
+      5. For TASK-05: verify existing routes are intact
+         grep 'OnboardingMojo\|WorkboardMojo' /Users/jamesilsley/GitHub/spark-mojo-platform/frontend/src/pages/index.jsx
+         PASS: both still present
+
+      6. For TASK-06 (final): run ALL above gates plus:
+         - Verify tokens.css exists with all token categories
+         - Verify all 8 pattern files exist in mojo-patterns/
+         - Verify CLAUDE.md was APPENDED to (not truncated) — file should be LARGER than 23KB
+
+      If ALL pass:
+        touch /Users/jamesilsley/GitHub/spark-mojo-platform/TASK-NN-COMPLETE
+        ralph emit "task.done" "TASK-NN: [gate results summary]"
+
+      If ANY fail:
+        ralph emit "build.retry" "TASK-NN: [exact failure — command, error output, file, line number]"
 
   committer:
-    name: "📦 Committer"
-    description: "Commits verified work to the story branch using the exact commit message from the story spec file. Signals the planner to find the next story."
+    name: "Committer"
+    description: "Commits verified work after each task passes all gates."
     triggers: ["task.done"]
-    publishes: ["story.committed"]
+    publishes: ["task.committed"]
     instructions: |
-      You are the Committer. All quality gates passed. Commit the work.
+      cd /Users/jamesilsley/GitHub/spark-mojo-platform
 
-      1. git add -A
-      2. Read the commit message from the bottom of:
-         /Users/jamesilsley/GitHub/sparkmojo-internal/platform/feature-library/stories/STORY-NNN.md
-         Use that exact commit message.
-      3. git commit -m "[exact message from story file]"
+      Stage all changes:
+        git add -A
 
-      ralph emit "story.committed" "STORY-NNN committed on branch story/[branch-name]"
+      Commit with task-specific message:
+        TASK-01: git commit -m "feat: add design token system (tokens.css)"
+        TASK-02: git commit -m "feat: install and initialize shadcn/ui component library"
+        TASK-03: git commit -m "feat: theme all shadcn/ui components with Spark Mojo glass tokens"
+        TASK-04: git commit -m "feat: build mojo-pattern composite components"
+        TASK-05: git commit -m "feat: add /library component demo page (dev-only)"
+        TASK-06: git commit -m "chore: update CLAUDE.md + final verification — design system foundation complete"
+
+      ralph emit "task.committed" "TASK-NN committed on feature/design-system-foundation"

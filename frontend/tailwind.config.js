@@ -61,9 +61,9 @@ module.exports = {
   				ring: 'hsl(var(--sidebar-ring))'
   			},
   			'sm-teal': {
-  				DEFAULT: '#006666',
-  				50: '#e6f2f2',
-  				900: '#001a1a'
+  				'50': '#e6f2f2',
+  				'900': '#001a1a',
+  				DEFAULT: '#006666'
   			},
   			'sm-coral': '#FF6F61',
   			'sm-gold': '#FFB300',
