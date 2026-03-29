@@ -524,7 +524,7 @@ export default function Library() {
 
           {/* Table */}
           <SubSection title="Table">
-            <div className="rounded-lg border border-[var(--sm-glass-border)] overflow-hidden max-w-lg">
+            <div className="rounded-lg border border-border overflow-hidden max-w-lg">
               <Table>
                 <TableHeader>
                   <TableRow>

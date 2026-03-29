@@ -50,30 +50,30 @@
   --sm-radius-lg: 12px;
   --sm-radius-pill: 9999px;
 
-  /* ── Shadows ── */
-  --sm-shadow-card: 0 1px 3px rgba(0, 0, 0, 0.08);
-  --sm-shadow-drawer: -4px 0 24px rgba(0, 0, 0, 0.12);
-  --sm-shadow-modal: 0 8px 32px rgba(0, 0, 0, 0.16);
+  /* ── Shadows (strong for light-mode depth) ── */
+  --sm-shadow-card: 0 1px 3px rgba(0, 0, 0, 0.12), 0 1px 2px rgba(0, 0, 0, 0.08);
+  --sm-shadow-drawer: -4px 0 24px rgba(0, 0, 0, 0.18);
+  --sm-shadow-modal: 0 8px 32px rgba(0, 0, 0, 0.24);
 
   /* ── Liquid Glass Surfaces ── */
-  --sm-glass-bg: rgba(255, 255, 255, 0.70);
-  --sm-glass-bg-hover: rgba(255, 255, 255, 0.80);
-  --sm-glass-bg-active: rgba(255, 255, 255, 0.90);
-  --sm-glass-border: rgba(255, 255, 255, 0.18);
-  --sm-glass-border-strong: rgba(255, 255, 255, 0.30);
+  --sm-glass-bg: rgba(255, 255, 255, 0.80);
+  --sm-glass-bg-hover: rgba(240, 242, 245, 0.90);
+  --sm-glass-bg-active: rgba(235, 237, 240, 0.95);
+  --sm-glass-border: rgba(0, 0, 0, 0.12);
+  --sm-glass-border-strong: rgba(0, 0, 0, 0.20);
   --sm-glass-blur-sm: 8px;
   --sm-glass-blur-md: 16px;
   --sm-glass-blur-lg: 24px;
   --sm-glass-blur-xl: 40px;
 
   /* ── Glass Surface Tints ── */
-  --sm-glass-teal: rgba(0, 102, 102, 0.06);
-  --sm-glass-coral: rgba(255, 111, 97, 0.06);
-  --sm-glass-gold: rgba(255, 179, 0, 0.06);
+  --sm-glass-teal: rgba(0, 102, 102, 0.10);
+  --sm-glass-coral: rgba(255, 111, 97, 0.10);
+  --sm-glass-gold: rgba(255, 179, 0, 0.10);
 
   /* ── Overlay Backdrops ── */
-  --sm-overlay-drawer: rgba(0, 0, 0, 0.20);
-  --sm-overlay-modal: rgba(0, 0, 0, 0.30);
+  --sm-overlay-drawer: rgba(0, 0, 0, 0.30);
+  --sm-overlay-modal: rgba(0, 0, 0, 0.40);
   --sm-overlay-blur: 4px;
 }
 
