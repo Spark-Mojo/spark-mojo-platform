@@ -88,24 +88,24 @@ button:focus-visible {
 @layer base {
   :root {
     /* Bridged to SM design tokens — see tokens.css for source values */
-    --background: 210 17% 98%;
-    --foreground: 202 25% 18%;
+    --background: 213 20% 93%;
+    --foreground: 210 20% 16%;
     --card: 0 0% 100%;
-    --card-foreground: 202 25% 18%;
+    --card-foreground: 210 20% 16%;
     --popover: 0 0% 100%;
-    --popover-foreground: 202 25% 18%;
+    --popover-foreground: 210 20% 16%;
     --primary: 180 100% 20%;
     --primary-foreground: 0 0% 100%;
-    --secondary: 210 17% 91%;
-    --secondary-foreground: 202 25% 18%;
-    --muted: 210 17% 90%;
-    --muted-foreground: 202 20% 35%;
+    --secondary: 210 15% 92%;
+    --secondary-foreground: 210 20% 16%;
+    --muted: 210 15% 89%;
+    --muted-foreground: 210 15% 40%;
     --accent: 180 30% 94%;
     --accent-foreground: 180 100% 20%;
     --destructive: 5 100% 69%;
     --destructive-foreground: 0 0% 100%;
-    --border: 210 18% 78%;
-    --input: 210 18% 78%;
+    --border: 210 15% 75%;
+    --input: 210 15% 75%;
     --ring: 180 100% 20%;
     --chart-1: 180 100% 20%;
     --chart-2: 5 100% 69%;
@@ -119,7 +119,7 @@ button:focus-visible {
     --sidebar-primary-foreground: 0 0% 100%;
     --sidebar-accent: 180 30% 94%;
     --sidebar-accent-foreground: 180 100% 20%;
-    --sidebar-border: 210 18% 78%;
+    --sidebar-border: 210 15% 75%;
     --sidebar-ring: 180 100% 20%;
   }
   [data-theme="dark"] {
@@ -165,8 +165,20 @@ button:focus-visible {
     @apply border-border outline-ring/50;
   }
   body {
-    @apply bg-background text-foreground;
+    @apply text-foreground;
     font-family: var(--sm-font-ui);
+    background-color: #EEF1F5;
+    background-image:
+      radial-gradient(ellipse 80% 60% at 15% 20%, rgba(0, 102, 102, 0.09) 0%, transparent 55%),
+      radial-gradient(ellipse 60% 80% at 85% 25%, rgba(255, 111, 97, 0.07) 0%, transparent 50%),
+      radial-gradient(ellipse 70% 50% at 50% 85%, rgba(255, 179, 0, 0.06) 0%, transparent 50%),
+      radial-gradient(ellipse 90% 70% at 70% 55%, rgba(0, 102, 102, 0.05) 0%, transparent 50%);
+    background-attachment: fixed;
+    min-height: 100vh;
+  }
+  [data-theme="dark"] body {
+    background-color: #0f1117;
+    background-image: none;
   }
 }
 
@@ -174,10 +186,12 @@ button:focus-visible {
 @layer components {
   .sm-glass {
     background: var(--sm-glass-bg);
-    border-color: var(--sm-glass-border);
+    border: 1px solid var(--sm-glass-border);
     backdrop-filter: blur(var(--sm-glass-blur-md));
     -webkit-backdrop-filter: blur(var(--sm-glass-blur-md));
-    box-shadow: var(--sm-shadow-card);
+    box-shadow:
+      var(--sm-shadow-card),
+      inset 0 1px 0 rgba(255, 255, 255, 0.5);
   }
   .sm-glass:hover {
     background: var(--sm-glass-bg-hover);
@@ -185,16 +199,18 @@ button:focus-visible {
   }
   .sm-glass-sm {
     background: var(--sm-glass-bg);
-    border-color: var(--sm-glass-border);
+    border: 1px solid var(--sm-glass-border);
     backdrop-filter: blur(var(--sm-glass-blur-sm));
     -webkit-backdrop-filter: blur(var(--sm-glass-blur-sm));
   }
   .sm-glass-xl {
     background: var(--sm-glass-bg);
-    border-color: var(--sm-glass-border);
+    border: 1px solid var(--sm-glass-border);
     backdrop-filter: blur(var(--sm-glass-blur-xl));
     -webkit-backdrop-filter: blur(var(--sm-glass-blur-xl));
-    box-shadow: var(--sm-shadow-drawer);
+    box-shadow:
+      var(--sm-shadow-drawer),
+      inset 0 1px 0 rgba(255, 255, 255, 0.5);
   }
   .sm-overlay-modal {
     background: var(--sm-overlay-modal);

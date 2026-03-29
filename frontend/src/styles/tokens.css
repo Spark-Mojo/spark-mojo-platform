@@ -50,17 +50,17 @@
   --sm-radius-lg: 12px;
   --sm-radius-pill: 9999px;
 
-  /* ── Shadows (strong for light-mode depth) ── */
-  --sm-shadow-card: 0 1px 3px rgba(0, 0, 0, 0.12), 0 1px 2px rgba(0, 0, 0, 0.08);
-  --sm-shadow-drawer: -4px 0 24px rgba(0, 0, 0, 0.18);
-  --sm-shadow-modal: 0 8px 32px rgba(0, 0, 0, 0.24);
+  /* ── Shadows ── */
+  --sm-shadow-card: 0 1px 3px rgba(0, 0, 0, 0.16), 0 1px 2px rgba(0, 0, 0, 0.10);
+  --sm-shadow-drawer: -4px 0 24px rgba(0, 0, 0, 0.20);
+  --sm-shadow-modal: 0 8px 32px rgba(0, 0, 0, 0.28);
 
   /* ── Liquid Glass Surfaces ── */
-  --sm-glass-bg: rgba(255, 255, 255, 0.80);
-  --sm-glass-bg-hover: rgba(240, 242, 245, 0.90);
-  --sm-glass-bg-active: rgba(235, 237, 240, 0.95);
-  --sm-glass-border: rgba(0, 0, 0, 0.12);
-  --sm-glass-border-strong: rgba(0, 0, 0, 0.20);
+  --sm-glass-bg: rgba(255, 255, 255, 0.55);
+  --sm-glass-bg-hover: rgba(255, 255, 255, 0.70);
+  --sm-glass-bg-active: rgba(255, 255, 255, 0.85);
+  --sm-glass-border: rgba(255, 255, 255, 0.45);
+  --sm-glass-border-strong: rgba(255, 255, 255, 0.65);
   --sm-glass-blur-sm: 8px;
   --sm-glass-blur-md: 16px;
   --sm-glass-blur-lg: 24px;
@@ -72,9 +72,25 @@
   --sm-glass-gold: rgba(255, 179, 0, 0.10);
 
   /* ── Overlay Backdrops ── */
-  --sm-overlay-drawer: rgba(0, 0, 0, 0.30);
-  --sm-overlay-modal: rgba(0, 0, 0, 0.40);
+  --sm-overlay-drawer: rgba(0, 0, 0, 0.40);
+  --sm-overlay-modal: rgba(0, 0, 0, 0.50);
   --sm-overlay-blur: 4px;
+
+  /* ── Interactive Control Tokens (solid in light, translucent in dark) ── */
+  --sm-control-bg: #FFFFFF;
+  --sm-control-border: #D1D5DB;
+  --sm-control-border-heavy: #9CA3AF;
+  --sm-track-bg: #E5E7EB;
+  --sm-track-fill: #006666;
+  --sm-accent-solid: #006666;
+  --sm-accent-solid-hover: #005252;
+  --sm-accent-fg: #FFFFFF;
+  --sm-text-strong: #1F2937;
+  --sm-text-body: #374151;
+  --sm-text-muted: #6B7280;
+  --sm-text-placeholder: #9CA3AF;
+  --sm-surface-muted: #F3F4F6;
+  --sm-surface-secondary: #E5E7EB;
 }
 
 /* ── Dark Mode — Full Ein UI Glass Showcase ── */
@@ -96,6 +112,22 @@
   --sm-shadow-drawer: -4px 0 24px rgba(0, 0, 0, 0.32);
   --sm-shadow-modal: 0 8px 32px rgba(0, 0, 0, 0.40);
   /* Brand colors stay the same — they pop on dark */
+
+  /* ── Interactive Control Tokens ── */
+  --sm-control-bg: rgba(255, 255, 255, 0.06);
+  --sm-control-border: rgba(255, 255, 255, 0.12);
+  --sm-control-border-heavy: rgba(255, 255, 255, 0.25);
+  --sm-track-bg: rgba(255, 255, 255, 0.12);
+  --sm-track-fill: #008080;
+  --sm-accent-solid: #008080;
+  --sm-accent-solid-hover: #009999;
+  --sm-accent-fg: #FFFFFF;
+  --sm-text-strong: #F3F4F6;
+  --sm-text-body: #D1D5DB;
+  --sm-text-muted: #9CA3AF;
+  --sm-text-placeholder: #6B7280;
+  --sm-surface-muted: rgba(255, 255, 255, 0.06);
+  --sm-surface-secondary: rgba(255, 255, 255, 0.10);
 }
 
 /* ── Unassigned Pulse Animations ── */
