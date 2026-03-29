@@ -1,0 +1,110 @@
+/*
+ * Spark Mojo Design Tokens
+ * Single source of truth for all visual values.
+ * Reference: ADR-design-system.md + COMPONENT_INVENTORY.md
+ *
+ * Light mode is the default working environment.
+ * Dark mode is opt-in via [data-theme="dark"].
+ * All glass values use token variables — never hardcoded rgba in components.
+ */
+
+:root {
+  /* ── Brand Colors ── */
+  --sm-teal: #006666;
+  --sm-coral: #FF6F61;
+  --sm-gold: #FFB300;
+  --sm-offwhite: #F8F9FA;
+  --sm-slate: #34424A;
+
+  /* ── Priority Colors ── */
+  --sm-priority-urgent: #E53935;
+  --sm-priority-high: var(--sm-coral);
+  --sm-priority-medium: var(--sm-gold);
+  --sm-priority-low: #B0BEC5;
+
+  /* ── Status Colors ── */
+  --sm-status-new: #9E9E9E;
+  --sm-status-ready: var(--sm-teal);
+  --sm-status-inprogress: #1E88E5;
+  --sm-status-waiting: var(--sm-gold);
+  --sm-status-blocked: var(--sm-coral);
+  --sm-status-completed: #43A047;
+  --sm-status-canceled: #BDBDBD;
+
+  /* ── Typography ── */
+  --sm-font-display: 'Montserrat', sans-serif;
+  --sm-font-body: 'Nunito Sans', sans-serif;
+  --sm-font-ui: 'Inter', sans-serif;
+
+  /* ── Spacing (base 4px) ── */
+  --sm-space-1: 4px;
+  --sm-space-2: 8px;
+  --sm-space-3: 12px;
+  --sm-space-4: 16px;
+  --sm-space-6: 24px;
+  --sm-space-8: 32px;
+
+  /* ── Radius ── */
+  --sm-radius-sm: 4px;
+  --sm-radius-md: 8px;
+  --sm-radius-lg: 12px;
+  --sm-radius-pill: 9999px;
+
+  /* ── Shadows ── */
+  --sm-shadow-card: 0 1px 3px rgba(0, 0, 0, 0.08);
+  --sm-shadow-drawer: -4px 0 24px rgba(0, 0, 0, 0.12);
+  --sm-shadow-modal: 0 8px 32px rgba(0, 0, 0, 0.16);
+
+  /* ── Liquid Glass Surfaces ── */
+  --sm-glass-bg: rgba(255, 255, 255, 0.70);
+  --sm-glass-bg-hover: rgba(255, 255, 255, 0.80);
+  --sm-glass-bg-active: rgba(255, 255, 255, 0.90);
+  --sm-glass-border: rgba(255, 255, 255, 0.18);
+  --sm-glass-border-strong: rgba(255, 255, 255, 0.30);
+  --sm-glass-blur-sm: 8px;
+  --sm-glass-blur-md: 16px;
+  --sm-glass-blur-lg: 24px;
+  --sm-glass-blur-xl: 40px;
+
+  /* ── Glass Surface Tints ── */
+  --sm-glass-teal: rgba(0, 102, 102, 0.06);
+  --sm-glass-coral: rgba(255, 111, 97, 0.06);
+  --sm-glass-gold: rgba(255, 179, 0, 0.06);
+
+  /* ── Overlay Backdrops ── */
+  --sm-overlay-drawer: rgba(0, 0, 0, 0.20);
+  --sm-overlay-modal: rgba(0, 0, 0, 0.30);
+  --sm-overlay-blur: 4px;
+}
+
+/* ── Dark Mode — Full Ein UI Glass Showcase ── */
+[data-theme="dark"] {
+  --sm-offwhite: #0f1117;
+  --sm-slate: #e8eaed;
+  --sm-glass-bg: rgba(255, 255, 255, 0.06);
+  --sm-glass-bg-hover: rgba(255, 255, 255, 0.10);
+  --sm-glass-bg-active: rgba(255, 255, 255, 0.15);
+  --sm-glass-border: rgba(255, 255, 255, 0.10);
+  --sm-glass-border-strong: rgba(255, 255, 255, 0.18);
+  --sm-glass-blur-md: 24px;
+  --sm-glass-teal: rgba(0, 102, 102, 0.12);
+  --sm-glass-coral: rgba(255, 111, 97, 0.12);
+  --sm-glass-gold: rgba(255, 179, 0, 0.12);
+  --sm-overlay-drawer: rgba(0, 0, 0, 0.40);
+  --sm-overlay-modal: rgba(0, 0, 0, 0.50);
+  --sm-shadow-card: 0 1px 3px rgba(0, 0, 0, 0.24);
+  --sm-shadow-drawer: -4px 0 24px rgba(0, 0, 0, 0.32);
+  --sm-shadow-modal: 0 8px 32px rgba(0, 0, 0, 0.40);
+  /* Brand colors stay the same — they pop on dark */
+}
+
+/* ── Unassigned Pulse Animations ── */
+@keyframes pulse-unassigned-bg {
+  0%, 100% { background-color: rgba(255, 111, 97, 0.08); }
+  50% { background-color: rgba(255, 179, 0, 0.08); }
+}
+
+@keyframes pulse-unassigned-border {
+  0%, 100% { border-color: var(--sm-coral); }
+  50% { border-color: var(--sm-gold); }
+}

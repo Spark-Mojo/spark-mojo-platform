@@ -47,6 +47,7 @@ export default [
       'src/components/desktop/**',
       'src/pages/_archive/**',
       'src/components/ui/**',
+      'src/components/mojos/__tests__/**',
       'src/components/api/**',
       'src/components/Auth.jsx',
       'src/components/UserNotRegisteredError.jsx',

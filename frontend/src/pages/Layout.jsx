@@ -5,11 +5,14 @@ import {
   CreditCard,
   RefreshCw,
   Settings,
+  BookOpen,
   Menu,
   X,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useState } from 'react';
+
+const showLibrary = import.meta.env.DEV || import.meta.env.VITE_SHOW_LIBRARY === 'true';
 
 const NAV_GROUPS = [
   {
@@ -27,6 +30,16 @@ const NAV_GROUPS = [
       { title: 'Settings', path: '/settings', icon: Settings },
     ],
   },
+  ...(showLibrary
+    ? [
+        {
+          label: 'Developer',
+          items: [
+            { title: 'Library', path: '/library', icon: BookOpen },
+          ],
+        },
+      ]
+    : []),
 ];
 
 export default function Layout({ children }) {
