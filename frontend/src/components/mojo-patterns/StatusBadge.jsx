@@ -2,9 +2,9 @@
 import { cn } from '@/lib/utils';
 
 const TYPE_COLORS = {
-  Action: { bg: 'var(--sm-teal)', text: 'var(--sm-teal)' },
-  Review: { bg: 'var(--sm-gold)', text: 'var(--sm-gold)' },
-  Approval: { bg: 'var(--sm-coral)', text: 'var(--sm-coral)' },
+  Action: { bg: 'var(--sm-primary)', text: 'var(--sm-primary)' },
+  Review: { bg: 'var(--sm-warning)', text: 'var(--sm-warning)' },
+  Approval: { bg: 'var(--sm-danger)', text: 'var(--sm-danger)' },
 };
 
 const STATUS_COLORS = {

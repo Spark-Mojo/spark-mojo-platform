@@ -39,7 +39,7 @@ export default function KanbanBoard({ columns = [], onCardClick, renderCard }) {
           <div className="flex items-center gap-2 mb-3 px-1">
             <span
               className="w-2 h-2 rounded-full"
-              style={{ backgroundColor: `var(--sm-${col.color || 'teal'})` }}
+              style={{ backgroundColor: `var(--sm-${col.color || 'primary'})` }}
             />
             <h3
               className="text-sm font-semibold text-[var(--sm-slate)]"

@@ -76,7 +76,7 @@ export default function AuthGate({ children }) {
     return (
       <div className="flex items-center justify-center pt-32">
         <div className="text-center">
-          <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4 text-sm-teal" />
+          <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4 text-[var(--sm-primary)]" />
           <p className="text-gray-600">Verifying authentication...</p>
         </div>
       </div>
@@ -113,7 +113,7 @@ export default function AuthGate({ children }) {
                 className="w-14 h-14 object-contain rounded-2xl"
               />
             ) : (
-              <div className="inline-flex items-center justify-center w-14 h-14 bg-sm-teal rounded-2xl shadow-sm">
+              <div className="inline-flex items-center justify-center w-14 h-14 bg-[var(--sm-primary)] rounded-2xl shadow-sm">
                 <Briefcase className="w-7 h-7 text-white" />
               </div>
             )}
@@ -189,7 +189,7 @@ export default function AuthGate({ children }) {
                 <Button
                   type="submit"
                   disabled={isLoading}
-                  className="w-full h-12 rounded-2xl bg-sm-teal hover:bg-sm-teal/90 text-white text-[15px] font-medium shadow-sm hover:shadow transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="w-full h-12 rounded-2xl bg-[var(--sm-primary)] hover:bg-[var(--sm-primary)]/90 text-white text-[15px] font-medium shadow-sm hover:shadow transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {isLoading ? (
                     <>

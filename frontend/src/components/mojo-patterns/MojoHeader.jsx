@@ -10,7 +10,7 @@ export default function MojoHeader({ icon, title, subtitle, actions, className }
       )}
     >
       <div className="flex items-center gap-3">
-        <span className="text-[24px] text-[var(--sm-teal)]">{icon}</span>
+        <span className="text-[24px] text-[var(--sm-primary)]">{icon}</span>
         <div>
           <h1
             className="text-xl font-semibold text-[var(--sm-slate)]"

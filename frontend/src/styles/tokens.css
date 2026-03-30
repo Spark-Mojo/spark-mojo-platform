@@ -10,24 +10,24 @@
 
 :root {
   /* ── Brand Colors ── */
-  --sm-teal: #006666;
-  --sm-coral: #FF6F61;
-  --sm-gold: #FFB300;
+  --sm-primary: #006666;
+  --sm-danger: #FF6F61;
+  --sm-warning: #FFB300;
   --sm-offwhite: #F8F9FA;
   --sm-slate: #34424A;
 
   /* ── Priority Colors ── */
   --sm-priority-urgent: #E53935;
-  --sm-priority-high: var(--sm-coral);
-  --sm-priority-medium: var(--sm-gold);
+  --sm-priority-high: var(--sm-danger);
+  --sm-priority-medium: var(--sm-warning);
   --sm-priority-low: #B0BEC5;
 
   /* ── Status Colors ── */
   --sm-status-new: #9E9E9E;
-  --sm-status-ready: var(--sm-teal);
+  --sm-status-ready: var(--sm-primary);
   --sm-status-inprogress: #1E88E5;
-  --sm-status-waiting: var(--sm-gold);
-  --sm-status-blocked: var(--sm-coral);
+  --sm-status-waiting: var(--sm-warning);
+  --sm-status-blocked: var(--sm-danger);
   --sm-status-completed: #43A047;
   --sm-status-canceled: #BDBDBD;
 
@@ -75,7 +75,7 @@
   --sm-status-new-bg: #F1F5F9;
   --sm-status-new-text: #64748B;
   --sm-status-ready-bg: #E6F2F2;
-  --sm-status-ready-text: var(--sm-teal);
+  --sm-status-ready-text: var(--sm-primary);
   --sm-status-inprogress-bg: #EFF6FF;
   --sm-status-inprogress-text: #2563EB;
   --sm-status-waiting-bg: #FFF8E6;
@@ -91,11 +91,11 @@
 
   /* ── Type Badge Tints ── */
   --sm-type-action-bg: #E6F2F2;
-  --sm-type-action-text: var(--sm-teal);
+  --sm-type-action-text: var(--sm-primary);
   --sm-type-review-bg: #FFF8E6;
   --sm-type-review-text: #B45309;
   --sm-type-approval-bg: #FFF0EE;
-  --sm-type-approval-text: var(--sm-coral);
+  --sm-type-approval-text: var(--sm-danger);
 
   /* ── Overlay Backdrops ── */
   --sm-overlay-drawer: rgba(0, 0, 0, 0.40);
@@ -178,6 +178,6 @@
 }
 
 @keyframes pulse-unassigned-border {
-  0%, 100% { border-color: var(--sm-coral); }
-  50% { border-color: var(--sm-gold); }
+  0%, 100% { border-color: var(--sm-danger); }
+  50% { border-color: var(--sm-warning); }
 }

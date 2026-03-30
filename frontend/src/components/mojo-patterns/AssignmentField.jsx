@@ -122,7 +122,7 @@ export default function AssignmentField({
       {/* Segmented toggle */}
       <div
         data-testid="assignment-mode-toggle"
-        className="inline-flex rounded-full border border-[var(--sm-teal)] overflow-hidden"
+        className="inline-flex rounded-full border border-[var(--sm-primary)] overflow-hidden"
         style={{ height: 32 }}
       >
         {MODES.map((m) => (
@@ -134,7 +134,7 @@ export default function AssignmentField({
             className={cn(
               'px-3 text-[13px] font-medium transition-colors whitespace-nowrap',
               mode === m.key
-                ? 'bg-[var(--sm-teal)] text-white'
+                ? 'bg-[var(--sm-primary)] text-white'
                 : 'text-[var(--sm-slate)] hover:bg-[var(--sm-glass-teal)]'
             )}
             style={{
@@ -166,8 +166,8 @@ export default function AssignmentField({
               onBlur={handleInputBlur}
               placeholder="Search by name or email..."
               className={cn(
-                'w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[var(--sm-teal)] pr-8',
-                validationError ? 'border-[var(--sm-coral)]' : 'border-[var(--sm-glass-border-strong)]'
+                'w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[var(--sm-primary)] pr-8',
+                validationError ? 'border-[var(--sm-danger)]' : 'border-[var(--sm-glass-border-strong)]'
               )}
               style={{ background: 'var(--sm-glass-bg)' }}
             />
@@ -183,7 +183,7 @@ export default function AssignmentField({
             )}
           </div>
           {validationError && (
-            <p data-testid="assignment-user-error" className="text-[var(--sm-coral)] text-xs mt-1">{validationError}</p>
+            <p data-testid="assignment-user-error" className="text-[var(--sm-danger)] text-xs mt-1">{validationError}</p>
           )}
           {dropdownOpen && (
             <div
@@ -205,7 +205,7 @@ export default function AssignmentField({
                   >
                     <span
                       className="flex items-center justify-center h-7 w-7 rounded-full text-white text-[10px] font-bold shrink-0"
-                      style={{ backgroundColor: 'var(--sm-teal)' }}
+                      style={{ backgroundColor: 'var(--sm-primary)' }}
                     >
                       {u.initials}
                     </span>
@@ -233,7 +233,7 @@ export default function AssignmentField({
             data-testid="assignment-role-select"
             value={assignedRole || ''}
             onChange={(e) => handleRoleChange(e.target.value)}
-            className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[var(--sm-teal)]"
+            className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[var(--sm-primary)]"
             style={{
               background: 'var(--sm-glass-bg)',
               borderColor: 'var(--sm-glass-border-strong)',

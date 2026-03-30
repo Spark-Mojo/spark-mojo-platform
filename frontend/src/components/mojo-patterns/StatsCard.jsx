@@ -4,15 +4,15 @@ import { motion } from "framer-motion";
 const VARIANT_STYLES = {
   teal: {
     bg: 'var(--sm-glass-teal)',
-    color: 'var(--sm-teal)',
+    color: 'var(--sm-primary)',
   },
   coral: {
     bg: 'var(--sm-glass-coral)',
-    color: 'var(--sm-coral)',
+    color: 'var(--sm-danger)',
   },
   gold: {
     bg: 'var(--sm-glass-gold)',
-    color: 'var(--sm-gold)',
+    color: 'var(--sm-warning)',
   },
   slate: {
     bg: 'var(--sm-surface-muted)',
@@ -20,8 +20,8 @@ const VARIANT_STYLES = {
   },
 };
 
-export default function StatsCard({ title, value, subtitle, icon: Icon, variant = "teal" }) {
-  const style = VARIANT_STYLES[variant] || VARIANT_STYLES.teal;
+export default function StatsCard({ title, value, subtitle, icon: Icon, variant = "primary" }) {
+  const style = VARIANT_STYLES[variant] || VARIANT_STYLES.primary;
 
   return (
     <motion.div

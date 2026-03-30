@@ -373,7 +373,7 @@ function StatCard({ label, value, testId, iconSvg, iconBg, active, onClick }) {
       className={cn(
         'flex items-center gap-3 rounded-lg border p-3 flex-1 min-w-0 text-left transition-all',
         active
-          ? 'border-[var(--sm-teal)] shadow-sm'
+          ? 'border-[var(--sm-primary)] shadow-sm'
           : 'border-[var(--sm-control-border)] hover:border-[var(--sm-control-border-heavy)]'
       )}
       style={active ? { backgroundColor: 'var(--sm-glass-teal)' } : { backgroundColor: 'var(--sm-control-bg)' }}
@@ -419,9 +419,9 @@ function StatsBar({ tasks, statsFilter, onStatsFilterChange }) {
   }, [tasks]);
 
   const cards = [
-    { label: 'Active Tasks', value: stats.active, testId: 'stat-active', iconSvg: STAT_ICONS.active, iconBg: { bg: 'var(--sm-glass-teal)', color: 'var(--sm-teal)' }, filterKey: 'active' },
-    { label: 'Urgent', value: stats.urgent, testId: 'stat-urgent', iconSvg: STAT_ICONS.urgent, iconBg: { bg: 'var(--sm-glass-coral)', color: 'var(--sm-coral)' }, filterKey: 'urgent' },
-    { label: 'Overdue', value: stats.overdue, testId: 'stat-overdue', iconSvg: STAT_ICONS.overdue, iconBg: { bg: 'var(--sm-glass-gold)', color: 'var(--sm-gold)' }, filterKey: 'overdue' },
+    { label: 'Active Tasks', value: stats.active, testId: 'stat-active', iconSvg: STAT_ICONS.active, iconBg: { bg: 'var(--sm-glass-teal)', color: 'var(--sm-primary)' }, filterKey: 'active' },
+    { label: 'Urgent', value: stats.urgent, testId: 'stat-urgent', iconSvg: STAT_ICONS.urgent, iconBg: { bg: 'var(--sm-glass-coral)', color: 'var(--sm-danger)' }, filterKey: 'urgent' },
+    { label: 'Overdue', value: stats.overdue, testId: 'stat-overdue', iconSvg: STAT_ICONS.overdue, iconBg: { bg: 'var(--sm-glass-gold)', color: 'var(--sm-warning)' }, filterKey: 'overdue' },
     { label: 'Waiting', value: stats.waiting, testId: 'stat-waiting', iconSvg: STAT_ICONS.waiting, iconBg: { bg: 'var(--sm-surface-muted)', color: 'var(--sm-text-muted)' }, filterKey: 'waiting' },
   ];
 
@@ -450,7 +450,7 @@ function FilterTabs({ activeTab, onTabChange, showCompleted, onToggleCompleted, 
           className={cn(
             'text-xs px-3 py-1.5 font-medium transition-colors border-b-2',
             activeTab === tab
-              ? 'border-[var(--sm-teal)] text-[var(--sm-teal)]'
+              ? 'border-[var(--sm-primary)] text-[var(--sm-primary)]'
               : 'border-transparent text-[var(--sm-text-muted)] hover:text-[var(--sm-slate)]'
           )}
         >
@@ -463,7 +463,7 @@ function FilterTabs({ activeTab, onTabChange, showCompleted, onToggleCompleted, 
           data-testid="source-filter"
           value={sourceFilter}
           onChange={(e) => onSourceFilterChange(e.target.value)}
-          className="text-xs px-2 py-1.5 font-medium text-[var(--sm-slate)] bg-transparent border-none focus:outline-none focus:ring-1 focus:ring-[var(--sm-teal)] rounded cursor-pointer"
+          className="text-xs px-2 py-1.5 font-medium text-[var(--sm-slate)] bg-transparent border-none focus:outline-none focus:ring-1 focus:ring-[var(--sm-primary)] rounded cursor-pointer"
           style={{ fontFamily: 'Inter, sans-serif' }}
         >
           <option value="">All Sources</option>
@@ -478,7 +478,7 @@ function FilterTabs({ activeTab, onTabChange, showCompleted, onToggleCompleted, 
         className={cn(
           'text-xs px-3 py-1.5 font-medium transition-colors border-b-2',
           showCompleted
-            ? 'border-[var(--sm-teal)] text-[var(--sm-teal)]'
+            ? 'border-[var(--sm-primary)] text-[var(--sm-primary)]'
             : 'border-transparent text-[var(--sm-text-muted)] hover:text-[var(--sm-slate)]'
         )}
       >
@@ -506,7 +506,7 @@ function ColumnHeaders({ sortField, sortDirection, onSortChange }) {
         >
           <span className="text-[11px] font-bold text-[var(--sm-text-muted)] uppercase tracking-wider">{col.label}</span>
           {col.sortable && (
-            <span className={cn('text-[10px]', sortField === col.key ? 'text-[var(--sm-teal)]' : 'text-[var(--sm-priority-low)]')}>
+            <span className={cn('text-[10px]', sortField === col.key ? 'text-[var(--sm-primary)]' : 'text-[var(--sm-priority-low)]')}>
               {sortField === col.key ? (sortDirection === 'asc' ? '\u2191' : '\u2193') : '\u2195'}
             </span>
           )}
@@ -593,7 +593,7 @@ function TaskRow({ task, claimingId, onClaim, selected, onRowClick, onViewClick 
             data-testid="due-date"
             className={cn(
               'text-xs tabular-nums',
-              due.overdue ? 'text-[var(--sm-coral)] font-medium' : due.warn ? 'text-[var(--sm-status-waiting-text)] font-medium' : 'text-[var(--sm-slate)]'
+              due.overdue ? 'text-[var(--sm-danger)] font-medium' : due.warn ? 'text-[var(--sm-status-waiting-text)] font-medium' : 'text-[var(--sm-slate)]'
             )}
           >
             {due.text}
@@ -607,7 +607,7 @@ function TaskRow({ task, claimingId, onClaim, selected, onRowClick, onViewClick 
       <div className="w-[130px] shrink-0 flex items-center gap-1.5">
         {assigned_user ? (
           <span className="inline-flex items-center gap-1.5">
-            <span className="flex items-center justify-center h-6 w-6 rounded-full bg-[var(--sm-teal)] text-white text-[10px] font-bold shrink-0">
+            <span className="flex items-center justify-center h-6 w-6 rounded-full bg-[var(--sm-primary)] text-white text-[10px] font-bold shrink-0">
               {getInitials(assigned_user)}
             </span>
             <span className="text-xs text-[var(--sm-slate)] truncate">{getFirstName(assigned_user)}</span>
@@ -616,7 +616,7 @@ function TaskRow({ task, claimingId, onClaim, selected, onRowClick, onViewClick 
           <span
             data-testid="unassigned-badge"
             className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-white text-[11px] font-bold"
-            style={{ backgroundColor: 'var(--sm-coral)' }}
+            style={{ backgroundColor: 'var(--sm-danger)' }}
           >
             &#9888; {assigned_role || 'Unassigned'}
           </span>
@@ -632,19 +632,19 @@ function TaskRow({ task, claimingId, onClaim, selected, onRowClick, onViewClick 
             onClick={(e) => { e.stopPropagation(); onClaim(name); }}
             className={cn(
               'text-[11px] px-3 py-1 rounded border font-medium transition-colors',
-              'border-[var(--sm-teal)] text-[var(--sm-teal)] hover:bg-[var(--sm-teal)] hover:text-white',
+              'border-[var(--sm-primary)] text-[var(--sm-primary)] hover:bg-[var(--sm-primary)] hover:text-white',
               isClaiming && 'opacity-50 cursor-not-allowed'
             )}
           >
             {isClaiming ? (
-              <span data-testid="claim-spinner" className="inline-block h-3 w-3 border-2 border-[var(--sm-glass-teal)] border-t-[var(--sm-teal)] rounded-full animate-spin" />
+              <span data-testid="claim-spinner" className="inline-block h-3 w-3 border-2 border-[var(--sm-glass-teal)] border-t-[var(--sm-primary)] rounded-full animate-spin" />
             ) : 'Claim'}
           </button>
         ) : (
           <button
             data-testid="view-button"
             onClick={(e) => { e.stopPropagation(); onViewClick(name); }}
-            className="text-[11px] px-3 py-1 rounded border border-[var(--sm-teal)] text-[var(--sm-teal)] hover:bg-[var(--sm-teal)] hover:text-white font-medium transition-colors"
+            className="text-[11px] px-3 py-1 rounded border border-[var(--sm-primary)] text-[var(--sm-primary)] hover:bg-[var(--sm-primary)] hover:text-white font-medium transition-colors"
           >
             View
           </button>
@@ -809,7 +809,7 @@ function TaskDetailDrawer({ task, loading, onClose, onUpdateState, onAddComment,
                       value={statusReasonInput}
                       onChange={(e) => setStatusReasonInput(e.target.value)}
                       placeholder="Enter reason..."
-                      className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[var(--sm-teal)]"
+                      className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[var(--sm-primary)]"
                       autoFocus
                       onKeyDown={(e) => {
                         if (e.key === 'Enter') handleConfirmStateWithReason();
@@ -821,7 +821,7 @@ function TaskDetailDrawer({ task, loading, onClose, onUpdateState, onAddComment,
                         data-testid="confirm-reason-btn"
                         onClick={handleConfirmStateWithReason}
                         disabled={!statusReasonInput.trim()}
-                        className="text-xs px-3 py-1.5 rounded bg-[var(--sm-teal)] text-white disabled:opacity-40"
+                        className="text-xs px-3 py-1.5 rounded bg-[var(--sm-primary)] text-white disabled:opacity-40"
                       >
                         Confirm
                       </button>
@@ -839,7 +839,7 @@ function TaskDetailDrawer({ task, loading, onClose, onUpdateState, onAddComment,
                     value={task.canonical_state || 'New'}
                     onChange={(e) => handleStateChange(e.target.value)}
                     disabled={stateChanging}
-                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[var(--sm-teal)]"
+                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[var(--sm-primary)]"
                   >
                     {CANONICAL_STATES.map((s) => (
                       <option key={s} value={s}>{s}</option>
@@ -891,16 +891,16 @@ function TaskDetailDrawer({ task, loading, onClose, onUpdateState, onAddComment,
                       type="date"
                       value={assignDueAt}
                       onChange={(e) => setAssignDueAt(e.target.value)}
-                      className="w-full border border-gray-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:border-[var(--sm-teal)]"
+                      className="w-full border border-gray-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:border-[var(--sm-primary)]"
                     />
                   </div>
-                  {assignError && <p className="text-[var(--sm-coral)] text-xs">{assignError}</p>}
+                  {assignError && <p className="text-[var(--sm-danger)] text-xs">{assignError}</p>}
                   <div className="flex gap-2">
                     <button
                       data-testid="assign-save-button"
                       onClick={handleSaveAssign}
                       disabled={assignSaving}
-                      className="text-xs px-3 py-1.5 rounded bg-[var(--sm-teal)] text-white disabled:opacity-40"
+                      className="text-xs px-3 py-1.5 rounded bg-[var(--sm-primary)] text-white disabled:opacity-40"
                     >
                       {assignSaving ? 'Saving...' : 'Save'}
                     </button>
@@ -982,14 +982,14 @@ function TaskDetailDrawer({ task, loading, onClose, onUpdateState, onAddComment,
                     value={commentText}
                     onChange={(e) => setCommentText(e.target.value)}
                     placeholder="Add a comment..."
-                    className="flex-1 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[var(--sm-teal)]"
+                    className="flex-1 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[var(--sm-primary)]"
                     onKeyDown={(e) => { if (e.key === 'Enter') handleSubmitComment(); }}
                   />
                   <button
                     data-testid="comment-submit"
                     onClick={handleSubmitComment}
                     disabled={!commentText.trim()}
-                    className="text-xs px-3 py-1.5 rounded bg-[var(--sm-teal)] text-white disabled:opacity-40"
+                    className="text-xs px-3 py-1.5 rounded bg-[var(--sm-primary)] text-white disabled:opacity-40"
                   >
                     Send
                   </button>
@@ -1035,7 +1035,7 @@ function TaskDetailDrawer({ task, loading, onClose, onUpdateState, onAddComment,
                       setCompleting(false);
                     }
                   }}
-                  className="w-full py-2.5 rounded-lg bg-[var(--sm-coral)] text-white text-sm font-medium hover:opacity-90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="w-full py-2.5 rounded-lg bg-[var(--sm-danger)] text-white text-sm font-medium hover:opacity-90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {completing ? 'Completing...' : 'Complete Task'}
                 </button>
@@ -1083,7 +1083,7 @@ function ViewToggle({ viewMode, onViewChange }) {
         className={cn(
           'px-3 py-1.5 rounded-full text-sm font-medium transition-colors',
           viewMode === 'list'
-            ? 'bg-[var(--sm-teal)] text-white'
+            ? 'bg-[var(--sm-primary)] text-white'
             : 'text-[var(--sm-slate)] hover:text-gray-700'
         )}
         aria-label="List view"
@@ -1096,7 +1096,7 @@ function ViewToggle({ viewMode, onViewChange }) {
         className={cn(
           'px-3 py-1.5 rounded-full text-sm font-medium transition-colors',
           viewMode === 'kanban'
-            ? 'bg-[var(--sm-teal)] text-white'
+            ? 'bg-[var(--sm-primary)] text-white'
             : 'text-[var(--sm-slate)] hover:text-gray-700'
         )}
         aria-label="Kanban view"
@@ -1151,7 +1151,7 @@ function CreateTaskModal({ open, onClose, onCreated }) {
 
   if (!open) return null;
 
-  const inputClass = 'w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[var(--sm-teal)]';
+  const inputClass = 'w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[var(--sm-primary)]';
 
   return (
     <>
@@ -1221,7 +1221,7 @@ function CreateTaskModal({ open, onClose, onCreated }) {
               <label className="text-xs text-gray-500 block mb-1">Description</label>
               <textarea value={form.description} onChange={(e) => handleChange('description', e.target.value)} className={cn(inputClass, 'resize-none')} rows={3} placeholder="Optional description" />
             </div>
-            {error && <p data-testid="create-error" className="text-[var(--sm-coral)] text-xs">{error}</p>}
+            {error && <p data-testid="create-error" className="text-[var(--sm-danger)] text-xs">{error}</p>}
           </div>
           <div className="px-6 py-4 border-t border-gray-200 flex justify-end gap-2">
             <button onClick={onClose} className="text-xs px-4 py-2 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50">
@@ -1230,7 +1230,7 @@ function CreateTaskModal({ open, onClose, onCreated }) {
             <button
               data-testid="create-submit-button"
               onClick={handleSubmit} disabled={!form.title.trim() || submitting}
-              className="text-xs px-4 py-2 rounded-lg bg-[var(--sm-teal)] text-white hover:opacity-90 disabled:opacity-40"
+              className="text-xs px-4 py-2 rounded-lg bg-[var(--sm-primary)] text-white hover:opacity-90 disabled:opacity-40"
             >
               {submitting ? 'Creating...' : 'Create Task'}
             </button>
@@ -1258,8 +1258,8 @@ function KanbanCard({ task, selected, onCardClick, index }) {
           onClick={() => onCardClick(name)}
           className={cn(
             'bg-white rounded-lg border border-gray-200 p-3 cursor-pointer hover:border-gray-300 transition-all',
-            selected && 'ring-1 ring-[var(--sm-teal)] border-[var(--sm-teal)]',
-            snapshot.isDragging && 'shadow-lg border-[var(--sm-teal)]',
+            selected && 'ring-1 ring-[var(--sm-primary)] border-[var(--sm-primary)]',
+            snapshot.isDragging && 'shadow-lg border-[var(--sm-primary)]',
             unowned && 'unowned-pulse-card'
           )}
         >
@@ -1273,7 +1273,7 @@ function KanbanCard({ task, selected, onCardClick, index }) {
                 <span className="inline-flex items-center gap-1">
                   <span
                     data-testid="kanban-unowned-pulse"
-                    className="inline-block h-2 w-2 rounded-full bg-[var(--sm-coral)] animate-pulse"
+                    className="inline-block h-2 w-2 rounded-full bg-[var(--sm-danger)] animate-pulse"
                   />
                   {assigned_role || 'Unassigned'}
                 </span>
@@ -1285,7 +1285,7 @@ function KanbanCard({ task, selected, onCardClick, index }) {
               <span className="shrink-0">&middot;</span>
             )}
             {due && (
-              <span className={cn('tabular-nums shrink-0', due.overdue ? 'text-[var(--sm-coral)]' : '')}>
+              <span className={cn('tabular-nums shrink-0', due.overdue ? 'text-[var(--sm-danger)]' : '')}>
                 {due.text}
               </span>
             )}
@@ -1644,7 +1644,7 @@ export default function WorkboardMojo() {
   if (error) {
     return (
       <div data-testid="error-state" className="flex items-center justify-center h-full p-8">
-        <p className="text-[var(--sm-coral)] text-sm">{error}</p>
+        <p className="text-[var(--sm-danger)] text-sm">{error}</p>
       </div>
     );
   }
@@ -1653,7 +1653,7 @@ export default function WorkboardMojo() {
     return (
       <div data-testid="empty-state" className="flex flex-col items-center justify-center h-full p-8 gap-3">
         <div className="w-16 h-16 rounded-full bg-gray-100 flex items-center justify-center">
-          <span className="text-2xl" style={{ color: 'var(--sm-teal)' }}>&#10003;</span>
+          <span className="text-2xl" style={{ color: 'var(--sm-primary)' }}>&#10003;</span>
         </div>
         <p className="text-gray-400 text-sm text-center">
           No tasks on your plate. You&apos;re all caught up.
@@ -1672,27 +1672,27 @@ export default function WorkboardMojo() {
           100% { background-color: var(--sm-control-bg); }
         }
         @keyframes borderPulse {
-          0%, 50%  { border-left-color: var(--sm-coral); }
-          51%, 100% { border-left-color: var(--sm-gold); }
+          0%, 50%  { border-left-color: var(--sm-danger); }
+          51%, 100% { border-left-color: var(--sm-warning); }
         }
         @keyframes borderPulseTop {
-          0%, 50%  { border-top-color: var(--sm-coral); }
-          51%, 100% { border-top-color: var(--sm-gold); }
+          0%, 50%  { border-top-color: var(--sm-danger); }
+          51%, 100% { border-top-color: var(--sm-warning); }
         }
         .unowned-pulse-row {
           animation: unownedPulse 2s infinite, borderPulse 1s infinite;
-          border-left: 8px solid var(--sm-coral) !important;
+          border-left: 8px solid var(--sm-danger) !important;
         }
         .unowned-pulse-card {
           animation: unownedPulse 2s infinite, borderPulseTop 1s infinite;
-          border-top: 8px solid var(--sm-coral) !important;
+          border-top: 8px solid var(--sm-danger) !important;
         }
       `}</style>
       {/* Header bar */}
       <div className="bg-white border-b border-[var(--sm-control-border)] px-4 py-2.5 flex items-center justify-between flex-shrink-0">
         <div className="flex items-center gap-2">
           {/* Mojo icon — teal checkmark, same size as Onboarding's UserCheck */}
-          <div data-testid="mojo-icon" className="text-[var(--sm-teal)] shrink-0">
+          <div data-testid="mojo-icon" className="text-[var(--sm-primary)] shrink-0">
             <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="9" stroke="currentColor" strokeWidth="2"/><path d="M6 10.5L8.5 13L14 7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
           </div>
           <h2 data-testid="workboard-title" className="text-base font-semibold text-[var(--sm-slate)]">
@@ -1704,7 +1704,7 @@ export default function WorkboardMojo() {
           <button
             data-testid="new-task-button"
             onClick={() => setCreateModalOpen(true)}
-            className="ml-2 px-3 py-1.5 rounded text-sm font-medium bg-[var(--sm-teal)] text-white hover:opacity-90 transition-colors whitespace-nowrap"
+            className="ml-2 px-3 py-1.5 rounded text-sm font-medium bg-[var(--sm-primary)] text-white hover:opacity-90 transition-colors whitespace-nowrap"
           >
             + New Task
           </button>
@@ -1733,7 +1733,7 @@ export default function WorkboardMojo() {
               data-testid="unclaimed-banner"
               style={{
                 background: 'var(--sm-glass-coral)',
-                borderLeft: '4px solid var(--sm-coral)',
+                borderLeft: '4px solid var(--sm-danger)',
                 padding: '8px 16px',
                 fontSize: '13px',
                 fontFamily: 'Inter, sans-serif',
@@ -1751,7 +1751,7 @@ export default function WorkboardMojo() {
                   <button
                     data-testid="view-unclaimed-link"
                     onClick={() => { setShowUnclaimedOnly(true); setFilterTab('All'); }}
-                    style={{ color: 'var(--sm-teal)', textDecoration: 'underline', background: 'none', border: 'none', cursor: 'pointer', font: 'inherit' }}
+                    style={{ color: 'var(--sm-primary)', textDecoration: 'underline', background: 'none', border: 'none', cursor: 'pointer', font: 'inherit' }}
                   >
                     View unclaimed &rarr;
                   </button>
@@ -1763,7 +1763,7 @@ export default function WorkboardMojo() {
                   <button
                     data-testid="clear-unclaimed-filter"
                     onClick={() => setShowUnclaimedOnly(false)}
-                    style={{ color: 'var(--sm-teal)', textDecoration: 'underline', background: 'none', border: 'none', cursor: 'pointer', font: 'inherit' }}
+                    style={{ color: 'var(--sm-primary)', textDecoration: 'underline', background: 'none', border: 'none', cursor: 'pointer', font: 'inherit' }}
                   >
                     Clear filter &times;
                   </button>

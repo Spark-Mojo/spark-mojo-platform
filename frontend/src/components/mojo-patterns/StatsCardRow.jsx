@@ -3,9 +3,9 @@ import { Card, CardContent } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
 
 const COLOR_MAP = {
-  teal: 'var(--sm-teal)',
-  coral: 'var(--sm-coral)',
-  gold: 'var(--sm-gold)',
+  teal: 'var(--sm-primary)',
+  coral: 'var(--sm-danger)',
+  gold: 'var(--sm-warning)',
   green: 'var(--sm-status-completed)',
 };
 
@@ -21,7 +21,7 @@ export default function StatsCardRow({ cards = [] }) {
             card.active && 'border-l-[3px]'
           )}
           style={{
-            borderLeftColor: card.active ? 'var(--sm-teal)' : undefined,
+            borderLeftColor: card.active ? 'var(--sm-primary)' : undefined,
             background: card.active
               ? 'var(--sm-glass-teal)'
               : 'var(--sm-glass-bg)',
@@ -32,7 +32,7 @@ export default function StatsCardRow({ cards = [] }) {
               <div>
                 <p
                   className="text-[28px] font-bold leading-tight"
-                  style={{ color: COLOR_MAP[card.color] || 'var(--sm-teal)' }}
+                  style={{ color: COLOR_MAP[card.color] || 'var(--sm-primary)' }}
                 >
                   {card.value}
                 </p>

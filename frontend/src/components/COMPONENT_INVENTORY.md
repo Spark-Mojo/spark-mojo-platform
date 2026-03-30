@@ -71,8 +71,8 @@ Last updated: 2026-03-29
 | FilterTabBar | FilterTabBar.jsx | pattern | tabs, activeTab, onTabChange, rightContent | — | sm-primary, sm-surface-secondary | WorkboardMojo |
 | KanbanBoard | KanbanBoard.jsx | pattern | columns, onCardClick | — | sm-status-*, sm-glass | WorkboardMojo |
 | MojoHeader | MojoHeader.jsx | pattern | icon, title, subtitle, actions | — | sm-slate, sm-font-display | Every mojo |
-| StatsCard | StatsCard.jsx | pattern | title, value, subtitle, icon, variant | teal, coral, gold, slate | sm-glass-teal/coral/gold, sm-surface-muted, sm-control-bg/border, sm-shadow-card, sm-text-muted/strong/placeholder | StatsCardRow, OnboardingMojo, WorkboardMojo |
-| StatsCardRow | StatsCardRow.jsx | pattern | cards, onCardClick | — | sm-teal, sm-coral, sm-gold | OnboardingMojo, WorkboardMojo |
+| StatsCard | StatsCard.jsx | pattern | title, value, subtitle, icon, variant | primary, danger, warning, slate | sm-glass-primary/danger/warning, sm-surface-muted, sm-control-bg/border, sm-shadow-card, sm-text-muted/strong/placeholder | StatsCardRow, OnboardingMojo, WorkboardMojo |
+| StatsCardRow | StatsCardRow.jsx | pattern | cards, onCardClick | — | sm-primary, sm-danger, sm-warning | OnboardingMojo, WorkboardMojo |
 | StatusBadge | StatusBadge.jsx | pattern | variant, value | status, type, priority | sm-status-*, sm-priority-* | WorkboardMojo, DataTable, Library |
 | TaskDetailDrawer | TaskDetailDrawer.jsx | pattern | open, onClose, task, actions | — | sm-glass, sm-slate | WorkboardMojo |
 

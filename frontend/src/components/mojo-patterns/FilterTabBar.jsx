@@ -13,8 +13,8 @@ export default function FilterTabBar({ tabs = [], activeTab, onTabChange, rightC
             className={cn(
               'inline-flex items-center gap-1.5 px-4 h-8 text-[13px] font-medium rounded-full transition-colors',
               activeTab === tab.key
-                ? 'bg-[var(--sm-teal)] text-white'
-                : 'bg-transparent text-[var(--sm-teal)] border border-transparent hover:border-[var(--sm-teal)]'
+                ? 'bg-[var(--sm-primary)] text-white'
+                : 'bg-transparent text-[var(--sm-primary)] border border-transparent hover:border-[var(--sm-primary)]'
             )}
             style={{ fontFamily: 'var(--sm-font-ui)' }}
           >
@@ -25,7 +25,7 @@ export default function FilterTabBar({ tabs = [], activeTab, onTabChange, rightC
                   'text-[11px] px-1.5 rounded-full',
                   activeTab === tab.key
                     ? 'bg-white/20'
-                    : 'bg-[var(--sm-teal)]/10'
+                    : 'bg-[var(--sm-primary)]/10'
                 )}
               >
                 {tab.count}

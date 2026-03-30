@@ -229,9 +229,9 @@ const DARK_BG = {
 /* ── Mock Data ───────────────────────────────────────────── */
 
 const BRAND_COLORS = [
-  { name: '--sm-teal', var: 'var(--sm-teal)', hex: '#006666' },
-  { name: '--sm-coral', var: 'var(--sm-coral)', hex: '#FF6F61' },
-  { name: '--sm-gold', var: 'var(--sm-gold)', hex: '#FFB300' },
+  { name: '--sm-primary', var: 'var(--sm-primary)', hex: '#006666' },
+  { name: '--sm-danger', var: 'var(--sm-danger)', hex: '#FF6F61' },
+  { name: '--sm-warning', var: 'var(--sm-warning)', hex: '#FFB300' },
   { name: '--sm-offwhite', var: 'var(--sm-offwhite)', hex: '#F8F9FA' },
   { name: '--sm-slate', var: 'var(--sm-slate)', hex: '#34424A' },
 ];
@@ -254,9 +254,9 @@ const STATUS_COLORS = [
 ];
 
 const MOCK_STATS = [
-  { label: 'Active Queue', value: 12, color: 'teal', active: true },
-  { label: 'Urgent', value: 3, color: 'coral' },
-  { label: 'Waiting', value: 5, color: 'gold' },
+  { label: 'Active Queue', value: 12, color: 'primary', active: true },
+  { label: 'Urgent', value: 3, color: 'danger' },
+  { label: 'Waiting', value: 5, color: 'warning' },
   { label: 'Completed', value: 47, color: 'green' },
 ];
 
@@ -272,7 +272,7 @@ const MOCK_KANBAN_COLUMNS = [
   {
     key: 'ready',
     title: 'Ready',
-    color: 'teal',
+    color: 'primary',
     items: [
       { id: '1', subject: 'Update customer onboarding flow', assignedUser: 'Alice' },
       { id: '2', subject: 'Unassigned intake task' },
@@ -289,7 +289,7 @@ const MOCK_KANBAN_COLUMNS = [
   {
     key: 'waiting',
     title: 'Waiting',
-    color: 'gold',
+    color: 'warning',
     items: [
       { id: '4', subject: 'Pending client callback', assignedUser: 'Bob' },
     ],
@@ -490,7 +490,7 @@ export default function Library() {
                     style={{
                       width: `var(--sm-space-${n})`,
                       height: `var(--sm-space-${n})`,
-                      backgroundColor: 'var(--sm-teal)',
+                      backgroundColor: 'var(--sm-primary)',
                       minWidth: 4,
                       minHeight: 4,
                     }}
@@ -1316,7 +1316,7 @@ export default function Library() {
             <div className="max-w-md">
               <div
                 className="h-[52px] flex items-center px-4 rounded-lg animate-[pulse-unassigned-bg_2s_ease-in-out_infinite]"
-                style={{ borderLeft: '8px solid var(--sm-coral)' }}
+                style={{ borderLeft: '8px solid var(--sm-danger)' }}
               >
                 <span className="text-sm text-[var(--sm-slate)]">
                   Unassigned task — pulses coral/gold

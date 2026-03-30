@@ -79,7 +79,7 @@ export default function DataTable({
                 key={col.key}
                 className={cn(
                   'text-[11px] uppercase font-bold text-gray-500 tracking-wide',
-                  col.sortable && 'cursor-pointer select-none hover:text-[var(--sm-teal)]'
+                  col.sortable && 'cursor-pointer select-none hover:text-[var(--sm-primary)]'
                 )}
                 style={{
                   fontFamily: 'var(--sm-font-ui)',
@@ -89,7 +89,7 @@ export default function DataTable({
               >
                 {col.header}
                 {col.sortable && sortKey === col.key && (
-                  <span className="ml-1 text-[var(--sm-teal)]">
+                  <span className="ml-1 text-[var(--sm-primary)]">
                     {sortDir === 'asc' ? '↑' : '↓'}
                   </span>
                 )}
@@ -112,7 +112,7 @@ export default function DataTable({
                 onClick={() => onRowClick?.(row)}
                 style={
                   isUnassigned
-                    ? { borderLeft: '8px solid var(--sm-coral)' }
+                    ? { borderLeft: '8px solid var(--sm-danger)' }
                     : undefined
                 }
               >
@@ -142,7 +142,7 @@ export default function DataTable({
                     <Button
                       variant="outline"
                       size="sm"
-                      className="h-7 text-[var(--sm-teal)] border-[var(--sm-teal)]"
+                      className="h-7 text-[var(--sm-primary)] border-[var(--sm-primary)]"
                     >
                       View
                     </Button>
