@@ -1,8 +1,8 @@
 # Loop Summary
 
 **Status:** Completed successfully
-**Iterations:** 29
-**Duration:** 57m 21s
+**Iterations:** 11
+**Duration:** 12m 23s
 
 ## Tasks
 
@@ -14,4 +14,4 @@ _No events recorded._
 
 ## Final Commit
 
-4b3051b: chore: update CLAUDE.md + final verification — design system foundation complete
+518d683: chore: replace ADR-design-system.md with pointer to DECISION-015

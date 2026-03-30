@@ -9,3 +9,4 @@ __pycache__/
 .env.poc
 abstraction-layer/.coverage
 abstraction-layer/htmlcov/
+.worktrees/
