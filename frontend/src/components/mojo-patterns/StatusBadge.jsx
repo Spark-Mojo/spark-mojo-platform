@@ -15,6 +15,10 @@ const STATUS_COLORS = {
   Blocked: { bg: 'var(--sm-status-blocked)', text: 'var(--sm-status-blocked)' },
   Completed: { bg: 'var(--sm-status-completed)', text: 'var(--sm-status-completed)' },
   Canceled: { bg: 'var(--sm-status-canceled)', text: 'var(--sm-status-canceled)' },
+  'Paperwork Pending': { bg: 'var(--sm-warning)', text: 'var(--sm-warning)' },
+  'Insurance Pending': { bg: 'var(--sm-warning)', text: 'var(--sm-warning)' },
+  Verified: { bg: 'var(--sm-info)', text: 'var(--sm-info)' },
+  Cancelled: { bg: 'var(--sm-status-canceled)', text: 'var(--sm-status-canceled)' },
 };
 
 const PRIORITY_COLORS = {

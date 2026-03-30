@@ -3,10 +3,13 @@ import { Card, CardContent } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
 
 const COLOR_MAP = {
+  primary: 'var(--sm-primary)',
+  danger: 'var(--sm-danger)',
+  warning: 'var(--sm-warning)',
+  green: 'var(--sm-status-completed)',
   teal: 'var(--sm-primary)',
   coral: 'var(--sm-danger)',
   gold: 'var(--sm-warning)',
-  green: 'var(--sm-status-completed)',
 };
 
 export default function StatsCardRow({ cards = [] }) {
@@ -23,7 +26,7 @@ export default function StatsCardRow({ cards = [] }) {
           style={{
             borderLeftColor: card.active ? 'var(--sm-primary)' : undefined,
             background: card.active
-              ? 'var(--sm-glass-teal)'
+              ? 'var(--sm-glass-primary)'
               : 'var(--sm-glass-bg)',
           }}
         >

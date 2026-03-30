@@ -22,6 +22,10 @@
   --sm-priority-medium: var(--sm-warning);
   --sm-priority-low: #B0BEC5;
 
+  /* ── Semantic Accent Colors ── */
+  --sm-success: #43A047;
+  --sm-info: #1E88E5;
+
   /* ── Status Colors ── */
   --sm-status-new: #9E9E9E;
   --sm-status-ready: var(--sm-primary);
@@ -67,9 +71,12 @@
   --sm-glass-blur-xl: 40px;
 
   /* ── Glass Surface Tints ── */
-  --sm-glass-teal: rgba(0, 102, 102, 0.10);
-  --sm-glass-coral: rgba(255, 111, 97, 0.10);
-  --sm-glass-gold: rgba(255, 179, 0, 0.10);
+  --sm-glass-primary: rgba(0, 102, 102, 0.10);
+  --sm-glass-teal: var(--sm-glass-primary);
+  --sm-glass-danger: rgba(255, 111, 97, 0.10);
+  --sm-glass-coral: var(--sm-glass-danger);
+  --sm-glass-warning: rgba(255, 179, 0, 0.10);
+  --sm-glass-gold: var(--sm-glass-warning);
 
   /* ── Status Background Tints ── */
   --sm-status-new-bg: #F1F5F9;
@@ -129,9 +136,12 @@
   --sm-glass-border: rgba(255, 255, 255, 0.10);
   --sm-glass-border-strong: rgba(255, 255, 255, 0.18);
   --sm-glass-blur-md: 24px;
-  --sm-glass-teal: rgba(0, 102, 102, 0.12);
-  --sm-glass-coral: rgba(255, 111, 97, 0.12);
-  --sm-glass-gold: rgba(255, 179, 0, 0.12);
+  --sm-glass-primary: rgba(0, 102, 102, 0.12);
+  --sm-glass-teal: var(--sm-glass-primary);
+  --sm-glass-danger: rgba(255, 111, 97, 0.12);
+  --sm-glass-coral: var(--sm-glass-danger);
+  --sm-glass-warning: rgba(255, 179, 0, 0.12);
+  --sm-glass-gold: var(--sm-glass-warning);
   --sm-overlay-drawer: rgba(0, 0, 0, 0.40);
   --sm-overlay-modal: rgba(0, 0, 0, 0.50);
   --sm-shadow-card: 0 1px 3px rgba(0, 0, 0, 0.24);

@@ -8,6 +8,10 @@ import {
   ArrowUpDown, History,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import StatusBadge from '@/components/mojo-patterns/StatusBadge';
+import MojoHeader from '@/components/mojo-patterns/MojoHeader';
+import StatsCardRow from '@/components/mojo-patterns/StatsCardRow';
+import FilterTabBar from '@/components/mojo-patterns/FilterTabBar';
 
 const API_BASE = (import.meta.env.VITE_FRAPPE_URL || 'http://localhost:8000') + '/api/modules/onboarding';
 
@@ -27,26 +31,8 @@ async function api(path, options = {}) {
   return json.data;
 }
 
-// ─── Status badge colors ───
-const STATUS_COLORS = {
-  'New': 'bg-slate-100 text-slate-700',
-  'Paperwork Pending': 'bg-amber-100 text-amber-800',
-  'Insurance Pending': 'bg-orange-100 text-orange-800',
-  'Verified': 'bg-blue-100 text-blue-700',
-  'Ready': 'bg-emerald-100 text-emerald-700',
-  'Cancelled': 'bg-red-100 text-red-700',
-};
-
 const STAGE_ORDER = ['New', 'Paperwork Pending', 'Insurance Pending', 'Verified', 'Ready'];
 const STAGE_LABELS = ['Scheduled', 'Paperwork', 'Insurance', 'Verified', 'Ready'];
-
-function StatusBadge({ status }) {
-  return (
-    <span className={cn('px-2 py-0.5 rounded-full text-xs font-medium', STATUS_COLORS[status] || 'bg-gray-100 text-gray-600')}>
-      {status}
-    </span>
-  );
-}
 
 // ─── Animated Progress Bar (Task 10) ───
 function AnimatedProgressBar({ pct, size = 'sm', animate = false, duration = 600 }) {
@@ -83,7 +69,7 @@ function AnimatedProgressBar({ pct, size = 'sm', animate = false, duration = 600
       <div className={cn('flex-1 bg-gray-200 rounded-full', h)}>
         <div
           className={cn('rounded-full', h,
-            displayPct >= 100 ? 'bg-emerald-500' : displayPct >= 50 ? 'bg-blue-500' : 'bg-amber-500'
+            displayPct >= 100 ? 'bg-[var(--sm-success)]' : displayPct >= 50 ? 'bg-[var(--sm-info)]' : 'bg-[var(--sm-warning)]'
           )}
           style={{ width: `${Math.min(displayPct, 100)}%` }}
         />
@@ -99,7 +85,7 @@ function ProgressBar({ pct, size = 'sm' }) {
     <div className={cn('w-full bg-gray-200 rounded-full', h)}>
       <div
         className={cn('rounded-full transition-all', h,
-          pct >= 100 ? 'bg-emerald-500' : pct >= 50 ? 'bg-blue-500' : 'bg-amber-500'
+          pct >= 100 ? 'bg-[var(--sm-success)]' : pct >= 50 ? 'bg-[var(--sm-info)]' : 'bg-[var(--sm-warning)]'
         )}
         style={{ width: `${Math.min(pct, 100)}%` }}
       />
@@ -121,7 +107,7 @@ function Toast({ message, type = 'success', onDismiss }) {
   return (
     <div className={cn(
       'fixed bottom-4 right-4 z-[100] px-4 py-2.5 rounded-lg shadow-lg text-sm font-medium text-white transition-all',
-      type === 'success' ? 'bg-emerald-600' : type === 'error' ? 'bg-red-600' : 'bg-blue-600'
+      type === 'success' ? 'bg-[var(--sm-success)]' : type === 'error' ? 'bg-[var(--sm-danger)]' : 'bg-[var(--sm-info)]'
     )}>
       {message}
     </div>
@@ -140,35 +126,14 @@ function AppointmentDate({ date, status }) {
 
   let colorClass = 'text-slate-600';
   if (isActive) {
-    if (diffHours <= 48) colorClass = 'text-red-500';
-    else if (diffHours <= 168) colorClass = 'text-amber-500'; // 7 days
+    if (diffHours <= 48) colorClass = 'text-[var(--sm-danger)]';
+    else if (diffHours <= 168) colorClass = 'text-[var(--sm-warning)]'; // 7 days
   }
 
   return (
     <span className={cn('font-mono text-xs', colorClass)}>
       {apptDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}
     </span>
-  );
-}
-
-// ─── KPI Card ───
-function KpiCard({ label, value, icon: Icon, color, active, onClick }) {
-  return (
-    <button
-      onClick={onClick}
-      className={cn(
-        'flex items-center gap-3 p-3 rounded-lg border transition-all text-left flex-1 min-w-0',
-        active ? 'border-teal-500 bg-teal-50 shadow-sm' : 'border-gray-200 bg-white hover:border-gray-300'
-      )}
-    >
-      <div className={cn('p-2 rounded-lg', color)}>
-        <Icon className="w-4 h-4" />
-      </div>
-      <div className="min-w-0">
-        <div className="text-xl font-bold text-gray-900">{value}</div>
-        <div className="text-xs text-gray-500 truncate">{label}</div>
-      </div>
-    </button>
   );
 }
 
@@ -188,22 +153,22 @@ function StageIndicator({ status }) {
           <React.Fragment key={label}>
             {i > 0 && (
               <div className={cn('flex-1 h-0.5 rounded-full',
-                isComplete || isCurrent ? 'bg-teal-400' : 'bg-gray-200'
+                isComplete || isCurrent ? 'bg-[var(--sm-primary)]' : 'bg-gray-200'
               )} />
             )}
             <div className="flex flex-col items-center gap-0.5">
               <div className="relative">
                 <div className={cn(
                   'w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold transition-all',
-                  isComplete ? 'bg-teal-500 text-white' :
-                  isCurrent ? 'bg-teal-500 text-white ring-4 ring-teal-200 animate-pulse' :
+                  isComplete ? 'bg-[var(--sm-primary)] text-white' :
+                  isCurrent ? 'bg-[var(--sm-primary)] text-white ring-4 ring-[color-mix(in_srgb,var(--sm-primary)_20%,transparent)] animate-pulse' :
                   'bg-gray-200 text-gray-400'
                 )}>
                   {isComplete ? <Check className="w-3.5 h-3.5" /> : (i + 1)}
                 </div>
               </div>
               <span className={cn('text-[9px] font-medium whitespace-nowrap',
-                isComplete || isCurrent ? 'text-teal-700' : 'text-gray-400'
+                isComplete || isCurrent ? 'text-[var(--sm-primary)]' : 'text-gray-400'
               )}>{label}</span>
             </div>
           </React.Fragment>
@@ -268,21 +233,21 @@ function AddClientModal({ onClose, onCreated }) {
             <label className="text-sm font-medium text-gray-700 block mb-1">Client Name *</label>
             <input type="text" value={form.client_name} onChange={e => set('client_name', e.target.value)}
               className={cn('w-full border rounded-lg px-3 py-2 text-sm', errors.client_name && 'border-red-400')} />
-            {errors.client_name && <p className="text-xs text-red-500 mt-0.5">{errors.client_name}</p>}
+            {errors.client_name && <p className="text-xs text-[var(--sm-danger)] mt-0.5">{errors.client_name}</p>}
           </div>
           {/* Clinician */}
           <div>
             <label className="text-sm font-medium text-gray-700 block mb-1">Clinician *</label>
             <input type="text" value={form.clinician} onChange={e => set('clinician', e.target.value)}
               className={cn('w-full border rounded-lg px-3 py-2 text-sm', errors.clinician && 'border-red-400')} />
-            {errors.clinician && <p className="text-xs text-red-500 mt-0.5">{errors.clinician}</p>}
+            {errors.clinician && <p className="text-xs text-[var(--sm-danger)] mt-0.5">{errors.clinician}</p>}
           </div>
           {/* First Appointment */}
           <div>
             <label className="text-sm font-medium text-gray-700 block mb-1">First Appointment Date & Time *</label>
             <input type="datetime-local" value={form.first_appointment_date} onChange={e => set('first_appointment_date', e.target.value)}
               className={cn('w-full border rounded-lg px-3 py-2 text-sm', errors.first_appointment_date && 'border-red-400')} />
-            {errors.first_appointment_date && <p className="text-xs text-red-500 mt-0.5">{errors.first_appointment_date}</p>}
+            {errors.first_appointment_date && <p className="text-xs text-[var(--sm-danger)] mt-0.5">{errors.first_appointment_date}</p>}
           </div>
           {/* Insurance */}
           <div className="grid grid-cols-2 gap-3">
@@ -329,9 +294,9 @@ function AddClientModal({ onClose, onCreated }) {
             <textarea value={form.notes} onChange={e => set('notes', e.target.value)}
               rows={3} className="w-full border rounded-lg px-3 py-2 text-sm" placeholder="Optional notes..." />
           </div>
-          {errors.submit && <p className="text-sm text-red-600 bg-red-50 p-2 rounded">{errors.submit}</p>}
+          {errors.submit && <p className="text-sm text-[var(--sm-danger)] bg-[var(--sm-glass-danger)] p-2 rounded">{errors.submit}</p>}
           <button type="submit" disabled={submitting}
-            className="w-full bg-[#FF6F61] text-white rounded-lg py-2.5 text-sm font-medium hover:bg-[#e5635a] disabled:opacity-50 flex items-center justify-center gap-2">
+            className="w-full bg-[var(--sm-danger)] text-white rounded-lg py-2.5 text-sm font-medium hover:opacity-90 disabled:opacity-50 flex items-center justify-center gap-2">
             {submitting && <Loader2 className="w-4 h-4 animate-spin" />}
             Add Client
           </button>
@@ -390,11 +355,11 @@ function ArchiveModal({ clientName, onClose, onArchived }) {
             <textarea value={notes} onChange={e => setNotes(e.target.value)}
               rows={3} className="w-full border rounded-lg px-3 py-2 text-sm" placeholder="Additional notes..." />
           )}
-          {error && <p className="text-sm text-red-600">{error}</p>}
+          {error && <p className="text-sm text-[var(--sm-danger)]">{error}</p>}
           <div className="flex gap-2">
             <button onClick={onClose} className="flex-1 px-4 py-2 text-sm text-gray-600 border rounded-lg hover:bg-gray-50">Cancel</button>
             <button onClick={handleSubmit} disabled={!reason || submitting}
-              className="flex-1 px-4 py-2 text-sm text-white bg-red-600 rounded-lg hover:bg-red-700 disabled:opacity-50 flex items-center justify-center gap-2">
+              className="flex-1 px-4 py-2 text-sm text-white bg-[var(--sm-danger)] rounded-lg hover:opacity-90 disabled:opacity-50 flex items-center justify-center gap-2">
               {submitting && <Loader2 className="w-4 h-4 animate-spin" />}
               Archive Client
             </button>
@@ -439,11 +404,11 @@ function ReactivateModal({ clientName, onClose, onReactivated }) {
             <input type="datetime-local" value={appointmentDate} onChange={e => setAppointmentDate(e.target.value)}
               className="w-full border rounded-lg px-3 py-2 text-sm" />
           </div>
-          {error && <p className="text-sm text-red-600">{error}</p>}
+          {error && <p className="text-sm text-[var(--sm-danger)]">{error}</p>}
           <div className="flex gap-2">
             <button onClick={onClose} className="flex-1 px-4 py-2 text-sm text-gray-600 border rounded-lg hover:bg-gray-50">Cancel</button>
             <button onClick={handleSubmit} disabled={!appointmentDate || submitting}
-              className="flex-1 px-4 py-2 text-sm text-white bg-emerald-600 rounded-lg hover:bg-emerald-700 disabled:opacity-50 flex items-center justify-center gap-2">
+              className="flex-1 px-4 py-2 text-sm text-white bg-[var(--sm-success)] rounded-lg hover:opacity-90 disabled:opacity-50 flex items-center justify-center gap-2">
               {submitting && <Loader2 className="w-4 h-4 animate-spin" />}
               Reactivate
             </button>
@@ -478,7 +443,7 @@ function CompleteModal({ clientName, onClose, onCompleted }) {
         <div className="flex gap-2">
           <button onClick={onClose} className="flex-1 px-4 py-2 text-sm text-gray-600 border rounded-lg hover:bg-gray-50">Cancel</button>
           <button onClick={handleSubmit} disabled={submitting}
-            className="flex-1 px-4 py-2 text-sm text-white bg-emerald-600 rounded-lg hover:bg-emerald-700 disabled:opacity-50 flex items-center justify-center gap-2">
+            className="flex-1 px-4 py-2 text-sm text-white bg-[var(--sm-success)] rounded-lg hover:opacity-90 disabled:opacity-50 flex items-center justify-center gap-2">
             {submitting && <Loader2 className="w-4 h-4 animate-spin" />}
             Mark Complete
           </button>
@@ -526,7 +491,7 @@ function OutreachPopover({ clientName, anchorRef, onClose, onSubmit }) {
   if (success) {
     return (
       <div ref={popoverRef} className="absolute right-0 top-full mt-1 bg-white rounded-lg shadow-xl border border-gray-200 p-3 z-50 w-72">
-        <div className="flex items-center gap-2 text-emerald-600">
+        <div className="flex items-center gap-2 text-[var(--sm-success)]">
           <CheckCircle2 className="w-4 h-4" />
           <span className="text-sm font-medium">Outreach logged</span>
         </div>
@@ -547,7 +512,7 @@ function OutreachPopover({ clientName, anchorRef, onClose, onSubmit }) {
         <input type="text" value={notes} onChange={e => setNotes(e.target.value)}
           className="w-full border rounded px-2 py-1.5 text-xs" placeholder="Optional notes" />
         <button type="submit" disabled={submitting}
-          className="w-full bg-teal-600 text-white rounded py-1.5 text-xs font-medium hover:bg-teal-700 disabled:opacity-50">
+          className="w-full bg-[var(--sm-primary)] text-white rounded py-1.5 text-xs font-medium hover:opacity-90 disabled:opacity-50">
           {submitting ? 'Saving...' : 'Submit'}
         </button>
       </form>
@@ -598,7 +563,7 @@ function OutreachModal({ clientName, onClose, onSubmit }) {
               className="w-full border rounded-lg px-3 py-2 text-sm" placeholder="Optional notes..." />
           </div>
           <button type="submit" disabled={submitting}
-            className="w-full bg-teal-600 text-white rounded-lg py-2 text-sm font-medium hover:bg-teal-700 disabled:opacity-50 flex items-center justify-center gap-2">
+            className="w-full bg-[var(--sm-primary)] text-white rounded-lg py-2 text-sm font-medium hover:opacity-90 disabled:opacity-50 flex items-center justify-center gap-2">
             {submitting && <Loader2 className="w-4 h-4 animate-spin" />}
             Log Outreach
           </button>
@@ -748,8 +713,8 @@ function ClientDrawer({ clientName, onClose, onRefresh, isHistorical }) {
     return (
       <div className="fixed top-0 right-0 w-[480px] h-full bg-white shadow-2xl z-50 border-l border-gray-200 p-6">
         <button onClick={onClose} className="absolute top-4 right-4 text-gray-400 hover:text-gray-600"><X className="w-5 h-5" /></button>
-        <p className="text-red-600 mt-12">{error}</p>
-        <button onClick={fetchClient} className="mt-2 text-teal-600 text-sm">Retry</button>
+        <p className="text-[var(--sm-danger)] mt-12">{error}</p>
+        <button onClick={fetchClient} className="mt-2 text-[var(--sm-primary)] text-sm">Retry</button>
       </div>
     );
   }
@@ -766,11 +731,11 @@ function ClientDrawer({ clientName, onClose, onRefresh, isHistorical }) {
   );
 
   const METHOD_COLORS = {
-    'SP Reminder': 'bg-blue-500',
-    'Google Text': 'bg-green-500',
-    'LVM': 'bg-purple-500',
-    'EMW': 'bg-orange-500',
-    'Final Reminder': 'bg-red-500',
+    'SP Reminder': 'bg-[var(--sm-info)]',
+    'Google Text': 'bg-[var(--sm-success)]',
+    'LVM': 'bg-[var(--sm-primary)]',
+    'EMW': 'bg-[var(--sm-warning)]',
+    'Final Reminder': 'bg-[var(--sm-danger)]',
     'Other': 'bg-gray-500',
   };
 
@@ -786,7 +751,7 @@ function ClientDrawer({ clientName, onClose, onRefresh, isHistorical }) {
           <div className="flex-1 pr-2">
             <h2 className="text-xl font-bold text-gray-900">{client.client_name}</h2>
             <div className="flex items-center gap-2 mt-1">
-              <StatusBadge status={client.onboarding_status} />
+              <StatusBadge variant="status" value={client.onboarding_status} />
               <span className="text-xs text-gray-500">
                 {client.assigned_clinician} | {client.assigned_staff} | Added {client.date_added}
               </span>
@@ -803,19 +768,19 @@ function ClientDrawer({ clientName, onClose, onRefresh, isHistorical }) {
             {/* Action buttons in drawer header */}
             {canArchive && (
               <button onClick={() => setShowArchive(true)}
-                className="px-2 py-1 text-xs font-medium text-red-600 hover:bg-red-50 rounded flex items-center gap-1">
+                className="px-2 py-1 text-xs font-medium text-[var(--sm-danger)] hover:bg-[var(--sm-glass-danger)] rounded flex items-center gap-1">
                 <Archive className="w-3.5 h-3.5" /> Archive
               </button>
             )}
             {canReactivate && (
               <button onClick={() => setShowReactivate(true)}
-                className="px-2 py-1 text-xs font-medium text-emerald-600 hover:bg-emerald-50 rounded flex items-center gap-1">
+                className="px-2 py-1 text-xs font-medium text-[var(--sm-success)] hover:bg-[var(--sm-glass-primary)] rounded flex items-center gap-1">
                 <RotateCcw className="w-3.5 h-3.5" /> Reactivate
               </button>
             )}
             {canComplete && (
               <button onClick={() => setShowComplete(true)}
-                className="px-2 py-1 text-xs font-medium text-emerald-600 hover:bg-emerald-50 rounded flex items-center gap-1">
+                className="px-2 py-1 text-xs font-medium text-[var(--sm-success)] hover:bg-[var(--sm-glass-primary)] rounded flex items-center gap-1">
                 <CheckCircle2 className="w-3.5 h-3.5" /> Mark Complete
               </button>
             )}
@@ -838,7 +803,7 @@ function ClientDrawer({ clientName, onClose, onRefresh, isHistorical }) {
             className={cn(
               'flex-1 py-2.5 text-sm font-medium capitalize transition-colors',
               activeTab === tab
-                ? 'text-teal-700 border-b-2 border-teal-500'
+                ? 'text-[var(--sm-primary)] border-b-2 border-[var(--sm-primary)]'
                 : 'text-gray-500 hover:text-gray-700'
             )}
           >
@@ -871,7 +836,7 @@ function ClientDrawer({ clientName, onClose, onRefresh, isHistorical }) {
                   <div className={cn(
                     'w-5 h-5 rounded border-2 flex items-center justify-center flex-shrink-0 transition-colors',
                     item.is_complete
-                      ? 'bg-teal-500 border-teal-500'
+                      ? 'bg-[var(--sm-primary)] border-[var(--sm-primary)]'
                       : 'border-gray-300'
                   )}>
                     {item.is_complete ? <Check className="w-3 h-3 text-white" /> : null}
@@ -882,7 +847,7 @@ function ClientDrawer({ clientName, onClose, onRefresh, isHistorical }) {
                     </span>
                     <div className="flex items-center gap-2 mt-0.5">
                       {item.is_required
-                        ? <span className="text-[10px] font-medium text-red-600 bg-red-50 px-1.5 py-0.5 rounded">Required</span>
+                        ? <span className="text-[10px] font-medium text-[var(--sm-danger)] bg-[var(--sm-glass-danger)] px-1.5 py-0.5 rounded">Required</span>
                         : <span className="text-[10px] text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded">Optional</span>
                       }
                       {item.is_complete && item.completed_by && (
@@ -903,7 +868,7 @@ function ClientDrawer({ clientName, onClose, onRefresh, isHistorical }) {
           <div>
             <button
               onClick={() => setShowOutreachForm(!showOutreachForm)}
-              className="w-full mb-4 flex items-center justify-center gap-2 py-2 border border-dashed border-teal-400 rounded-lg text-teal-600 text-sm hover:bg-teal-50"
+              className="w-full mb-4 flex items-center justify-center gap-2 py-2 border border-dashed border-[var(--sm-primary)] rounded-lg text-[var(--sm-primary)] text-sm hover:bg-[var(--sm-glass-primary)]"
             >
               <Plus className="w-4 h-4" /> Log Outreach
             </button>
@@ -920,7 +885,7 @@ function ClientDrawer({ clientName, onClose, onRefresh, isHistorical }) {
                   rows={2} className="w-full border rounded px-2 py-1.5 text-sm" placeholder="Notes..." />
                 <div className="flex gap-2">
                   <button type="submit" disabled={outreachSubmitting}
-                    className="flex-1 bg-teal-600 text-white rounded py-1.5 text-sm hover:bg-teal-700 disabled:opacity-50">
+                    className="flex-1 bg-[var(--sm-primary)] text-white rounded py-1.5 text-sm hover:opacity-90 disabled:opacity-50">
                     {outreachSubmitting ? 'Saving...' : 'Save'}
                   </button>
                   <button type="button" onClick={() => setShowOutreachForm(false)}
@@ -982,11 +947,11 @@ function ClientDrawer({ clientName, onClose, onRefresh, isHistorical }) {
             <div className="flex justify-end mb-3">
               {editMode ? (
                 <div className="flex gap-2">
-                  <button onClick={handleDetailsSave} className="text-sm text-teal-600 hover:text-teal-800 font-medium">Save</button>
+                  <button onClick={handleDetailsSave} className="text-sm text-[var(--sm-primary)] hover:opacity-80 font-medium">Save</button>
                   <button onClick={() => { setEditMode(false); setEditFields({}); }} className="text-sm text-gray-500">Cancel</button>
                 </div>
               ) : (
-                <button onClick={() => setEditMode(true)} className="text-sm text-teal-600 hover:text-teal-800">Edit</button>
+                <button onClick={() => setEditMode(true)} className="text-sm text-[var(--sm-primary)] hover:opacity-80">Edit</button>
               )}
             </div>
             <div className="grid grid-cols-2 gap-3">
@@ -1014,7 +979,7 @@ function ClientDrawer({ clientName, onClose, onRefresh, isHistorical }) {
                   ) : check ? (
                     <div className="flex items-center gap-1 mt-0.5">
                       {client[field] ? (
-                        <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+                        <CheckCircle2 className="w-4 h-4 text-[var(--sm-success)]" />
                       ) : (
                         <Circle className="w-4 h-4 text-gray-300" />
                       )}
@@ -1096,9 +1061,9 @@ function MyTasksView({ clients, onViewClient }) {
                 </div>
               </div>
               <div className="flex items-center gap-2">
-                <StatusBadge status={c.onboarding_status} />
+                <StatusBadge variant="status" value={c.onboarding_status} />
                 <button onClick={() => onViewClient(c.client_name)}
-                  className="text-xs text-teal-600 hover:text-teal-800 font-medium">
+                  className="text-xs text-[var(--sm-primary)] hover:opacity-80 font-medium">
                   View
                 </button>
               </div>
@@ -1111,9 +1076,9 @@ function MyTasksView({ clients, onViewClient }) {
 
   return (
     <div className="p-4">
-      {renderGroup('Overdue', overdue, 'text-red-600')}
-      {renderGroup('Due Today', today, 'text-amber-600')}
-      {renderGroup('Upcoming (7 Days)', upcoming, 'text-blue-600')}
+      {renderGroup('Overdue', overdue, 'text-[var(--sm-danger)]')}
+      {renderGroup('Due Today', today, 'text-[var(--sm-warning)]')}
+      {renderGroup('Upcoming (7 Days)', upcoming, 'text-[var(--sm-info)]')}
     </div>
   );
 }
@@ -1165,7 +1130,7 @@ function HistoricalView({ onViewClient, onReactivate }) {
               className={cn(
                 'px-2.5 py-1 rounded-full text-xs font-medium transition-colors',
                 statusFilter === f.key
-                  ? 'bg-teal-600 text-white'
+                  ? 'bg-[var(--sm-primary)] text-white'
                   : 'bg-white text-gray-600 border border-gray-200 hover:border-gray-300'
               )}>
               {f.label}
@@ -1185,7 +1150,7 @@ function HistoricalView({ onViewClient, onReactivate }) {
           <div className="relative">
             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
             <input type="text" placeholder="Search..." value={search} onChange={e => setSearch(e.target.value)}
-              className="pl-8 pr-3 py-1.5 text-xs border border-gray-200 rounded-lg w-40 focus:outline-none focus:border-teal-400" />
+              className="pl-8 pr-3 py-1.5 text-xs border border-gray-200 rounded-lg w-40 focus:outline-none focus:border-[var(--sm-primary)]" />
           </div>
         </div>
       </div>
@@ -1223,7 +1188,7 @@ function HistoricalView({ onViewClient, onReactivate }) {
                     <td className="py-2.5 px-2">
                       <AppointmentDate date={c.first_appointment_date} status={c.onboarding_status} />
                     </td>
-                    <td className="py-2.5 px-2"><StatusBadge status={c.onboarding_status} /></td>
+                    <td className="py-2.5 px-2"><StatusBadge variant="status" value={c.onboarding_status} /></td>
                     <td className="py-2.5 px-2 text-xs text-gray-600 font-mono">
                       {c.onboarding_status === 'Ready'
                         ? (c.completed_date || '—')
@@ -1235,12 +1200,12 @@ function HistoricalView({ onViewClient, onReactivate }) {
                     <td className="py-2.5 px-3 text-right">
                       <div className="flex items-center justify-end gap-1">
                         <button onClick={() => onViewClient(c.client_name)}
-                          className="text-xs text-teal-600 hover:text-teal-800 font-medium px-2 py-1 rounded hover:bg-teal-50">
+                          className="text-xs text-[var(--sm-primary)] hover:opacity-80 font-medium px-2 py-1 rounded hover:bg-[var(--sm-glass-primary)]">
                           View
                         </button>
                         {c.onboarding_status === 'Cancelled' && (
                           <button onClick={() => onReactivate(c.client_name)}
-                            className="text-xs text-emerald-600 hover:text-emerald-800 font-medium px-2 py-1 rounded hover:bg-emerald-50 flex items-center gap-1">
+                            className="text-xs text-[var(--sm-success)] hover:opacity-80 font-medium px-2 py-1 rounded hover:bg-[var(--sm-glass-primary)] flex items-center gap-1">
                             <RotateCcw className="w-3 h-3" /> Reactivate
                           </button>
                         )}
@@ -1268,7 +1233,7 @@ function SortHeader({ label, field, sortField, sortDir, onSort, className }) {
       <div className="flex items-center gap-1">
         {label}
         {isActive ? (
-          sortDir === 'asc' ? <ArrowUp className="w-3 h-3 text-teal-600" /> : <ArrowDown className="w-3 h-3 text-teal-600" />
+          sortDir === 'asc' ? <ArrowUp className="w-3 h-3 text-[var(--sm-primary)]" /> : <ArrowDown className="w-3 h-3 text-[var(--sm-primary)]" />
         ) : (
           <ArrowUpDown className="w-3 h-3 text-gray-300" />
         )}
@@ -1388,10 +1353,10 @@ export default function OnboardingMojo({ isMaximized }) {
   if (error && !clients.length) {
     return (
       <div className="h-full flex flex-col items-center justify-center text-center p-8">
-        <AlertTriangle className="w-10 h-10 text-amber-500 mb-3" />
+        <AlertTriangle className="w-10 h-10 text-[var(--sm-warning)] mb-3" />
         <p className="text-gray-600 mb-2">Failed to load onboarding data</p>
         <p className="text-sm text-gray-400 mb-4">{error}</p>
-        <button onClick={fetchClients} className="text-teal-600 text-sm font-medium flex items-center gap-1">
+        <button onClick={fetchClients} className="text-[var(--sm-primary)] text-sm font-medium flex items-center gap-1">
           <RefreshCw className="w-4 h-4" /> Retry
         </button>
       </div>
@@ -1401,32 +1366,34 @@ export default function OnboardingMojo({ isMaximized }) {
   return (
     <div className="h-full flex flex-col bg-gray-50 text-gray-900 overflow-hidden">
       {/* Header */}
-      <div className="bg-white border-b border-gray-200 px-4 py-2.5 flex items-center justify-between flex-shrink-0">
-        <div className="flex items-center gap-2">
-          <UserCheck className="w-5 h-5 text-teal-600" />
-          <h1 className="text-base font-semibold">Onboarding</h1>
-        </div>
-        <div className="flex items-center gap-1">
-          {['queue', 'tasks', 'history'].map(view => (
-            <button
-              key={view}
-              onClick={() => setActiveView(view)}
-              className={cn(
-                'px-3 py-1.5 rounded text-sm font-medium transition-colors capitalize',
-                activeView === view ? 'bg-teal-100 text-teal-700' : 'text-gray-500 hover:text-gray-700'
-              )}
-            >
-              {view === 'tasks' ? 'My Tasks' : view === 'history' ? 'History' : 'Queue'}
-            </button>
-          ))}
-          <button
-            onClick={fetchClients}
-            className="ml-2 p-1.5 text-gray-400 hover:text-gray-600 rounded"
-            title="Refresh"
-          >
-            <RefreshCw className={cn('w-4 h-4', loading && 'animate-spin')} />
-          </button>
-        </div>
+      <div className="bg-white border-b border-gray-200 px-4 py-2.5 flex-shrink-0">
+        <MojoHeader
+          icon={<UserCheck className="w-5 h-5" />}
+          title="Onboarding"
+          actions={
+            <div className="flex items-center gap-1">
+              {['queue', 'tasks', 'history'].map(view => (
+                <button
+                  key={view}
+                  onClick={() => setActiveView(view)}
+                  className={cn(
+                    'px-3 py-1.5 rounded text-sm font-medium transition-colors capitalize',
+                    activeView === view ? 'bg-[var(--sm-glass-primary)] text-[var(--sm-primary)]' : 'text-gray-500 hover:text-gray-700'
+                  )}
+                >
+                  {view === 'tasks' ? 'My Tasks' : view === 'history' ? 'History' : 'Queue'}
+                </button>
+              ))}
+              <button
+                onClick={fetchClients}
+                className="ml-2 p-1.5 text-gray-400 hover:text-gray-600 rounded"
+                title="Refresh"
+              >
+                <RefreshCw className={cn('w-4 h-4', loading && 'animate-spin')} />
+              </button>
+            </div>
+          }
+        />
       </div>
 
       {activeView === 'tasks' ? (
@@ -1440,70 +1407,47 @@ export default function OnboardingMojo({ isMaximized }) {
         <div className="flex-1 overflow-y-auto">
           {/* KPI Cards */}
           <div className="p-4 pb-2">
-            <div className="flex gap-3">
-              <KpiCard
-                label="Active Queue" value={activeQueue} icon={UserCheck}
-                color="bg-teal-100 text-teal-700"
-                active={filter === 'all'} onClick={() => setFilter('all')}
-              />
-              <KpiCard
-                label="Urgent" value={urgentCount} icon={AlertTriangle}
-                color="bg-red-100 text-red-700"
-                active={filter === 'urgent'} onClick={() => setFilter('urgent')}
-              />
-              <KpiCard
-                label="Pending Insurance" value={insurancePending} icon={Shield}
-                color="bg-orange-100 text-orange-700"
-                active={filter === 'insurance'} onClick={() => setFilter('insurance')}
-              />
-              <KpiCard
-                label="Ready" value={readyThisWeek} icon={CheckCircle2}
-                color="bg-emerald-100 text-emerald-700"
-                active={filter === 'ready'} onClick={() => setFilter('ready')}
-              />
-            </div>
+            <StatsCardRow cards={[
+              { label: 'Active Queue', value: activeQueue, icon: <UserCheck className="w-4 h-4" />, color: 'primary', active: filter === 'all', onClick: () => setFilter('all') },
+              { label: 'Urgent', value: urgentCount, icon: <AlertTriangle className="w-4 h-4" />, color: 'danger', active: filter === 'urgent', onClick: () => setFilter('urgent') },
+              { label: 'Pending Insurance', value: insurancePending, icon: <Shield className="w-4 h-4" />, color: 'warning', active: filter === 'insurance', onClick: () => setFilter('insurance') },
+              { label: 'Ready', value: readyThisWeek, icon: <CheckCircle2 className="w-4 h-4" />, color: 'green', active: filter === 'ready', onClick: () => setFilter('ready') },
+            ]} />
           </div>
 
           {/* Filter chips + search + Add Client button */}
-          <div className="px-4 pb-3 flex items-center gap-2">
-            {[
-              { key: 'all', label: 'All' },
-              { key: 'urgent', label: 'Urgent' },
-              { key: 'insurance', label: 'Pending Insurance' },
-              { key: 'paperwork', label: 'Needs Paperwork' },
-              { key: 'ready', label: 'Ready' },
-            ].map(f => (
-              <button
-                key={f.key}
-                onClick={() => setFilter(f.key)}
-                className={cn(
-                  'px-2.5 py-1 rounded-full text-xs font-medium transition-colors',
-                  filter === f.key
-                    ? 'bg-teal-600 text-white'
-                    : 'bg-white text-gray-600 border border-gray-200 hover:border-gray-300'
-                )}
-              >
-                {f.label}
-              </button>
-            ))}
-            <div className="flex-1" />
-            <div className="relative">
-              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
-              <input
-                type="text"
-                placeholder="Search..."
-                value={search}
-                onChange={e => setSearch(e.target.value)}
-                className="pl-8 pr-3 py-1.5 text-xs border border-gray-200 rounded-lg w-48 focus:outline-none focus:border-teal-400"
-              />
-            </div>
-            {/* Add Client button (Task 2) */}
-            <button
-              onClick={() => setShowAddClient(true)}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-[#FF6F61] text-white text-xs font-medium rounded-lg hover:bg-[#e5635a] transition-colors"
-            >
-              <Plus className="w-3.5 h-3.5" /> Add Client
-            </button>
+          <div className="px-4 pb-3">
+            <FilterTabBar
+              tabs={[
+                { key: 'all', label: 'All' },
+                { key: 'urgent', label: 'Urgent' },
+                { key: 'insurance', label: 'Pending Insurance' },
+                { key: 'paperwork', label: 'Needs Paperwork' },
+                { key: 'ready', label: 'Ready' },
+              ]}
+              activeTab={filter}
+              onTabChange={setFilter}
+              rightContent={
+                <>
+                  <div className="relative">
+                    <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
+                    <input
+                      type="text"
+                      placeholder="Search..."
+                      value={search}
+                      onChange={e => setSearch(e.target.value)}
+                      className="pl-8 pr-3 py-1.5 text-xs border border-gray-200 rounded-lg w-48 focus:outline-none focus:border-[var(--sm-primary)]"
+                    />
+                  </div>
+                  <button
+                    onClick={() => setShowAddClient(true)}
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-[var(--sm-danger)] text-white text-xs font-medium rounded-lg hover:opacity-90 transition-colors"
+                  >
+                    <Plus className="w-3.5 h-3.5" /> Add Client
+                  </button>
+                </>
+              }
+            />
           </div>
 
           {/* Table */}
@@ -1516,7 +1460,7 @@ export default function OnboardingMojo({ isMaximized }) {
               <div className="text-center py-12">
                 <Filter className="w-8 h-8 text-gray-300 mx-auto mb-2" />
                 <p className="text-gray-500 text-sm">No clients match your current filters</p>
-                <button onClick={() => { setFilter('all'); setSearch(''); }} className="text-teal-600 text-sm mt-1">
+                <button onClick={() => { setFilter('all'); setSearch(''); }} className="text-[var(--sm-primary)] text-sm mt-1">
                   Clear filters
                 </button>
               </div>
@@ -1540,8 +1484,8 @@ export default function OnboardingMojo({ isMaximized }) {
                         key={c.name}
                         className={cn(
                           'hover:bg-gray-50 transition-colors',
-                          c.urgency_level === 'urgent' && 'border-l-[3px] border-l-red-500',
-                          c.urgency_level === 'warning' && 'border-l-[3px] border-l-amber-500',
+                          c.urgency_level === 'urgent' && 'border-l-[3px] border-l-[var(--sm-danger)]',
+                          c.urgency_level === 'warning' && 'border-l-[3px] border-l-[var(--sm-warning)]',
                         )}
                       >
                         <td className="py-2.5 px-3">
@@ -1558,12 +1502,12 @@ export default function OnboardingMojo({ isMaximized }) {
                           </div>
                         </td>
                         <td className="py-2.5 px-2 text-xs text-gray-600">{c.insurance_primary || '—'}</td>
-                        <td className="py-2.5 px-2"><StatusBadge status={c.onboarding_status} /></td>
+                        <td className="py-2.5 px-2"><StatusBadge variant="status" value={c.onboarding_status} /></td>
                         <td className="py-2.5 px-3 text-right">
                           <div className="flex items-center justify-end gap-1 relative">
                             <button
                               onClick={() => setDrawerClient(c.client_name)}
-                              className="text-xs text-teal-600 hover:text-teal-800 font-medium px-2 py-1 rounded hover:bg-teal-50"
+                              className="text-xs text-[var(--sm-primary)] hover:opacity-80 font-medium px-2 py-1 rounded hover:bg-[var(--sm-glass-primary)]"
                             >
                               View
                             </button>
