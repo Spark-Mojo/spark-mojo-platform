@@ -489,10 +489,12 @@ Use `var(--sm-*)` CSS variables from `frontend/src/styles/tokens.css`. Never har
 ## Do Not Touch
 
 - `frontend/src/pages/Desktop.jsx` — immutable structure
-- `frontend/src/pages/index.jsx` — app routing, imports Desktop. If this file is changed,
-  Vite tree-shakes out all Mojo components (WorkboardMojo, etc.) as dead code.
-  History: on 2026-03-27 this file was overwritten on the VPS by a tool, replacing
-  Desktop routing with placeholder pages. The bundle silently lost all Mojo code.
+- `frontend/src/pages/index.jsx` — protect the core routing structure only.
+  **NEVER remove the Desktop.jsx import or the main layout wrapper.** Route additions,
+  removals, and modifications (e.g. adding/removing a `/library` route) are permitted
+  when explicitly specified in a story. The danger is wholesale replacement, not targeted
+  route edits. History: on 2026-03-27 this file was REPLACED ENTIRELY on the VPS by a
+  tool, removing the Desktop import. The bundle silently lost all Mojo code.
 - `frontend/src/api/frappe-client.js` — load-bearing, do not modify
 - `frontend/src/types/` — static reference files
 - All legacy component folders (cash/, pos/, quickrepairs/, workorder/, technicians/, orders/, inventory/)
@@ -523,7 +525,7 @@ will abort if `frontend/` has uncommitted changes.
 ### When to use PRs vs direct commits
 
 | Change type | Workflow | Example |
-|-------------|----------|---------| 
+|-------------|----------|---------|
 | Story / feature work | PR on feature branch | New Mojo component, new DocType, new API route |
 | Bug fixes to app code | PR on feature branch | Fixing a broken component, controller logic |
 | Deploy/infra fixes | Direct to main | deploy.sh changes, Traefik routing, Docker config |
@@ -623,7 +625,7 @@ When creating a NEW UI component:
 1. Check if shadcn/ui has it: `npx shadcn@latest add <component-name>` from `frontend/`
 2. If shadcn has it → install it, apply SM token overrides, add to /library page
 3. If custom → build it from shadcn primitives, add to `components/mojo-patterns/`, add to /library page
-4. Update `COMPONENT_INVENTORY.md` with: component name, props, variants, token usage, which mojos use it
+4. Update `frontend/src/components/COMPONENT_INVENTORY.md` with: component name, props, variants, token usage, which mojos use it
 
 ### Component Usage Protocol
 
@@ -646,7 +648,7 @@ When using a component in a mojo:
 2. All colors MUST reference design tokens (`var(--sm-primary)`), never raw hex or Tailwind color classes.
 3. All typography MUST use the token font stack: Montserrat (display), Nunito Sans (body), Inter (UI controls).
 4. All surface components MUST use liquid glass treatment from `styles/tokens.css`.
-5. New shared components require a `COMPONENT_INVENTORY.md` entry before implementation.
+5. New shared components require a `frontend/src/components/COMPONENT_INVENTORY.md` entry before implementation.
 6. Magic UI components are accent only — they enhance, never replace base components.
 7. React NEVER calls Frappe directly — always via `/api/modules/[capability]/[action]`. (Restated for completeness.)
 
@@ -656,24 +658,26 @@ Before committing any frontend change, verify:
 - [ ] No hardcoded hex colors in component files (`grep -r '#[0-9a-fA-F]\{6\}' frontend/src/components/`)
 - [ ] No new Tailwind color classes (grep for `bg-teal`, `bg-red`, `text-blue`, etc.)
 - [ ] Any new component is in /library (`frontend/src/pages/Library.jsx`)
-- [ ] `COMPONENT_INVENTORY.md` is updated if components changed
+- [ ] `frontend/src/components/COMPONENT_INVENTORY.md` is updated if components changed
 - [ ] Build passes: `cd frontend && npm run build`
 
 ### Key Design System Files
 
 - `frontend/src/styles/tokens.css` — all design tokens (the single source of truth)
 - `frontend/src/pages/Library.jsx` — canonical component showcase (/library route)
-- `COMPONENT_INVENTORY.md` — component catalog with props, variants, token usage, mojo associations
+- `frontend/src/components/COMPONENT_INVENTORY.md` — component catalog with props, variants, token usage, mojo associations
 - `sparkmojo-internal/platform/decisions/DECISION-015-design-system.md` — architectural ADR
 
 ### Design System Debt Tracker
 
 | Item | Status |
 |------|--------|
-| Base components in /library | 20/49 (41%) — fill to 100% is a pending Ralph build |
-| Token semantic rename | PENDING — `--sm-teal/coral/gold` → `--sm-primary/danger/warning` |
-| Missing high-priority components | Accordion, Alert, Dropdown Menu, Pagination, Toast, Breadcrumb |
+| Base components in /library | ✅ 100% — 49 base + 9 mojo patterns + 1 magic ui = 59 total (STORY-011, commit 484f04e) |
+| Token compliance — StatsCard + WorkboardMojo | ✅ Clean (STORY-012, commit 647bc6e) |
+| AnimatedThemeToggler | ✅ Installed (STORY-013, commit 449c716) |
+| /library route in production | ⚠️ Production guard added in STORY-013 — STORY-HOT-001 queued to remove |
+| Token semantic rename (DS-002) | ⏳ Pending James sign-off (J-008) — `--sm-teal/coral/gold` → `--sm-primary/danger/warning` |
 
 ---
 
-*Last updated: March 29, 2026 — Design system governance expansion (semantic tokens, library contract, component protocols)*
+*Last updated: March 30, 2026 — Phase 4 governance: debt tracker updated (STORY-011/012/013 complete), index.jsx protection rule clarified, COMPONENT_INVENTORY.md path corrected*
