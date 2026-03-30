@@ -65,6 +65,7 @@ This is NOT a greenfield build. Architecture is fully designed. Your job is to e
 | `platform/WORKING_AGREEMENT.md` | Rules of engagement, architecture constants, global build rules |
 | `platform/decisions/DECISION-003-abstraction-layer.md` | Abstraction layer — immutable |
 | `platform/decisions/DECISION-014-sm-task-custom-doctype.md` | SM Task is custom DocType, NOT ERPNext Task extension |
+| `platform/decisions/DECISION-015-design-system.md` | Design system architecture — semantic tokens, layer model, theming |
 | `platform/feature-library/TASK-WORKBOARD.md` | Full Task & Workboard feature spec and schema |
 | `platform/feature-library/stories/STORY-NNN.md` | Individual story spec for current work |
 
@@ -268,6 +269,12 @@ Then give them these exact steps:
   1. The route is defined in `pages/index.jsx`
   2. The sidebar link exists in `pages/Layout.jsx`
   3. The production bundle contains the component's string literals
+- **Design system verification** (run on any story touching `frontend/src/`):
+  - No hardcoded hex colors in changed files: `grep -r '#[0-9a-fA-F]\{6\}' frontend/src/components/`
+  - Every new component file has a corresponding section in Library.jsx
+  - COMPONENT_INVENTORY.md updated if components/ changed
+  - All `var(--sm-*)` references resolve to defined tokens in tokens.css
+  - `npm run build` succeeds
 
 ---
 
@@ -310,6 +317,7 @@ A story is ONLY complete when ALL gates for its type pass:
 1. `pnpm run lint` — 0 warnings, 0 errors
 2. `pnpm run test` — 0 failures
 3. `pnpm run build` — succeeds
+4. Design system pre-commit checklist passes (see Design System Rules section)
 
 Never emit `LOOP_COMPLETE` or mark a task done without running every gate.
 
@@ -454,24 +462,27 @@ frappe-apps/sm_widgets/
 1. Create `frontend/src/components/mojos/[Name]Mojo.jsx`
 2. Default export: `export default function [Name]Mojo() {}`
 3. All data via abstraction layer — never direct Frappe calls
-4. Use `frontend/src/components/ui/` primitives
-5. Use brand tokens — never hardcode colors
+4. Check /library page before building any UI — use existing components from `components/ui/` and `components/mojo-patterns/`
+5. Use `var(--sm-*)` tokens from `tokens.css` — NEVER hardcode hex, NEVER use Tailwind color classes
 6. Register in Mojo registry (`sparkmojo-internal/platform/MOJO_REGISTRY.md`)
 7. Add cross-links: feature spec → stories → MOJO_REGISTRY (see platform/README.md sync rules)
+8. See the Design System Rules section below for full component creation protocol
 
 ---
 
 ## Brand Tokens
 
-| Token | Value |
-|-------|-------|
-| Primary Teal | `#006666` |
-| Coral (CTA) | `#FF6F61` |
-| Gold | `#FFB300` |
-| Slate | `#34424A` |
-| Off-white | `#F8F9FA` |
+Use `var(--sm-*)` CSS variables from `frontend/src/styles/tokens.css`. Never hardcode hex in component files.
 
-Use CSS variables `var(--color-primary)` for runtime theming. Never hardcode hex.
+| Semantic Token | Role | Value |
+|----------------|------|-------|
+| `--sm-primary` | Primary actions, active states, avatars | `#006666` |
+| `--sm-danger` | Warnings, urgent states, errors | `#FF6F61` |
+| `--sm-warning` | Medium priority, pending, review | `#FFB300` |
+| `--sm-slate` | Text, headers | `#34424A` |
+| `--sm-offwhite` | Page background | `#F8F9FA` |
+
+**Rename status:** Current code uses `--sm-teal`, `--sm-coral`, `--sm-gold` (brand-specific names). Semantic rename to `--sm-primary`, `--sm-danger`, `--sm-warning` is a pending Ralph build (DECISION-015). Use semantic names in ALL new code. The rename is mechanical — find/replace plus token file update.
 
 ---
 
@@ -512,7 +523,7 @@ will abort if `frontend/` has uncommitted changes.
 ### When to use PRs vs direct commits
 
 | Change type | Workflow | Example |
-|-------------|----------|---------|
+|-------------|----------|---------| 
 | Story / feature work | PR on feature branch | New Mojo component, new DocType, new API route |
 | Bug fixes to app code | PR on feature branch | Fixing a broken component, controller logic |
 | Deploy/infra fixes | Direct to main | deploy.sh changes, Traefik routing, Docker config |
@@ -554,37 +565,115 @@ Then deploy per the Deployment section above.
 
 ---
 
----
+## Design System — Rules and Governance
 
-## Design System (ADR-2026-03-28)
-
+**Decision:** DECISION-015 in `sparkmojo-internal/platform/decisions/DECISION-015-design-system.md`
 **Visual North Star:** Ein UI (https://ui.eindev.ir/) — liquid glass aesthetic.
 **Light mode is the default** working environment. Dark mode is opt-in via `[data-theme="dark"]`.
+**Tailwind dark mode config:** Must use `darkMode: ['selector', '[data-theme="dark"]']` — NOT `class`.
 
 ### Component Architecture
+
 ```
 src/components/
-├── ui/              ← shadcn/ui base components (themed with glass tokens)
+├── ui/              ← shadcn/ui base components (themed with SM glass tokens)
 ├── charts/          ← shadcn/ui chart components (install when data viz mojos begin)
 ├── magicui/         ← Magic UI animation accents (selective use only)
-├── mojo-patterns/   ← Spark Mojo composite patterns
-└── mojos/           ← Individual mojo implementations
+├── mojo-patterns/   ← Spark Mojo composite patterns (MojoHeader, StatsCardRow, etc.)
+└── mojos/           ← Individual mojo implementations (assemble from above)
 ```
 
-### Design System Rules
+### Token Usage — MANDATORY
+
+- **NEVER hardcode hex colors** in component files. Use `var(--sm-*)` tokens from `frontend/src/styles/tokens.css`.
+- **NEVER use Tailwind color classes** (`bg-teal-600`, `text-red-500`, etc.) — use token-mapped utility classes like `bg-[var(--sm-primary)]` or `text-[var(--sm-danger)]`.
+- **NEVER use opacity variants for visibility** (`bg-primary/20`). Use dedicated track/surface tokens (`var(--sm-track-bg)`, `var(--sm-surface-secondary)`). Opacity on near-white = still near-white, invisible in light mode.
+- **ALL new colors MUST be added as tokens first**, then referenced.
+
+### Token Naming Convention
+
+Semantic role names ONLY. Never color-descriptive or brand-specific names.
+
+| Semantic Token | Role |
+|----------------|------|
+| `--sm-primary` | Primary actions, active states, avatars |
+| `--sm-danger` | Warnings, urgent states, errors |
+| `--sm-warning` | Medium priority, pending, review |
+| `--sm-success` | Confirmed, complete, verified |
+| `--sm-info` | Informational, neutral highlight |
+
+**Derived pattern:**
+- Status tokens reference semantic base: `--sm-status-ready: var(--sm-primary)`
+- Glass tints reference semantic base: `--sm-glass-primary`, `--sm-glass-danger`
+- Per-client theming overrides ONLY the 5-7 base semantic colors
+
+**Control/surface tokens** — use these for all interactive elements:
+- `--sm-control-bg` — input/select background
+- `--sm-control-border` — input/select border
+- `--sm-control-border-heavy` — checkbox, strong borders
+- `--sm-track-bg` — progress/slider track
+- `--sm-track-fill` — progress/slider fill
+- `--sm-surface-secondary` — tab list background, secondary surfaces
+- `--sm-accent-solid` — solid accent color (no opacity)
+- `--sm-accent-fg` — text on accent surfaces
+
+### Component Creation Protocol
+
+When creating a NEW UI component:
+1. Check if shadcn/ui has it: `npx shadcn@latest add <component-name>` from `frontend/`
+2. If shadcn has it → install it, apply SM token overrides, add to /library page
+3. If custom → build it from shadcn primitives, add to `components/mojo-patterns/`, add to /library page
+4. Update `COMPONENT_INVENTORY.md` with: component name, props, variants, token usage, which mojos use it
+
+### Component Usage Protocol
+
+When using a component in a mojo:
+1. Check /library page first — does this component already exist?
+2. If yes → import and use it as-is. Do NOT create a one-off variant.
+3. If you need a variant that doesn't exist → add the variant to the BASE component, update /library, THEN use it.
+4. NEVER create a local/inline version of something that exists in `components/ui/` or `components/mojo-patterns/`
+
+### /library Page Contract
+
+- `frontend/src/pages/Library.jsx` is the CANONICAL visual reference for the entire design system.
+- Every component in `components/ui/` and `components/mojo-patterns/` MUST appear in /library.
+- Every variant, size, and state MUST be demonstrated.
+- If you add a component and don't add it to /library, the story is not done. Do not mark it complete.
+
+### Design System Rules (Full List)
+
 1. All mojos MUST import from `components/ui/`, `components/charts/`, or `components/mojo-patterns/`. Never create custom implementations of shared components.
-2. All colors MUST reference design tokens (`var(--sm-teal)`), never raw hex values in component files.
+2. All colors MUST reference design tokens (`var(--sm-primary)`), never raw hex or Tailwind color classes.
 3. All typography MUST use the token font stack: Montserrat (display), Nunito Sans (body), Inter (UI controls).
 4. All surface components MUST use liquid glass treatment from `styles/tokens.css`.
-5. New shared components require a COMPONENT_INVENTORY.md entry before implementation.
+5. New shared components require a `COMPONENT_INVENTORY.md` entry before implementation.
 6. Magic UI components are accent only — they enhance, never replace base components.
+7. React NEVER calls Frappe directly — always via `/api/modules/[capability]/[action]`. (Restated for completeness.)
 
-### Key Files
-- `frontend/src/styles/tokens.css` — all design tokens (colors, glass, typography, spacing)
-- `ADR-design-system.md` — architecture decision record
-- `COMPONENT_INVENTORY.md` — component catalog with props and specs
-- `frontend/src/pages/Library.jsx` — dev-only component showcase (visible in dev mode only)
+### Pre-Commit Checklist — Design System
+
+Before committing any frontend change, verify:
+- [ ] No hardcoded hex colors in component files (`grep -r '#[0-9a-fA-F]\{6\}' frontend/src/components/`)
+- [ ] No new Tailwind color classes (grep for `bg-teal`, `bg-red`, `text-blue`, etc.)
+- [ ] Any new component is in /library (`frontend/src/pages/Library.jsx`)
+- [ ] `COMPONENT_INVENTORY.md` is updated if components changed
+- [ ] Build passes: `cd frontend && npm run build`
+
+### Key Design System Files
+
+- `frontend/src/styles/tokens.css` — all design tokens (the single source of truth)
+- `frontend/src/pages/Library.jsx` — canonical component showcase (/library route)
+- `COMPONENT_INVENTORY.md` — component catalog with props, variants, token usage, mojo associations
+- `sparkmojo-internal/platform/decisions/DECISION-015-design-system.md` — architectural ADR
+
+### Design System Debt Tracker
+
+| Item | Status |
+|------|--------|
+| Base components in /library | 20/49 (41%) — fill to 100% is a pending Ralph build |
+| Token semantic rename | PENDING — `--sm-teal/coral/gold` → `--sm-primary/danger/warning` |
+| Missing high-priority components | Accordion, Alert, Dropdown Menu, Pagination, Toast, Breadcrumb |
 
 ---
 
-*Last updated: March 28, 2026 — Night 1 (design system foundation)*
+*Last updated: March 29, 2026 — Design system governance expansion (semantic tokens, library contract, component protocols)*
