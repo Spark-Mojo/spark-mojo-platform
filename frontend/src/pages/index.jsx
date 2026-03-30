@@ -9,7 +9,7 @@ import SyncPlaceholder from './SyncPlaceholder';
 import SettingsPlaceholder from './SettingsPlaceholder';
 
 const LibraryPage = lazy(() => import('./Library'));
-const showLibrary = import.meta.env.DEV || import.meta.env.VITE_SHOW_LIBRARY === 'true';
+
 
 function AppRoutes() {
   return (
@@ -22,16 +22,14 @@ function AppRoutes() {
           <Route path="/billing" element={<BillingPlaceholder />} />
           <Route path="/sync" element={<SyncPlaceholder />} />
           <Route path="/settings" element={<SettingsPlaceholder />} />
-          {showLibrary && (
-            <Route
-              path="/library"
-              element={
-                <Suspense fallback={<div className="p-8 text-gray-400">Loading library...</div>}>
-                  <LibraryPage />
-                </Suspense>
-              }
-            />
-          )}
+          <Route
+            path="/library"
+            element={
+              <Suspense fallback={<div className="p-8 text-gray-400">Loading library...</div>}>
+                <LibraryPage />
+              </Suspense>
+            }
+          />
           <Route path="*" element={<Navigate to="/onboarding" replace />} />
         </Routes>
       </Layout>
