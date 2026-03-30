@@ -10,3 +10,4 @@ __pycache__/
 abstraction-layer/.coverage
 abstraction-layer/htmlcov/
 .worktrees/
+.tmp.driveupload/
