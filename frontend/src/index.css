@@ -4,7 +4,6 @@
 @tailwind components;
 @tailwind utilities;
 
-
 /* :root {
   font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
   line-height: 1.5;
@@ -73,8 +72,6 @@ button:focus-visible {
     background-color: #f9f9f9;
   }
 } */
-
-
 
 /* Spark Mojo brand tokens */
 :root {
@@ -158,8 +155,6 @@ button:focus-visible {
   }
 }
 
-
-
 @layer base {
   * {
     @apply border-border outline-ring/50;
@@ -222,4 +217,8 @@ button:focus-visible {
     backdrop-filter: blur(var(--sm-overlay-blur));
     -webkit-backdrop-filter: blur(var(--sm-overlay-blur));
   }
+}
+::view-transition-old(root), ::view-transition-new(root) {
+    animation: none;
+    mix-blend-mode: normal;
 }

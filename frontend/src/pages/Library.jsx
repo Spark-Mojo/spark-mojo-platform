@@ -1,7 +1,7 @@
 /* eslint-disable react/prop-types */
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
-  Sun, Moon, ClipboardList, Search, ChevronDown, Info, AlertTriangle,
+  ClipboardList, Search, ChevronDown, Info, AlertTriangle,
   Home, Settings, User, Bold, Italic, Underline,
   BarChart3, Users, CheckCircle,
 } from 'lucide-react';
@@ -191,6 +191,9 @@ import KanbanBoard from '@/components/mojo-patterns/KanbanBoard';
 import DataTable from '@/components/mojo-patterns/DataTable';
 import TaskDetailDrawer from '@/components/mojo-patterns/TaskDetailDrawer';
 import AssignmentField from '@/components/mojo-patterns/AssignmentField';
+
+// Magic UI components
+import { AnimatedThemeToggler } from '@/components/magicui/animated-theme-toggler';
 
 /* ── Background Definitions ─────────────────────────────── */
 
@@ -383,15 +386,13 @@ export default function Library() {
   const [calendarDate, setCalendarDate] = useState(undefined);
   const [collapsibleOpen, setCollapsibleOpen] = useState(false);
 
-  const toggleDarkMode = () => {
-    const next = !darkMode;
-    setDarkMode(next);
-    if (next) {
-      document.documentElement.setAttribute('data-theme', 'dark');
-    } else {
-      document.documentElement.removeAttribute('data-theme');
-    }
-  };
+  useEffect(() => {
+    const sync = () => setDarkMode(document.documentElement.dataset.theme === 'dark');
+    sync();
+    const observer = new MutationObserver(sync);
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+    return () => observer.disconnect();
+  }, []);
 
   // The Library page owns its background completely.
   // It cannot rely on the body gradient because the sidebar layout
@@ -422,15 +423,7 @@ export default function Library() {
               Design system reference — dev only
             </p>
           </div>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={toggleDarkMode}
-            className="gap-2"
-          >
-            {darkMode ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
-            {darkMode ? 'Light Mode' : 'Dark Mode'}
-          </Button>
+          <AnimatedThemeToggler className="inline-flex items-center justify-center rounded-md border px-3 py-1.5 text-sm font-medium transition-colors hover:bg-[var(--sm-surface-secondary)] cursor-pointer" />
         </div>
 
         {/* ────────────────────── SECTION 1: DESIGN TOKENS ────────────────────── */}
@@ -520,6 +513,28 @@ export default function Library() {
                 </Card>
               ))}
             </div>
+          </SubSection>
+        </Section>
+
+        <Separator className="my-8" />
+
+        {/* ────────────────── UNIVERSAL COMPONENTS ────────────────── */}
+
+        <Section title="Universal Components" description="Components that appear across all pages and are not page-specific">
+          <SubSection title="AnimatedThemeToggler">
+            <p className="text-sm mb-4" style={{ color: 'var(--sm-slate)', fontFamily: 'var(--sm-font-body)' }}>
+              The global dark/light mode toggle. Place in page headers and navigation bars.
+              Uses the View Transitions API for a smooth circular reveal animation.
+            </p>
+            <div className="flex items-center gap-6">
+              <div className="flex flex-col items-center gap-2">
+                <AnimatedThemeToggler className="inline-flex items-center justify-center rounded-md border p-2 transition-colors hover:bg-[var(--sm-surface-secondary)] cursor-pointer" />
+                <span className="text-xs" style={{ color: 'var(--sm-slate)' }}>Click to toggle</span>
+              </div>
+            </div>
+            <p className="text-xs mt-3" style={{ color: 'var(--sm-slate)', opacity: 0.6 }}>
+              Props: <code>className</code>, <code>duration</code> (default 400ms)
+            </p>
           </SubSection>
         </Section>
 

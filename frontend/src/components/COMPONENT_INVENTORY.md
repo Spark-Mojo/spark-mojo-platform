@@ -78,9 +78,18 @@ Last updated: 2026-03-29
 
 **Total: 9 files**
 
+## Magic UI Components (`magicui/`)
+
+| Component | File | Type | Props | Variants | Token Usage | Used By |
+|-----------|------|------|-------|----------|-------------|---------|
+| AnimatedThemeToggler | animated-theme-toggler.jsx | universal | className, duration | — | --sm-glass-* (indirectly via theme) | Library (header + demo) |
+
+**Total: 1 file**
+
 ## Summary
 
 - **Base (ui/):** 51 components (49 unique + 2 re-export shims)
 - **Patterns (mojo-patterns/):** 9 components
-- **Grand total:** 60 component files
+- **Magic UI (magicui/):** 1 component
+- **Grand total:** 61 component files
 - **Library coverage:** 100% — all components appear in `/library`
