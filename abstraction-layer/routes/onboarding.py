@@ -85,7 +85,10 @@ def _compute_completion(client: dict) -> int:
 def _enrich_client(client: dict) -> dict:
     """Add computed fields to a client record."""
     client["urgency_level"] = _compute_urgency(client)
-    client["completion_pct"] = _compute_completion(client)
+    if client.get("onboarding_status") == "Ready":
+        client["completion_pct"] = 100
+    else:
+        client["completion_pct"] = _compute_completion(client)
     return client
 
 
@@ -136,17 +139,20 @@ async def onboarding_list(
         resp.raise_for_status()
         clients = resp.json().get("data", [])
 
-        # For each client, fetch their checklist to compute completion
+        # Fetch checklist detail only for active clients (not Ready —
+        # Ready clients are 100% complete by definition). This avoids
+        # ~2000+ sequential HTTP requests for the N+1 detail fetch.
+        SKIP_DETAIL_STATUSES = {"Ready", "Cancelled"}
         enriched = []
         for c in clients:
-            # Fetch full record with child tables for completion calc
-            detail_resp = await client.get(
-                f"/api/resource/SM Client/{c['name']}",
-                timeout=15,
-            )
-            if detail_resp.status_code == 200:
-                full = detail_resp.json().get("data", {})
-                c["onboarding_checklist"] = full.get("onboarding_checklist", [])
+            if c.get("onboarding_status") not in SKIP_DETAIL_STATUSES:
+                detail_resp = await client.get(
+                    f"/api/resource/SM Client/{c['name']}",
+                    timeout=15,
+                )
+                if detail_resp.status_code == 200:
+                    full = detail_resp.json().get("data", {})
+                    c["onboarding_checklist"] = full.get("onboarding_checklist", [])
 
             c = _enrich_client(c)
 
