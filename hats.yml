@@ -9,158 +9,159 @@ event_loop:
 
 core:
   guardrails:
-    - "Absolute path to repo: /Users/jamesilsley/GitHub/spark-mojo-platform"
-    - "Absolute path to frontend: /Users/jamesilsley/GitHub/spark-mojo-platform/frontend"
-    - "Absolute path to governance repo: /Users/jamesilsley/GitHub/sparkmojo-internal"
-    - "Package manager is pnpm. Never use npm or yarn."
-    - "Language is JavaScript JSX. NOT TypeScript. If shadcn generates .tsx files, convert them to .jsx."
-    - "DO NOT modify OnboardingMojo.jsx or WorkboardMojo.jsx. They are off-limits tonight."
-    - "DO NOT modify frappe-client.js or any backend/abstraction-layer files."
-    - "DO NOT delete or modify existing content in CLAUDE.md. Only APPEND new sections."
-    - "DO NOT alter existing routes in pages/index.jsx. Only ADD the /library route alongside them."
-    - "NO raw hex color values in new component files. All colors via var(--sm-*) tokens."
-    - "All glass surfaces use token variables, never hardcoded rgba values."
-    - "Visual north star: Ein UI (ui.eindev.ir) liquid glass aesthetic. Light mode is default."
-    - "ADR spec: /Users/jamesilsley/GitHub/spark-mojo-platform/ADR-design-system.md"
-    - "Component spec: /Users/jamesilsley/GitHub/spark-mojo-platform/COMPONENT_INVENTORY.md"
-    - "Read CLAUDE.md FIRST every session: /Users/jamesilsley/GitHub/spark-mojo-platform/CLAUDE.md"
+    - "Absolute path to this repo: /Users/jamesilsley/GitHub/spark-mojo-platform/"
+    - "Absolute path to governance repo: /Users/jamesilsley/GitHub/sparkmojo-internal/"
+    - "Story files: /Users/jamesilsley/GitHub/sparkmojo-internal/platform/feature-library/stories/"
+    - "NEVER modify frontend/src/pages/index.jsx routing structure — only add alongside existing routes"
+    - "NEVER use TypeScript — all files are .jsx"
+    - "NEVER hardcode hex colors in component files — use var(--sm-*) tokens"
+    - "NEVER use Tailwind color classes (bg-teal-600, text-red-500) — use token-mapped utilities"
+    - "React NEVER calls Frappe directly — always via /api/modules/[capability]/[action]"
+    - "After every commit, merge branch to main and delete feature branch before starting next story"
 
 hats:
   health_check:
     name: "Health Check"
-    description: "Verifies baseline health of the repo before any build work begins."
+    description: "Verifies baseline repo health before any build work begins. Halts if broken."
     triggers: ["session.start"]
     publishes: ["health.ok", "health.blocked"]
     max_activations: 1
     instructions: |
-      Read /Users/jamesilsley/GitHub/spark-mojo-platform/CLAUDE.md first.
-      Then run baseline checks in order. If any fail, write HEALTH-BLOCKED.md and emit health.blocked.
+      Run baseline checks in order. If any fail, write HEALTH-BLOCKED.md with details and emit health.blocked.
 
-      1. cd /Users/jamesilsley/GitHub/spark-mojo-platform/frontend && pnpm run lint
+      1. Clean up junk files first:
+         find frontend/src/components/ -name $'Icon\r' -delete
+         If any were found: git add -A && git commit -m "chore: remove Icon carriage-return junk files"
+
+      2. cd /Users/jamesilsley/GitHub/spark-mojo-platform/frontend && pnpm install
          PASS: exits 0
-      2. cd /Users/jamesilsley/GitHub/spark-mojo-platform/frontend && pnpm run build
+
+      3. cd /Users/jamesilsley/GitHub/spark-mojo-platform/frontend && pnpm run build
          PASS: exits 0
 
-      If lint fails due to legacy files in src/components/desktop/:
-        Verify eslint.config.js ignores that directory. If not, add the ignore. Re-run lint.
+      4. Verify key files exist:
+         - frontend/src/styles/tokens.css
+         - frontend/src/pages/Library.jsx
+         - frontend/src/components/mojos/WorkboardMojo.jsx
+         - frontend/src/components/ui/StatsCard.jsx
 
-      If all pass:
-        ralph emit "health.ok" "lint clean, build ok"
+      If all pass: ralph emit "health.ok" "build clean, key files present, junk removed"
 
-  task_planner:
-    name: "Task Planner"
-    description: "Reads next uncompleted task from PROMPT.md and creates a build plan."
-    triggers: ["health.ok", "task.committed"]
+  story_planner:
+    name: "Story Planner"
+    description: "Reads next story from queue, confirms dependencies met, writes build plan."
+    triggers: ["health.ok", "story.committed"]
     publishes: ["plan.ready", "queue.complete"]
     instructions: |
       Read /Users/jamesilsley/GitHub/spark-mojo-platform/PROMPT.md.
-      Find the first TASK-NN without a TASK-NN-COMPLETE marker file at repo root.
+      Find the first story without a STORY-NNN-COMPLETE marker file at repo root.
+      If all stories are done (STORY-011-COMPLETE, STORY-012-COMPLETE, STORY-013-COMPLETE all exist):
+        Run the TASK-ADR cleanup if ADR-design-system.md still has full content (not just the pointer).
+        If ADR cleanup also done: print LOOP_COMPLETE. Emit queue.complete. Stop.
 
-      If all tasks are done (TASK-01-COMPLETE through TASK-06-COMPLETE all exist):
-        print LOOP_COMPLETE
-        ralph emit "queue.complete" "All 6 tasks complete"
-        Stop.
-
-      Read the full task spec from PROMPT.md.
-      Read /Users/jamesilsley/GitHub/spark-mojo-platform/ADR-design-system.md for architecture context.
-      Read /Users/jamesilsley/GitHub/spark-mojo-platform/COMPONENT_INVENTORY.md for component specs.
-      Read /Users/jamesilsley/GitHub/spark-mojo-platform/CLAUDE.md for conventions.
-
-      Write PLAN-TASK-NN.md at repo root with:
-        - Task number and name
-        - Files to create or modify (with absolute paths)
-        - Dependencies (which previous tasks must be done)
-        - Specific gate commands for this task
-
-      If anything is ambiguous:
-        Write BLOCKED.md with the specific question.
-        ralph emit "plan.ready" "TASK-NN: blocked on ambiguity, see BLOCKED.md"
-
-      ralph emit "plan.ready" "TASK-NN: [summary], [N] files"
+      For the next story:
+      1. Read the full story spec from /Users/jamesilsley/GitHub/sparkmojo-internal/platform/feature-library/stories/STORY-NNN.md
+      2. Read all files listed in the story's "Read Before Starting" section
+      3. Check dependency: if story depends on a prior story, verify the COMPLETE marker exists
+         - If dependency not met, write BLOCKED-STORY-NNN.md and emit plan.ready for the next eligible story
+      4. Write PLAN-STORY-NNN.md listing: files to create/modify, tokens to add, gates to run
+      5. ralph emit "plan.ready" "STORY-NNN: [description], [file count] files"
 
   builder:
     name: "Builder"
-    description: "Implements the current task plan. Runs fast gates after each change."
+    description: "Implements the current story plan. Runs fast gates after each change. Emits build.ready when done."
     triggers: ["plan.ready", "build.retry"]
     publishes: ["build.ready", "build.blocked"]
     instructions: |
-      Read PLAN-TASK-NN.md from /Users/jamesilsley/GitHub/spark-mojo-platform/ root.
-      If BLOCKED.md exists for this task, skip to next task — emit build.blocked.
+      Read PLAN-STORY-NNN.md from repo root.
+      If plan says BLOCKED, skip to next story or emit build.blocked.
 
-      Build exactly what the plan says. Nothing more. Nothing less.
+      Create feature branch:
+        git checkout main && git pull origin main
+        git checkout -b story/STORY-NNN-description
 
-      Key rules during build:
-      - shadcn/ui may generate TypeScript (.tsx). Convert ALL to JavaScript (.jsx) — remove type annotations, rename files.
-      - Every surface component must use var(--sm-glass-bg), var(--sm-glass-border), backdrop-filter: blur(var(--sm-glass-blur-*)).
-      - Light mode is the DEFAULT. Glass surfaces are frosted white (bg-white/70) on light canvas. NOT dark glass.
-      - No raw hex values. Use var(--sm-*) tokens only.
-      - Import base components from ../ui/ — never recreate primitives.
-      - Library page must be gated: only render when import.meta.env.DEV === true.
-      - DO NOT modify existing content in CLAUDE.md — only APPEND.
-      - DO NOT alter existing routes in pages/index.jsx — only ADD the library route.
-      - Preserve existing AssignmentField.jsx in components/ui/ (move to mojo-patterns, update imports).
+      Read the full story spec again:
+        /Users/jamesilsley/GitHub/sparkmojo-internal/platform/feature-library/stories/STORY-NNN.md
 
-      Run fast gate after each significant file creation:
-        cd /Users/jamesilsley/GitHub/spark-mojo-platform/frontend && pnpm run lint
+      Build exactly what the spec says. Nothing more. Nothing less.
 
-      When the task implementation is complete and fast gates pass:
-        ralph emit "build.ready" "TASK-NN: complete, lint passes"
+      After each significant file change, run fast gate:
+        cd /Users/jamesilsley/GitHub/spark-mojo-platform/frontend && pnpm run build
+
+      Important build notes:
+      - STORY-011: Count actual files in ui/ and mojo-patterns/ for the inventory — don't hardcode "59".
+        Use: ls frontend/src/components/ui/*.jsx | wc -l
+        and: ls frontend/src/components/mojo-patterns/*.jsx | wc -l
+      - STORY-012: Run the grep acceptance criteria BEFORE making changes (document baseline).
+        Then run again AFTER to prove the violations are gone.
+      - STORY-013: Try CLI install first. If it fails, manually copy the component source.
+        The component MUST wire to document.documentElement.dataset.theme, not a class-based toggle.
+
+      When build is complete and fast gates pass:
+        ralph emit "build.ready" "STORY-NNN: implementation complete, build passes"
 
   verifier:
     name: "Verifier"
-    description: "Runs full gate suite for the current task. Only hat that can mark tasks done."
+    description: "Runs full gate suite for the current story. Only hat that can mark stories done."
     triggers: ["build.ready"]
     publishes: ["task.done", "build.retry"]
     instructions: |
-      Run ALL gates for the current task:
+      Determine which story was just built (check current branch name or PLAN file).
 
-      1. cd /Users/jamesilsley/GitHub/spark-mojo-platform/frontend && pnpm run lint
-         PASS: exits 0
+      Run ALL gates for this story type. A story is done ONLY when every gate passes.
 
-      2. cd /Users/jamesilsley/GitHub/spark-mojo-platform/frontend && pnpm run build
-         PASS: exits 0
+      === STORY-011 Gates ===
+      1. cd /Users/jamesilsley/GitHub/spark-mojo-platform/frontend && pnpm run build — exit 0
+      2. test -f frontend/src/components/COMPONENT_INVENTORY.md — file exists
+      3. grep -rn '#[0-9a-fA-F]\{6\}' frontend/src/pages/Library.jsx — no NEW hex (compare to pre-existing)
+      4. cat frontend/src/components/ui/StatsCard.jsx — re-export shim only
+      5. cat frontend/src/components/mojo-patterns/StatsCard.jsx — full implementation
+      6. Open Library.jsx and verify every component in ui/ and mojo-patterns/ has a rendered section
 
-      3. For TASK-03 and later: check for raw hex values in new component files
-         grep -rn '#[0-9a-fA-F]\{3,8\}' /Users/jamesilsley/GitHub/spark-mojo-platform/frontend/src/components/mojo-patterns/ --include='*.jsx' --include='*.js' | grep -v '//' | grep -v 'comment'
-         PASS: returns empty (no raw hex outside comments)
+      === STORY-012 Gates ===
+      1. grep -rn 'bg-emerald\|bg-blue\|bg-purple\|bg-amber\|bg-teal-\|text-teal-\|text-amber-\|text-orange-' frontend/src/components/mojo-patterns/StatsCard.jsx — 0 results
+      2. grep -rn '#[0-9a-fA-F]\{6\}' frontend/src/components/mojos/WorkboardMojo.jsx — 0 results
+      3. grep -rn 'bg-teal\|text-teal\|bg-amber\|text-amber\|bg-orange\|text-orange' frontend/src/components/mojos/WorkboardMojo.jsx — 0 results
+      4. cd /Users/jamesilsley/GitHub/spark-mojo-platform/frontend && pnpm run build — exit 0
 
-      4. For TASK-05: verify library route exists and imports all mojo-pattern components
-         grep -l 'MojoHeader\|StatsCardRow\|FilterTabBar\|StatusBadge\|KanbanBoard\|DataTable\|TaskDetailDrawer\|AssignmentField' /Users/jamesilsley/GitHub/spark-mojo-platform/frontend/src/pages/Library.jsx
-         PASS: file exists and matches
+      === STORY-013 Gates ===
+      1. test -f frontend/src/components/magicui/animated-theme-toggler.jsx — file exists
+      2. grep -c 'AnimatedThemeToggler' frontend/src/pages/Library.jsx — at least 1 match
+      3. grep -c 'Universal Components' frontend/src/pages/Library.jsx — at least 1 match
+      4. grep -c 'AnimatedThemeToggler' frontend/src/components/COMPONENT_INVENTORY.md — at least 1 match
+      5. cd /Users/jamesilsley/GitHub/spark-mojo-platform/frontend && pnpm run build — exit 0
 
-      5. For TASK-05: verify existing routes are intact
-         grep 'OnboardingMojo\|WorkboardMojo' /Users/jamesilsley/GitHub/spark-mojo-platform/frontend/src/pages/index.jsx
-         PASS: both still present
+      If ALL gates pass:
+        touch STORY-NNN-COMPLETE
+        ralph emit "task.done" "STORY-NNN: all gates pass — [list results]"
 
-      6. For TASK-06 (final): run ALL above gates plus:
-         - Verify tokens.css exists with all token categories
-         - Verify all 8 pattern files exist in mojo-patterns/
-         - Verify CLAUDE.md was APPENDED to (not truncated) — file should be LARGER than 23KB
-
-      If ALL pass:
-        touch /Users/jamesilsley/GitHub/spark-mojo-platform/TASK-NN-COMPLETE
-        ralph emit "task.done" "TASK-NN: [gate results summary]"
-
-      If ANY fail:
-        ralph emit "build.retry" "TASK-NN: [exact failure — command, error output, file, line number]"
+      If ANY gate fails:
+        ralph emit "build.retry" "STORY-NNN: FAILED — [exact command, exact error, line number]"
 
   committer:
     name: "Committer"
-    description: "Commits verified work after each task passes all gates."
+    description: "Commits verified work, merges to main, cleans up branch."
     triggers: ["task.done"]
-    publishes: ["task.committed"]
+    publishes: ["story.committed"]
     instructions: |
-      cd /Users/jamesilsley/GitHub/spark-mojo-platform
+      Determine which story was just verified (check STORY-NNN-COMPLETE marker).
 
-      Stage all changes:
-        git add -A
+      1. Stage all changes:
+         git add -A
 
-      Commit with task-specific message:
-        TASK-01: git commit -m "feat: add design token system (tokens.css)"
-        TASK-02: git commit -m "feat: install and initialize shadcn/ui component library"
-        TASK-03: git commit -m "feat: theme all shadcn/ui components with Spark Mojo glass tokens"
-        TASK-04: git commit -m "feat: build mojo-pattern composite components"
-        TASK-05: git commit -m "feat: add /library component demo page (dev-only)"
-        TASK-06: git commit -m "chore: update CLAUDE.md + final verification — design system foundation complete"
+      2. Read the commit message from the story spec ("Commit Message" section at bottom of story file).
+         Use that exact message.
+         git commit -m "[exact message from story]"
 
-      ralph emit "task.committed" "TASK-NN committed on feature/design-system-foundation"
+      3. Merge to main:
+         git checkout main
+         git merge story/STORY-NNN-description --no-edit
+         git branch -d story/STORY-NNN-description
+
+      4. Verify main builds:
+         cd /Users/jamesilsley/GitHub/spark-mojo-platform/frontend && pnpm run build
+
+      5. Push:
+         git push origin main
+
+      ralph emit "story.committed" "STORY-NNN committed and merged to main"
