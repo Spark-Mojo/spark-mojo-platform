@@ -66,6 +66,37 @@ import DataTable from '@/components/mojo-patterns/DataTable';
 import TaskDetailDrawer from '@/components/mojo-patterns/TaskDetailDrawer';
 import AssignmentField from '@/components/mojo-patterns/AssignmentField';
 
+/* ── Background Definitions ─────────────────────────────── */
+
+// Light mode: warm off-white canvas with brand-color gradient pools.
+// Higher opacity (12–18%) than the body default so backdrop-filter
+// has real colour variation to blur — this is what makes glass look glassy.
+const LIGHT_BG = {
+  backgroundColor: '#E8EDF5',
+  backgroundImage: [
+    'radial-gradient(ellipse 70% 55% at 8%  12%, rgba(0, 102, 102, 0.18) 0%, transparent 60%)',
+    'radial-gradient(ellipse 55% 75% at 92% 18%, rgba(255, 111, 97, 0.14) 0%, transparent 55%)',
+    'radial-gradient(ellipse 65% 45% at 48% 88%, rgba(255, 179, 0, 0.12) 0%, transparent 55%)',
+    'radial-gradient(ellipse 80% 55% at 72% 52%, rgba(0, 102, 102, 0.09) 0%, transparent 50%)',
+    'radial-gradient(ellipse 45% 65% at 22% 68%, rgba(255, 111, 97, 0.08) 0%, transparent 50%)',
+  ].join(', '),
+  backgroundAttachment: 'fixed',
+};
+
+// Dark mode: deep navy canvas. Brand colours glow at higher opacity
+// because they need to punch through the darkness.
+const DARK_BG = {
+  backgroundColor: '#0f1117',
+  backgroundImage: [
+    'radial-gradient(ellipse 70% 55% at 8%  12%, rgba(0, 102, 102, 0.30) 0%, transparent 60%)',
+    'radial-gradient(ellipse 55% 75% at 92% 18%, rgba(255, 111, 97, 0.22) 0%, transparent 55%)',
+    'radial-gradient(ellipse 65% 45% at 48% 88%, rgba(255, 179, 0, 0.18) 0%, transparent 55%)',
+    'radial-gradient(ellipse 80% 55% at 72% 52%, rgba(0, 102, 102, 0.18) 0%, transparent 50%)',
+    'radial-gradient(ellipse 45% 65% at 22% 68%, rgba(255, 111, 97, 0.12) 0%, transparent 50%)',
+  ].join(', '),
+  backgroundAttachment: 'fixed',
+};
+
 /* ── Mock Data ───────────────────────────────────────────── */
 
 const BRAND_COLORS = [
@@ -234,9 +265,22 @@ export default function Library() {
     }
   };
 
+  // The Library page owns its background completely.
+  // It cannot rely on the body gradient because the sidebar layout
+  // wrapper covers the body with its own background colour.
+  const pageBg = darkMode ? DARK_BG : LIGHT_BG;
+
   return (
     <TooltipProvider>
-      <div className="min-h-screen p-8">
+      <div
+        className="min-h-screen p-8"
+        style={{
+          ...pageBg,
+          // Ensure this div fills and covers the layout wrapper underneath
+          position: 'relative',
+          isolation: 'isolate',
+        }}
+      >
         {/* Page Header */}
         <div className="flex items-center justify-between mb-10">
           <div>
