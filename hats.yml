@@ -9,166 +9,188 @@ event_loop:
 
 core:
   guardrails:
-    - "Absolute path to this repo: /Users/jamesilsley/GitHub/spark-mojo-platform/"
-    - "Absolute path to governance repo: /Users/jamesilsley/GitHub/sparkmojo-internal/"
-    - "Story files: /Users/jamesilsley/GitHub/sparkmojo-internal/platform/feature-library/stories/"
-    - "Agent context (read this first): /Users/jamesilsley/GitHub/sparkmojo-internal/platform/AGENT_CONTEXT.md"
-    - "NEVER modify frontend/src/pages/index.jsx routing structure — only add alongside existing routes"
-    - "NEVER use TypeScript — all files are .jsx"
-    - "NEVER hardcode hex colors in component files — use var(--sm-*) tokens"
-    - "NEVER use Tailwind color classes (bg-teal-600, text-red-500) — use token-mapped utilities"
-    - "React NEVER calls Frappe directly — always via /api/modules/[capability]/[action]"
-    - "After every commit, merge branch to main and delete feature branch before starting next story"
+    - "Read CLAUDE.md at /Users/jamesilsley/GitHub/spark-mojo-platform/CLAUDE.md before any work."
+    - "Governance repo: /Users/jamesilsley/GitHub/sparkmojo-internal/"
+    - "Story specs: /Users/jamesilsley/GitHub/sparkmojo-internal/platform/feature-library/stories/"
+    - "NEVER modify files directly on the VPS — all changes go through git then deploy.sh."
+    - "NEVER add any app to apps.txt without it being pip-installed (CLAUDE.md Rule 11)."
+    - "NEVER modify Desktop.jsx, index.jsx routing structure, or frappe-client.js."
+    - "NEVER use TypeScript — all frontend files are .jsx"
+    - "NEVER hardcode hex colors — use var(--sm-*) semantic tokens"
+    - "Frappe site name inside Docker is the bench site name, NOT the external hostname."
+    - "Use absolute paths everywhere. Relative paths fail when working directory changes."
+    - "If architectural decision is ambiguous: write BLOCKED-INFRA-NNN.md and move to next story."
+    - "The three-site topology is on Hostinger (standard tier) with synthetic data only. J-003 (DO HIPAA BAA) is pending. No real ePHI is loaded."
 
 hats:
   health_check:
     name: "Health Check"
-    description: "Verifies baseline repo health before any build work begins. Halts if broken."
+    description: "Verifies baseline platform health before any build work. Halts if broken."
     triggers: ["session.start"]
     publishes: ["health.ok", "health.blocked"]
     max_activations: 1
     instructions: |
-      Read /Users/jamesilsley/GitHub/sparkmojo-internal/platform/AGENT_CONTEXT.md first.
-      Then run baseline checks in order. If any fail, write HEALTH-BLOCKED.md with details and emit health.blocked.
+      Run these checks in order. If any fail, write HEALTH-BLOCKED.md with exact failure and emit health.blocked.
 
-      1. Clean up junk files first:
-         find frontend/src/components/ -name $'Icon\r' -delete
-         If any were found: git add -A && git commit -m "chore: remove Icon carriage-return junk files"
+      1. Repo is clean and at main HEAD:
+         cd /Users/jamesilsley/GitHub/spark-mojo-platform && git status && git log --oneline -3
+         PASS: "nothing to commit, working tree clean"
 
-      2. cd /Users/jamesilsley/GitHub/spark-mojo-platform/frontend && pnpm install
-         PASS: exits 0
+      2. VPS is reachable:
+         ssh sparkmojo 'echo ok'
+         PASS: prints "ok"
 
-      3. cd /Users/jamesilsley/GitHub/spark-mojo-platform/frontend && pnpm run build
-         PASS: exits 0
+      3. Frappe containers running on VPS:
+         ssh sparkmojo 'docker ps --format "table {{.Names}}\t{{.Status}}"'
+         PASS: frappe, worker, redis, mariadb containers all Up
 
-      4. Verify key files exist:
-         - frontend/src/styles/tokens.css
-         - frontend/src/pages/Library.jsx
-         - frontend/src/components/mojos/WorkboardMojo.jsx
-         - frontend/src/components/ui/StatsCard.jsx
+      4. Current abstraction layer health:
+         curl -s https://poc.sparkmojo.com/health
+         PASS: returns any valid JSON (not connection refused)
 
-      If all pass: ralph emit "health.ok" "build clean, key files present, junk removed"
+      5. Existing pytest suite passes:
+         cd /Users/jamesilsley/GitHub/spark-mojo-platform/abstraction-layer && pytest tests/ -v --tb=short
+         PASS: 0 failures
+
+      If all pass:
+        ralph emit "health.ok" "repo clean, VPS up, containers running, health ok, pytest pass"
 
   story_planner:
     name: "Story Planner"
-    description: "Reads next story from queue, confirms dependencies met, writes build plan."
+    description: "Reads next INFRA story from PROMPT.md, confirms dependencies, writes build plan."
     triggers: ["health.ok", "story.committed"]
     publishes: ["plan.ready", "queue.complete"]
     instructions: |
       Read /Users/jamesilsley/GitHub/spark-mojo-platform/PROMPT.md.
-      Find the first story without a STORY-NNN-COMPLETE marker file at repo root.
-      If all stories are done: print LOOP_COMPLETE. Emit queue.complete. Stop.
 
-      For the next story:
-      1. Read the full story spec from /Users/jamesilsley/GitHub/sparkmojo-internal/platform/feature-library/stories/STORY-NNN.md
-      2. Read all files listed in the story's "Read Before Starting" section
-      3. Check dependency: if story depends on a prior story, verify the COMPLETE marker exists
-         - If dependency not met, write BLOCKED-STORY-NNN.md and emit plan.ready for the next eligible story
-      4. Write PLAN-STORY-NNN.md listing: files to create/modify, tokens to add, gates to run
-      5. ralph emit "plan.ready" "STORY-NNN: [description], [file count] files"
+      Find the first story in the queue without a COMPLETE marker at /Users/jamesilsley/GitHub/spark-mojo-platform/.
+      COMPLETE markers are files named: INFRA-001-COMPLETE, INFRA-002-COMPLETE, etc.
+
+      If all stories have COMPLETE markers or BLOCKED files:
+        Write QUEUE-COMPLETE.md summarising: completed stories, blocked stories, smoke test result, notes for James.
+        Print LOOP_COMPLETE
+        ralph emit "queue.complete" "all stories processed"
+        Stop.
+
+      Otherwise:
+        Read the full story spec from the path listed in PROMPT.md.
+        Check dependency: is the prerequisite COMPLETE marker present?
+        If dependency not met: write BLOCKED-INFRA-NNN.md noting unmet dependency. ralph emit "plan.ready" "INFRA-NNN: blocked on dependency". Stop.
+
+        Write PLAN-INFRA-NNN.md at repo root with:
+          - Story ID and type
+          - Files to create or modify (with absolute paths)
+          - Quality gates (from story spec Definition of Done)
+          - Dependency check result
+          - Any ambiguities that need watching
+
+        ralph emit "plan.ready" "INFRA-NNN: plan written, type: [type], N files"
 
   builder:
     name: "Builder"
-    description: "Implements the current story plan. Runs fast gates after each change. Emits build.ready when done."
+    description: "Implements the INFRA story plan exactly. Runs fast gates after each significant change."
     triggers: ["plan.ready", "build.retry"]
     publishes: ["build.ready", "build.blocked"]
     instructions: |
-      Read PLAN-STORY-NNN.md from repo root.
-      If plan says BLOCKED, skip to next story or emit build.blocked.
+      Read PLAN-INFRA-NNN.md from /Users/jamesilsley/GitHub/spark-mojo-platform/.
 
-      Create feature branch:
-        git checkout main && git pull origin main
-        git checkout -b story/STORY-NNN-description
+      If the plan says BLOCKED: write BLOCKED-INFRA-NNN.md if not already present. ralph emit "build.blocked" "INFRA-NNN: blocked per plan". Stop.
 
-      Read the full story spec:
-        /Users/jamesilsley/GitHub/sparkmojo-internal/platform/feature-library/stories/STORY-NNN.md
+      Create branch:
+        cd /Users/jamesilsley/GitHub/spark-mojo-platform
+        git checkout -b infra/INFRA-NNN-description
 
-      Build exactly what the spec says. Nothing more. Nothing less.
+      Build exactly what the plan says. Nothing more. Nothing less.
 
-      After each significant file change, run fast gate:
-        cd /Users/jamesilsley/GitHub/spark-mojo-platform/frontend && pnpm run build
+      For Frappe DocType stories:
+        Verify directory structure matches CLAUDE.md Rule 13 pattern BEFORE creating any files.
+        frappe-apps/{app}/{app}/{module}/doctype/ — the module subfolder is required.
+        Create DocType JSON + Python controller + all __init__.py files.
+        Sync to container: ssh sparkmojo 'cd /home/ops/spark-mojo-platform && ./deploy.sh --phase 2'
+        Run fast gate: ssh sparkmojo 'docker exec spark-mojo-platform-poc-frappe-1 bench --site admin.sparkmojo.com migrate'
+        PASS: exits 0
 
-      When build is complete and fast gates pass:
-        ralph emit "build.ready" "STORY-NNN: implementation complete, build passes"
+      For Python FastAPI stories:
+        Write code and tests together.
+        Run fast gate: cd /Users/jamesilsley/GitHub/spark-mojo-platform/abstraction-layer && pytest tests/ -v --tb=short
+        PASS: 0 failures
+
+      For Shell stories:
+        Make targeted surgical changes only — never touch phases not specified in the story.
+        Run fast gate: ssh sparkmojo 'cd /home/ops/spark-mojo-platform && git pull origin main && ./deploy.sh --verify-only'
+        PASS: all Phase 7 checks pass
+
+      For Infrastructure stories (provisioning):
+        Follow PROVISIONING_RUNBOOK.md at /Users/jamesilsley/GitHub/sparkmojo-internal/platform/architecture/PROVISIONING_RUNBOOK.md exactly.
+        Run pre-flight checks first. Stop if any fail.
+        After provisioning, register site in SM Site Registry on admin.sparkmojo.com.
+
+      When fast gates pass:
+        ralph emit "build.ready" "INFRA-NNN: implementation complete, fast gates pass"
 
   verifier:
     name: "Verifier"
-    description: "Runs full gate suite for the current story. Only hat that can mark stories done."
+    description: "Runs full gate suite from story spec Definition of Done. Only hat that marks stories complete."
     triggers: ["build.ready"]
     publishes: ["task.done", "build.retry"]
     instructions: |
-      Determine which story was just built (check current branch name or PLAN file).
-      Read the story spec for its acceptance criteria and gate commands.
-      Run ALL gates listed in the story spec. A story is done ONLY when every gate passes.
+      Identify current story from PLAN-INFRA-NNN.md.
+      Read the Definition of Done from the story spec.
+      Run EVERY check listed. Record PASS or FAIL for each.
 
-      If ALL gates pass:
-        touch STORY-NNN-COMPLETE
-        ralph emit "task.done" "STORY-NNN: all gates pass — [list results]"
+      For Frappe DocType stories (INFRA-002):
+        CHECK 1: bench migrate exits 0 on admin site
+        CHECK 2: DocType exists via bench execute
+        CHECK 3: Seed record present
+        CHECK 4: JSON validation rejects bad input
+        CHECK 5: Module folder structure correct
 
-      If ANY gate fails:
-        ralph emit "build.retry" "STORY-NNN: FAILED — [exact command, exact error, line number]"
+      For Python FastAPI stories (INFRA-003):
+        CHECK 1: All existing tests pass (0 failures)
+        CHECK 2: New test file present with required test cases
+        CHECK 3: Coverage ≥70% (pytest --cov-fail-under=70 exits 0)
+        CHECK 4: Health endpoint responds after deploy
+        CHECK 5: Registry loads from DocType (check logs)
+
+      For Python script stories (INFRA-004, INFRA-005):
+        CHECK 1: Script file exists at correct path
+        CHECK 2: Syntax valid (ast.parse)
+        CHECK 3: Role JSON / --help / interface check
+        CHECK 4: Tests pass (0 failures)
+
+      For Shell stories (INFRA-006):
+        CHECK 1: deploy.sh --verify-only passes
+        CHECK 2: Phase 3 alone runs without error
+        CHECK 3: Fallback documented
+        CHECK 4: LEGACY_SITES in .env.example
+
+      For Infrastructure stories (INFRA-001, INFRA-007):
+        Run the exact checks from the story spec Definition of Done.
+        For INFRA-007: run ./scripts/smoke_test.sh and require exit 0.
+
+      If ALL checks pass:
+        touch /Users/jamesilsley/GitHub/spark-mojo-platform/INFRA-NNN-COMPLETE
+        ralph emit "task.done" "INFRA-NNN: all N checks pass — [brief summary of gate results]"
+
+      If ANY check fails:
+        ralph emit "build.retry" "INFRA-NNN: FAILED — [exact check name, command, error, line number]"
 
   committer:
     name: "Committer"
-    description: "Commits verified work, merges to main, cleans up branch."
+    description: "Commits verified work to the infra branch with exact commit message from story spec."
     triggers: ["task.done"]
     publishes: ["story.committed"]
     instructions: |
-      Determine which story was just verified (check STORY-NNN-COMPLETE marker).
+      Identify current story from PLAN-INFRA-NNN.md.
+      Read the exact commit message from the story spec ("Commit message:" line).
 
-      1. Stage all changes:
-         git add -A
+      cd /Users/jamesilsley/GitHub/spark-mojo-platform
+      git add -A
+      git commit -m "[exact commit message from story spec]"
+      git push -u origin infra/INFRA-NNN-description
 
-      2. Read the commit message from the story spec ("Commit Message" section at bottom of story file).
-         Use that exact message.
-         git commit -m "[exact message from story]"
+      For stories that require VPS deployment after commit:
+        ssh sparkmojo 'cd /home/ops/spark-mojo-platform && git pull origin main && ./deploy.sh'
+        Wait for deploy to complete. Verify exit 0.
 
-      3. Merge to main:
-         git checkout main
-         git merge story/STORY-NNN-description --no-edit
-         git branch -d story/STORY-NNN-description
-
-      4. Verify main builds:
-         cd /Users/jamesilsley/GitHub/spark-mojo-platform/frontend && pnpm run build
-
-      5. Push:
-         git push origin main
-
-      ralph emit "story.committed" "STORY-NNN committed and merged to main"
-
-  cleanup:
-    name: "Cleanup"
-    description: "Sweeps all Ralph-generated artifacts from repo root into docarchive/ralph-runs/YYYY-MM-DD/. Always runs last."
-    triggers: ["queue.complete", "story.committed"]
-    publishes: ["cleanup.done"]
-    max_activations: 1
-    instructions: |
-      Your only job is to move Ralph's run artifacts out of the repo root.
-
-      Get today's date: run `date +%Y-%m-%d` and use that value everywhere below as DATE.
-
-      Create the archive folder if it doesn't exist:
-        mkdir -p /Users/jamesilsley/GitHub/spark-mojo-platform/docarchive/ralph-runs/DATE
-
-      Move all of the following into that folder (if they exist — skip silently if not):
-        - All files matching PLAN-*.md in the repo root
-        - All files matching *-COMPLETE (with or without .md extension) in the repo root
-        - NIGHT1-COMPLETE.md, QUEUE-COMPLETE.md, and any other *-COMPLETE*.md run-level files
-
-      Do NOT move any of the following:
-        - CLAUDE.md
-        - PROMPT.md
-        - hats.yml
-        - README.md
-        - DEPLOY.md
-        - deploy.sh
-        - docker-compose.poc.yml
-        - playwright.config.ts
-        - Any file whose name begins with BLOCKED-
-
-      After moving all files:
-        git add -A
-        git commit -m "chore: archive Ralph run artifacts DATE"
-        git push origin main
-
-      ralph emit "cleanup.done" "Run artifacts archived to docarchive/ralph-runs/DATE"
+      ralph emit "story.committed" "INFRA-NNN committed on infra/INFRA-NNN-description"

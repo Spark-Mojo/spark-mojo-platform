@@ -1,92 +1,74 @@
-# Design System Sprint — Session 11 Queue
+# Spark Mojo — Three-Site Topology Build
+# Overnight Task Queue — INFRA-001 through INFRA-007
 
-## How to Use This File
-Three stories in strict dependency order. Run them in sequence — do not start the next
-until the previous has all gates green and is merged to main.
+## Context
+This build implements the three-site topology defined in DECISION-016 and DECISION-017.
+Read CLAUDE.md before starting. Read the story spec for each INFRA story before working it.
+All governance docs are in the sparkmojo-internal repo at:
+  /Users/jamesilsley/GitHub/sparkmojo-internal/
 
-1. Read CLAUDE.md first — it is the master context doc
-2. Read each story spec in full before touching code
-3. Run all quality gates before marking a story complete
-4. Write QUEUE-COMPLETE.md when all three stories pass
+All story specs are at:
+  /Users/jamesilsley/GitHub/sparkmojo-internal/platform/feature-library/stories/
 
-## Pre-Reads (before touching any code)
-- `/Users/jamesilsley/GitHub/spark-mojo-platform/CLAUDE.md` — build-time bible
-- `/Users/jamesilsley/GitHub/sparkmojo-internal/platform/WORKING_AGREEMENT.md`
-- `/Users/jamesilsley/GitHub/sparkmojo-internal/platform/CURRENT_SPRINT.md`
-
----
+## Rules
+- Work stories in the order listed. Do not start the next story until the current one has a COMPLETE marker.
+- Each story gets its own branch: `git checkout -b infra/INFRA-NNN-description`
+- Read the full story spec before writing a single line of code.
+- Run ALL quality gates before marking a story complete.
+- If any gate fails: fix it. Do not skip gates.
+- If a decision is ambiguous or conflicts with the story spec: write BLOCKED-INFRA-NNN.md and move to the next story.
+- Deploy to POC VPS after each story that touches Python or shell: `ssh sparkmojo 'cd /home/ops/spark-mojo-platform && git pull origin main && ./deploy.sh'`
 
 ## Story Queue
 
-### STORY-HOT-001 — Remove /library Production Guard
-**Type:** Hotfix — Frontend routing
-**Depends on:** none
-**Spec:** `/Users/jamesilsley/GitHub/sparkmojo-internal/platform/feature-library/stories/STORY-HOT-001.md`
-**Branch:** `hotfix/library-route-guard`
+### INFRA-001 — Provision admin.sparkmojo.com
+Branch: `infra/INFRA-001-admin-site`
+Type: Infrastructure (bench + shell)
+Spec: /Users/jamesilsley/GitHub/sparkmojo-internal/platform/feature-library/stories/INFRA-001-provision-admin-site.md
+Gates: See spec Definition of Done — 5 checks, all must pass.
+No code files to commit — this is server-side provisioning. Commit a PROVISIONING_LOG.md entry.
 
-Removes the production guard (`const showLibrary = import.meta.env.DEV || ...`) from
-`frontend/src/pages/index.jsx` so the /library route is accessible in all environments.
-Then runs `./deploy.sh --phase 6` to redeploy the frontend.
+### INFRA-002 — SM Site Registry DocType
+Branch: `infra/INFRA-002-sm-site-registry`
+Type: Frappe DocType
+Spec: /Users/jamesilsley/GitHub/sparkmojo-internal/platform/feature-library/stories/INFRA-002-sm-site-registry-doctype.md
+Gates: bench migrate exit 0 + DocType exists + seed record present + JSON validation works + directory structure correct.
 
-**Gates:**
-1. `grep -n "showLibrary" frontend/src/pages/index.jsx` — **MUST return 0 matches**
-2. `grep -n "path=\"/library\"" frontend/src/pages/index.jsx` — MUST return 1 match (route present, unconditional)
-3. `cd frontend && pnpm run build` — exit 0
-4. After deploy: `curl -s -o /dev/null -w "%{http_code}" http://app.poc.sparkmojo.com/library` — MUST return 200
+### INFRA-003 — Abstraction Layer DocType Registry
+Branch: `infra/INFRA-003-doctype-registry`
+Type: Python FastAPI
+Spec: /Users/jamesilsley/GitHub/sparkmojo-internal/platform/feature-library/stories/INFRA-003-abstraction-layer-doctype-registry.md
+Gates: All existing pytest pass + new test_registry.py (6 tests) pass + coverage ≥70% + health endpoint ok after deploy.
 
-**Commit:** `fix: remove /library production guard — route accessible in all environments`
+### INFRA-004 — sm_admin Service Account
+Branch: `infra/INFRA-004-admin-service-account`
+Type: Frappe / Python
+Spec: /Users/jamesilsley/GitHub/sparkmojo-internal/platform/feature-library/stories/INFRA-004-sm-admin-service-account.md
+Gates: Script exists + syntax valid + Role JSON exists + tests pass.
 
----
+### INFRA-005 — register_sm_apps.py
+Branch: `infra/INFRA-005-register-sm-apps`
+Type: Python script
+Spec: /Users/jamesilsley/GitHub/sparkmojo-internal/platform/feature-library/stories/INFRA-005-register-sm-apps-script.md
+Gates: Script exists at correct path + syntax valid + --help works in container + tests pass.
 
-### STORY-DS-002 — Semantic Token Rename
-**Type:** Design System — Token Infrastructure
-**Depends on:** STORY-HOT-001 merged to main
-**Spec:** `/Users/jamesilsley/GitHub/sparkmojo-internal/platform/feature-library/stories/STORY-DS-002.md`
-**Branch:** `design-system/ds-002-semantic-token-rename`
+### INFRA-006 — deploy.sh Site Registry Loop
+Branch: `infra/INFRA-006-deploy-site-loop`
+Type: Shell
+Spec: /Users/jamesilsley/GitHub/sparkmojo-internal/platform/feature-library/stories/INFRA-006-deploy-sh-site-registry-loop.md
+Gates: deploy.sh --verify-only passes + Phase 3 runs without error + fallback works + LEGACY_SITES in .env.example.
 
-Mechanical find/replace across all of `frontend/src/` renaming:
-- `--sm-teal` → `--sm-primary`
-- `--sm-coral` → `--sm-danger`
-- `--sm-gold` → `--sm-warning`
-- `--sm-glass-teal/coral/gold` → `--sm-glass-primary/danger/warning`
-
-Affects: `tokens.css`, `StatusBadge.jsx`, `FilterTabBar.jsx`, `MojoHeader.jsx`, and any
-other component files referencing these token names.
-
-**Gates:**
-1. `grep -rn "sm-teal\|sm-coral\|sm-gold" frontend/src/` — **MUST return 0 matches**
-2. `grep -rn "sm-primary\|sm-danger\|sm-warning" frontend/src/styles/tokens.css` — MUST return ≥6 matches
-3. `cd frontend && pnpm run build` — exit 0
-4. After `./deploy.sh --phase 6`: site loads, /library badge colors render correctly
-
-**Commit:** `refactor: rename color tokens to semantic roles — teal→primary, coral→danger, gold→warning`
-
----
-
-### STORY-DS-003 — Refactor OnboardingMojo to Design System
-**Type:** Design System — Phase 3 Mojo Refactor
-**Depends on:** STORY-DS-002 merged to main
-**Spec:** `/Users/jamesilsley/GitHub/sparkmojo-internal/platform/feature-library/stories/STORY-DS-003.md`
-**Branch:** `design-system/ds-003-onboarding-mojo-refactor`
-
-Refactors `frontend/src/pages/OnboardingMojo.jsx` to replace inline Tailwind color classes
-and hand-rolled UI with mojo-pattern components: StatusBadge, MojoHeader, StatsCardRow,
-FilterTabBar. Zero functional changes — UI layer swap only.
-
-**Gates:**
-1. `grep -n "STATUS_COLORS" frontend/src/pages/OnboardingMojo.jsx` — **MUST return 0 matches**
-2. `grep -n "bg-amber\|bg-purple\|bg-yellow" frontend/src/pages/OnboardingMojo.jsx` — MUST return 0 matches
-3. `grep -n "from '@/components/mojo-patterns" frontend/src/pages/OnboardingMojo.jsx` — MUST return ≥4 matches
-4. `cd frontend && pnpm run build` — exit 0
-5. Visual smoke test: status badges in /onboarding use SM token colors, filter tabs and stats row render correctly
-
-**Commit:** `refactor(onboarding): replace inline colors with design system mojo-patterns`
-
----
+### INFRA-007 — Three-Site Topology Build
+Branch: `infra/INFRA-007-three-site-topology`
+Type: Infrastructure
+Spec: /Users/jamesilsley/GitHub/sparkmojo-internal/platform/feature-library/stories/INFRA-007-three-site-topology-build.md
+Gates: All 4 sites in bench list-sites + all 4 in SM Site Registry + smoke_test.sh passes + deploy --verify-only passes + frontend site renamed.
 
 ## Completion
-When all three stories are complete and merged to main:
-1. Run `./deploy.sh --phase 6` one final time if not already done for DS-003
-2. Write QUEUE-COMPLETE.md summarising what ran and any blockers encountered
-3. Output: LOOP_COMPLETE
-4. Commit push and deploy to vps when complete. 
+When all stories have COMPLETE markers or BLOCKED files:
+1. Write QUEUE-COMPLETE.md in repo root with:
+   - Stories completed: list with branch names
+   - Stories blocked: list with reason summary
+   - Smoke test result: pass/fail
+   - Any notes for James
+2. Print: LOOP_COMPLETE
