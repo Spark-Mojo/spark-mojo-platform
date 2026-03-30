@@ -1381,7 +1381,7 @@ export default function WorkboardMojo() {
   const [filterTab, setFilterTab] = useState('All');
   const [sourceFilter, setSourceFilter] = useState('');
   const [showUnclaimedOnly, setShowUnclaimedOnly] = useState(false);
-  const [statsFilter, setStatsFilter] = useState(null);
+  const [statsFilter, setStatsFilter] = useState('active');
   const [createModalOpen, setCreateModalOpen] = useState(false);
 
   // Drawer state
