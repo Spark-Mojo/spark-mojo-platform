@@ -12,6 +12,7 @@ core:
     - "Absolute path to this repo: /Users/jamesilsley/GitHub/spark-mojo-platform/"
     - "Absolute path to governance repo: /Users/jamesilsley/GitHub/sparkmojo-internal/"
     - "Story files: /Users/jamesilsley/GitHub/sparkmojo-internal/platform/feature-library/stories/"
+    - "Agent context (read this first): /Users/jamesilsley/GitHub/sparkmojo-internal/platform/AGENT_CONTEXT.md"
     - "NEVER modify frontend/src/pages/index.jsx routing structure — only add alongside existing routes"
     - "NEVER use TypeScript — all files are .jsx"
     - "NEVER hardcode hex colors in component files — use var(--sm-*) tokens"
@@ -27,7 +28,8 @@ hats:
     publishes: ["health.ok", "health.blocked"]
     max_activations: 1
     instructions: |
-      Run baseline checks in order. If any fail, write HEALTH-BLOCKED.md with details and emit health.blocked.
+      Read /Users/jamesilsley/GitHub/sparkmojo-internal/platform/AGENT_CONTEXT.md first.
+      Then run baseline checks in order. If any fail, write HEALTH-BLOCKED.md with details and emit health.blocked.
 
       1. Clean up junk files first:
          find frontend/src/components/ -name $'Icon\r' -delete
@@ -55,9 +57,7 @@ hats:
     instructions: |
       Read /Users/jamesilsley/GitHub/spark-mojo-platform/PROMPT.md.
       Find the first story without a STORY-NNN-COMPLETE marker file at repo root.
-      If all stories are done (STORY-011-COMPLETE, STORY-012-COMPLETE, STORY-013-COMPLETE all exist):
-        Run the TASK-ADR cleanup if ADR-design-system.md still has full content (not just the pointer).
-        If ADR cleanup also done: print LOOP_COMPLETE. Emit queue.complete. Stop.
+      If all stories are done: print LOOP_COMPLETE. Emit queue.complete. Stop.
 
       For the next story:
       1. Read the full story spec from /Users/jamesilsley/GitHub/sparkmojo-internal/platform/feature-library/stories/STORY-NNN.md
@@ -80,22 +80,13 @@ hats:
         git checkout main && git pull origin main
         git checkout -b story/STORY-NNN-description
 
-      Read the full story spec again:
+      Read the full story spec:
         /Users/jamesilsley/GitHub/sparkmojo-internal/platform/feature-library/stories/STORY-NNN.md
 
       Build exactly what the spec says. Nothing more. Nothing less.
 
       After each significant file change, run fast gate:
         cd /Users/jamesilsley/GitHub/spark-mojo-platform/frontend && pnpm run build
-
-      Important build notes:
-      - STORY-011: Count actual files in ui/ and mojo-patterns/ for the inventory — don't hardcode "59".
-        Use: ls frontend/src/components/ui/*.jsx | wc -l
-        and: ls frontend/src/components/mojo-patterns/*.jsx | wc -l
-      - STORY-012: Run the grep acceptance criteria BEFORE making changes (document baseline).
-        Then run again AFTER to prove the violations are gone.
-      - STORY-013: Try CLI install first. If it fails, manually copy the component source.
-        The component MUST wire to document.documentElement.dataset.theme, not a class-based toggle.
 
       When build is complete and fast gates pass:
         ralph emit "build.ready" "STORY-NNN: implementation complete, build passes"
@@ -107,29 +98,8 @@ hats:
     publishes: ["task.done", "build.retry"]
     instructions: |
       Determine which story was just built (check current branch name or PLAN file).
-
-      Run ALL gates for this story type. A story is done ONLY when every gate passes.
-
-      === STORY-011 Gates ===
-      1. cd /Users/jamesilsley/GitHub/spark-mojo-platform/frontend && pnpm run build — exit 0
-      2. test -f frontend/src/components/COMPONENT_INVENTORY.md — file exists
-      3. grep -rn '#[0-9a-fA-F]\{6\}' frontend/src/pages/Library.jsx — no NEW hex (compare to pre-existing)
-      4. cat frontend/src/components/ui/StatsCard.jsx — re-export shim only
-      5. cat frontend/src/components/mojo-patterns/StatsCard.jsx — full implementation
-      6. Open Library.jsx and verify every component in ui/ and mojo-patterns/ has a rendered section
-
-      === STORY-012 Gates ===
-      1. grep -rn 'bg-emerald\|bg-blue\|bg-purple\|bg-amber\|bg-teal-\|text-teal-\|text-amber-\|text-orange-' frontend/src/components/mojo-patterns/StatsCard.jsx — 0 results
-      2. grep -rn '#[0-9a-fA-F]\{6\}' frontend/src/components/mojos/WorkboardMojo.jsx — 0 results
-      3. grep -rn 'bg-teal\|text-teal\|bg-amber\|text-amber\|bg-orange\|text-orange' frontend/src/components/mojos/WorkboardMojo.jsx — 0 results
-      4. cd /Users/jamesilsley/GitHub/spark-mojo-platform/frontend && pnpm run build — exit 0
-
-      === STORY-013 Gates ===
-      1. test -f frontend/src/components/magicui/animated-theme-toggler.jsx — file exists
-      2. grep -c 'AnimatedThemeToggler' frontend/src/pages/Library.jsx — at least 1 match
-      3. grep -c 'Universal Components' frontend/src/pages/Library.jsx — at least 1 match
-      4. grep -c 'AnimatedThemeToggler' frontend/src/components/COMPONENT_INVENTORY.md — at least 1 match
-      5. cd /Users/jamesilsley/GitHub/spark-mojo-platform/frontend && pnpm run build — exit 0
+      Read the story spec for its acceptance criteria and gate commands.
+      Run ALL gates listed in the story spec. A story is done ONLY when every gate passes.
 
       If ALL gates pass:
         touch STORY-NNN-COMPLETE
