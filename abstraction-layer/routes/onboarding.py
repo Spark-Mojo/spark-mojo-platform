@@ -94,13 +94,23 @@ async def onboarding_list(
     status: Optional[str] = None,
     clinician: Optional[str] = None,
     search: Optional[str] = None,
-    page_length: int = 50,
+    page_length: int = 0,
     user: dict = Depends(get_current_user),
 ):
-    """List SM Client records with computed urgency and completion fields."""
+    """List SM Client records with computed urgency and completion fields.
+
+    page_length=0 fetches all matching records. With Cancelled excluded by
+    default, this is typically ~2500 records for a single clinic.
+    """
     filters = []
     if status:
         filters.append(["onboarding_status", "=", status])
+    else:
+        # Exclude Cancelled by default so active + Ready clients aren't
+        # pushed off by recently-modified archived records. The frontend
+        # needs Ready records for the "Ready" KPI card and filter chip.
+        # The History tab passes status=Cancelled explicitly to fetch those.
+        filters.append(["onboarding_status", "not in", ["Cancelled"]])
     if clinician:
         filters.append(["assigned_clinician", "=", clinician])
 
@@ -455,7 +465,7 @@ async def onboarding_history(
     year: Optional[int] = None,
     clinician: Optional[str] = None,
     search: Optional[str] = None,
-    page_length: int = 50,
+    page_length: int = 200,
     page: int = 1,
     user: dict = Depends(get_current_user),
 ):
