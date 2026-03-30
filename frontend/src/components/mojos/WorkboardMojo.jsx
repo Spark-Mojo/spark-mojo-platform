@@ -370,10 +370,19 @@ function useCountUp(target, duration = 600) {
   return count;
 }
 
-function StatCard({ label, value, testId, iconSvg, iconBg }) {
+function StatCard({ label, value, testId, iconSvg, iconBg, active, onClick }) {
   const display = useCountUp(value, 600);
   return (
-    <div data-testid={testId} className="flex items-center gap-3 bg-white rounded-lg border border-[#E2E8EB] p-3 flex-1 min-w-0">
+    <button
+      data-testid={testId}
+      onClick={onClick}
+      className={cn(
+        'flex items-center gap-3 rounded-lg border p-3 flex-1 min-w-0 text-left transition-all',
+        active
+          ? 'border-teal-500 bg-teal-50 shadow-sm'
+          : 'border-[#E2E8EB] bg-white hover:border-gray-300'
+      )}
+    >
       <div className={cn('p-2 rounded-lg', iconBg)}>
         {iconSvg}
       </div>
@@ -381,7 +390,7 @@ function StatCard({ label, value, testId, iconSvg, iconBg }) {
         <div className="text-xl font-bold text-gray-900">{display}</div>
         <div className="text-xs text-gray-500 truncate">{label}</div>
       </div>
-    </div>
+    </button>
   );
 }
 
@@ -400,7 +409,7 @@ const STAT_ICONS = {
   ),
 };
 
-function StatsBar({ tasks }) {
+function StatsBar({ tasks, statsFilter, onStatsFilterChange }) {
   const stats = useMemo(() => {
     let active = 0, urgent = 0, overdue = 0, waiting = 0;
     for (const t of tasks) {
@@ -415,16 +424,21 @@ function StatsBar({ tasks }) {
   }, [tasks]);
 
   const cards = [
-    { label: 'Active Tasks', value: stats.active, testId: 'stat-active', iconSvg: STAT_ICONS.active, iconBg: 'bg-teal-100 text-teal-700' },
-    { label: 'Urgent', value: stats.urgent, testId: 'stat-urgent', iconSvg: STAT_ICONS.urgent, iconBg: 'bg-red-100 text-red-700' },
-    { label: 'Overdue', value: stats.overdue, testId: 'stat-overdue', iconSvg: STAT_ICONS.overdue, iconBg: 'bg-amber-100 text-amber-700' },
-    { label: 'Waiting', value: stats.waiting, testId: 'stat-waiting', iconSvg: STAT_ICONS.waiting, iconBg: 'bg-slate-100 text-slate-700' },
+    { label: 'Active Tasks', value: stats.active, testId: 'stat-active', iconSvg: STAT_ICONS.active, iconBg: 'bg-teal-100 text-teal-700', filterKey: 'active' },
+    { label: 'Urgent', value: stats.urgent, testId: 'stat-urgent', iconSvg: STAT_ICONS.urgent, iconBg: 'bg-red-100 text-red-700', filterKey: 'urgent' },
+    { label: 'Overdue', value: stats.overdue, testId: 'stat-overdue', iconSvg: STAT_ICONS.overdue, iconBg: 'bg-amber-100 text-amber-700', filterKey: 'overdue' },
+    { label: 'Waiting', value: stats.waiting, testId: 'stat-waiting', iconSvg: STAT_ICONS.waiting, iconBg: 'bg-slate-100 text-slate-700', filterKey: 'waiting' },
   ];
 
   return (
     <div data-testid="stats-bar" className="flex gap-3 px-4 py-3">
       {cards.map((c) => (
-        <StatCard key={c.testId} {...c} />
+        <StatCard
+          key={c.testId}
+          {...c}
+          active={statsFilter === c.filterKey}
+          onClick={() => onStatsFilterChange(statsFilter === c.filterKey ? null : c.filterKey)}
+        />
       ))}
     </div>
   );
@@ -1367,6 +1381,7 @@ export default function WorkboardMojo() {
   const [filterTab, setFilterTab] = useState('All');
   const [sourceFilter, setSourceFilter] = useState('');
   const [showUnclaimedOnly, setShowUnclaimedOnly] = useState(false);
+  const [statsFilter, setStatsFilter] = useState(null);
   const [createModalOpen, setCreateModalOpen] = useState(false);
 
   // Drawer state
@@ -1607,9 +1622,22 @@ export default function WorkboardMojo() {
       const matchesType = filterTab === 'All' || t.task_type === filterTab;
       const matchesSource = !sourceFilter || t.source_system === sourceFilter;
       const matchesUnclaimed = !showUnclaimedOnly || !t.assigned_user;
-      return matchesType && matchesSource && matchesUnclaimed;
+
+      // Stats card filter
+      let matchesStats = true;
+      if (statsFilter === 'active') {
+        matchesStats = !RESOLVED_STATES.includes(t.canonical_state);
+      } else if (statsFilter === 'urgent') {
+        matchesStats = t.priority === 'Urgent' && !RESOLVED_STATES.includes(t.canonical_state);
+      } else if (statsFilter === 'overdue') {
+        matchesStats = !RESOLVED_STATES.includes(t.canonical_state) && t.due_at && isPast(parseISO(t.due_at)) && !isToday(parseISO(t.due_at));
+      } else if (statsFilter === 'waiting') {
+        matchesStats = t.canonical_state === 'Waiting';
+      }
+
+      return matchesType && matchesSource && matchesUnclaimed && matchesStats;
     });
-  }, [tasks, filterTab, sourceFilter, showUnclaimedOnly]);
+  }, [tasks, filterTab, sourceFilter, showUnclaimedOnly, statsFilter]);
 
   const sorted = useMemo(
     () => sortTasks(filtered, sortPref.field, sortPref.direction),
@@ -1691,7 +1719,7 @@ export default function WorkboardMojo() {
       {viewMode === 'list' ? (
         <>
           {/* Stats bar */}
-          <StatsBar tasks={tasks} />
+          <StatsBar tasks={tasks} statsFilter={statsFilter} onStatsFilterChange={setStatsFilter} />
 
           {/* Filter tabs */}
           <FilterTabs
