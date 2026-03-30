@@ -1,30 +1,49 @@
 /* eslint-disable react/prop-types */
 import { motion } from "framer-motion";
 
-export default function StatsCard({ title, value, subtitle, icon: Icon, color = "emerald" }) {
-  const colorClasses = {
-    emerald: "bg-emerald-50 text-emerald-600",
-    blue: "bg-blue-50 text-blue-600",
-    purple: "bg-purple-50 text-purple-600",
-    amber: "bg-amber-50 text-amber-600"
-  };
+const VARIANT_STYLES = {
+  teal: {
+    bg: 'var(--sm-glass-teal)',
+    color: 'var(--sm-teal)',
+  },
+  coral: {
+    bg: 'var(--sm-glass-coral)',
+    color: 'var(--sm-coral)',
+  },
+  gold: {
+    bg: 'var(--sm-glass-gold)',
+    color: 'var(--sm-gold)',
+  },
+  slate: {
+    bg: 'var(--sm-surface-muted)',
+    color: 'var(--sm-text-muted)',
+  },
+};
+
+export default function StatsCard({ title, value, subtitle, icon: Icon, variant = "teal" }) {
+  const style = VARIANT_STYLES[variant] || VARIANT_STYLES.teal;
 
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      className="bg-white rounded-2xl p-6 border border-slate-100 shadow-sm hover:shadow-md transition-shadow duration-300"
+      className="rounded-2xl p-6 hover:shadow-md transition-shadow duration-300"
+      style={{
+        backgroundColor: 'var(--sm-control-bg)',
+        border: '1px solid var(--sm-control-border)',
+        boxShadow: 'var(--sm-shadow-card)',
+      }}
     >
       <div className="flex items-start justify-between">
         <div>
-          <p className="text-sm font-medium text-slate-500 tracking-wide uppercase">{title}</p>
-          <p className="text-3xl font-semibold text-slate-900 mt-2">{value}</p>
+          <p className="text-sm font-medium tracking-wide uppercase" style={{ color: 'var(--sm-text-muted)' }}>{title}</p>
+          <p className="text-3xl font-semibold mt-2" style={{ color: 'var(--sm-text-strong)' }}>{value}</p>
           {subtitle && (
-            <p className="text-sm text-slate-400 mt-1">{subtitle}</p>
+            <p className="text-sm mt-1" style={{ color: 'var(--sm-text-placeholder)' }}>{subtitle}</p>
           )}
         </div>
         {Icon && (
-          <div className={`p-3 rounded-xl ${colorClasses[color]}`}>
+          <div className="p-3 rounded-xl" style={{ backgroundColor: style.bg, color: style.color }}>
             <Icon className="w-5 h-5" />
           </div>
         )}

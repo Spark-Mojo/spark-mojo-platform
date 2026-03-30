@@ -184,41 +184,35 @@ async function postAssign(taskId, assignedUser, assignedRole, dueAt) {
   return resp.json();
 }
 
-const TYPE_COLORS = {
-  Action: 'bg-teal-100 text-teal-700',
-  Review: 'bg-amber-100 text-amber-800',
-  Approval: 'bg-orange-100 text-orange-800',
-};
-
 const TYPE_BADGE_STYLES = {
-  Action:   { bg: '#E6F2F2', text: '#006666' },
-  Review:   { bg: '#FFF8E6', text: '#B45309' },
-  Approval: { bg: '#FFF0EE', text: '#FF6F61' },
+  Action:   { bg: 'var(--sm-type-action-bg)', text: 'var(--sm-type-action-text)' },
+  Review:   { bg: 'var(--sm-type-review-bg)', text: 'var(--sm-type-review-text)' },
+  Approval: { bg: 'var(--sm-type-approval-bg)', text: 'var(--sm-type-approval-text)' },
 };
 
 const STATUS_COLORS = {
-  'New':         { bg: '#F1F5F9', text: '#64748B' },
-  'Ready':       { bg: '#E6F2F2', text: '#006666' },
-  'In Progress': { bg: '#EFF6FF', text: '#2563EB' },
-  'Waiting':     { bg: '#FFF8E6', text: '#B45309' },
-  'Blocked':     { bg: '#FFF0EE', text: '#DC2626' },
-  'Failed':      { bg: '#FEE2E2', text: '#B91C1C' },
-  'Completed':   { bg: '#F0FDF4', text: '#16A34A' },
-  'Canceled':    { bg: '#F8FAFC', text: '#94A3B8' },
+  'New':         { bg: 'var(--sm-status-new-bg)', text: 'var(--sm-status-new-text)' },
+  'Ready':       { bg: 'var(--sm-status-ready-bg)', text: 'var(--sm-status-ready-text)' },
+  'In Progress': { bg: 'var(--sm-status-inprogress-bg)', text: 'var(--sm-status-inprogress-text)' },
+  'Waiting':     { bg: 'var(--sm-status-waiting-bg)', text: 'var(--sm-status-waiting-text)' },
+  'Blocked':     { bg: 'var(--sm-status-blocked-bg)', text: 'var(--sm-status-blocked-text)' },
+  'Failed':      { bg: 'var(--sm-status-failed-bg)', text: 'var(--sm-status-failed-text)' },
+  'Completed':   { bg: 'var(--sm-status-completed-bg)', text: 'var(--sm-status-completed-text)' },
+  'Canceled':    { bg: 'var(--sm-status-canceled-bg)', text: 'var(--sm-status-canceled-text)' },
 };
 
 const PRIORITY_STRIPE = {
-  Urgent: '#E53935',
-  High:   '#FF6F61',
-  Medium: '#FFB300',
-  Low:    '#B0BEC5',
+  Urgent: 'var(--sm-priority-urgent)',
+  High:   'var(--sm-priority-high)',
+  Medium: 'var(--sm-priority-medium)',
+  Low:    'var(--sm-priority-low)',
 };
 
 const PRIORITY_COLORS = {
-  Urgent: 'bg-red-500',
-  High: 'bg-orange-400',
-  Medium: 'bg-amber-400',
-  Low: 'bg-gray-400',
+  Urgent: { bg: 'var(--sm-priority-urgent)' },
+  High:   { bg: 'var(--sm-priority-high)' },
+  Medium: { bg: 'var(--sm-priority-medium)' },
+  Low:    { bg: 'var(--sm-priority-low)' },
 };
 
 const FILTER_TABS = ['All', 'Action', 'Review', 'Approval'];
@@ -379,16 +373,17 @@ function StatCard({ label, value, testId, iconSvg, iconBg, active, onClick }) {
       className={cn(
         'flex items-center gap-3 rounded-lg border p-3 flex-1 min-w-0 text-left transition-all',
         active
-          ? 'border-teal-500 bg-teal-50 shadow-sm'
-          : 'border-[#E2E8EB] bg-white hover:border-gray-300'
+          ? 'border-[var(--sm-teal)] shadow-sm'
+          : 'border-[var(--sm-control-border)] hover:border-[var(--sm-control-border-heavy)]'
       )}
+      style={active ? { backgroundColor: 'var(--sm-glass-teal)' } : { backgroundColor: 'var(--sm-control-bg)' }}
     >
-      <div className={cn('p-2 rounded-lg', iconBg)}>
+      <div className="p-2 rounded-lg" style={{ backgroundColor: iconBg.bg, color: iconBg.color }}>
         {iconSvg}
       </div>
       <div className="min-w-0">
-        <div className="text-xl font-bold text-gray-900">{display}</div>
-        <div className="text-xs text-gray-500 truncate">{label}</div>
+        <div className="text-xl font-bold" style={{ color: 'var(--sm-text-strong)' }}>{display}</div>
+        <div className="text-xs truncate" style={{ color: 'var(--sm-text-muted)' }}>{label}</div>
       </div>
     </button>
   );
@@ -424,10 +419,10 @@ function StatsBar({ tasks, statsFilter, onStatsFilterChange }) {
   }, [tasks]);
 
   const cards = [
-    { label: 'Active Tasks', value: stats.active, testId: 'stat-active', iconSvg: STAT_ICONS.active, iconBg: 'bg-teal-100 text-teal-700', filterKey: 'active' },
-    { label: 'Urgent', value: stats.urgent, testId: 'stat-urgent', iconSvg: STAT_ICONS.urgent, iconBg: 'bg-red-100 text-red-700', filterKey: 'urgent' },
-    { label: 'Overdue', value: stats.overdue, testId: 'stat-overdue', iconSvg: STAT_ICONS.overdue, iconBg: 'bg-amber-100 text-amber-700', filterKey: 'overdue' },
-    { label: 'Waiting', value: stats.waiting, testId: 'stat-waiting', iconSvg: STAT_ICONS.waiting, iconBg: 'bg-slate-100 text-slate-700', filterKey: 'waiting' },
+    { label: 'Active Tasks', value: stats.active, testId: 'stat-active', iconSvg: STAT_ICONS.active, iconBg: { bg: 'var(--sm-glass-teal)', color: 'var(--sm-teal)' }, filterKey: 'active' },
+    { label: 'Urgent', value: stats.urgent, testId: 'stat-urgent', iconSvg: STAT_ICONS.urgent, iconBg: { bg: 'var(--sm-glass-coral)', color: 'var(--sm-coral)' }, filterKey: 'urgent' },
+    { label: 'Overdue', value: stats.overdue, testId: 'stat-overdue', iconSvg: STAT_ICONS.overdue, iconBg: { bg: 'var(--sm-glass-gold)', color: 'var(--sm-gold)' }, filterKey: 'overdue' },
+    { label: 'Waiting', value: stats.waiting, testId: 'stat-waiting', iconSvg: STAT_ICONS.waiting, iconBg: { bg: 'var(--sm-surface-muted)', color: 'var(--sm-text-muted)' }, filterKey: 'waiting' },
   ];
 
   return (
@@ -446,7 +441,7 @@ function StatsBar({ tasks, statsFilter, onStatsFilterChange }) {
 
 function FilterTabs({ activeTab, onTabChange, showCompleted, onToggleCompleted, sourceFilter, onSourceFilterChange, sourceOptions }) {
   return (
-    <div data-testid="filter-tabs" className="flex items-center gap-1 px-4 py-2 border-b border-[#E2E8EB]">
+    <div data-testid="filter-tabs" className="flex items-center gap-1 px-4 py-2 border-b border-[var(--sm-control-border)]">
       {FILTER_TABS.map((tab) => (
         <button
           key={tab}
@@ -455,8 +450,8 @@ function FilterTabs({ activeTab, onTabChange, showCompleted, onToggleCompleted, 
           className={cn(
             'text-xs px-3 py-1.5 font-medium transition-colors border-b-2',
             activeTab === tab
-              ? 'border-[#006666] text-[#006666]'
-              : 'border-transparent text-[#6B7A84] hover:text-[#34424A]'
+              ? 'border-[var(--sm-teal)] text-[var(--sm-teal)]'
+              : 'border-transparent text-[var(--sm-text-muted)] hover:text-[var(--sm-slate)]'
           )}
         >
           {tab}
@@ -468,7 +463,7 @@ function FilterTabs({ activeTab, onTabChange, showCompleted, onToggleCompleted, 
           data-testid="source-filter"
           value={sourceFilter}
           onChange={(e) => onSourceFilterChange(e.target.value)}
-          className="text-xs px-2 py-1.5 font-medium text-[#34424A] bg-transparent border-none focus:outline-none focus:ring-1 focus:ring-teal-400 rounded cursor-pointer"
+          className="text-xs px-2 py-1.5 font-medium text-[var(--sm-slate)] bg-transparent border-none focus:outline-none focus:ring-1 focus:ring-[var(--sm-teal)] rounded cursor-pointer"
           style={{ fontFamily: 'Inter, sans-serif' }}
         >
           <option value="">All Sources</option>
@@ -483,8 +478,8 @@ function FilterTabs({ activeTab, onTabChange, showCompleted, onToggleCompleted, 
         className={cn(
           'text-xs px-3 py-1.5 font-medium transition-colors border-b-2',
           showCompleted
-            ? 'border-[#006666] text-[#006666]'
-            : 'border-transparent text-[#6B7A84] hover:text-[#34424A]'
+            ? 'border-[var(--sm-teal)] text-[var(--sm-teal)]'
+            : 'border-transparent text-[var(--sm-text-muted)] hover:text-[var(--sm-slate)]'
         )}
       >
         Show Completed
@@ -495,7 +490,7 @@ function FilterTabs({ activeTab, onTabChange, showCompleted, onToggleCompleted, 
 
 function ColumnHeaders({ sortField, sortDirection, onSortChange }) {
   return (
-    <div data-testid="column-headers" className="flex items-center gap-2 px-3 py-2.5 bg-[#F0F4F5] border-b border-[#E2E8EB]" style={{ paddingLeft: 'calc(4px + 12px)' }}>
+    <div data-testid="column-headers" className="flex items-center gap-2 px-3 py-2.5 bg-[var(--sm-surface-muted)] border-b border-[var(--sm-control-border)]" style={{ paddingLeft: 'calc(4px + 12px)' }}>
       {TABLE_COLUMNS.map((col) => (
         <div
           key={col.key}
@@ -509,9 +504,9 @@ function ColumnHeaders({ sortField, sortDirection, onSortChange }) {
             }
           } : undefined}
         >
-          <span className="text-[11px] font-bold text-[#6B7A84] uppercase tracking-wider">{col.label}</span>
+          <span className="text-[11px] font-bold text-[var(--sm-text-muted)] uppercase tracking-wider">{col.label}</span>
           {col.sortable && (
-            <span className={cn('text-[10px]', sortField === col.key ? 'text-[#006666]' : 'text-[#B0BEC5]')}>
+            <span className={cn('text-[10px]', sortField === col.key ? 'text-[var(--sm-teal)]' : 'text-[var(--sm-priority-low)]')}>
               {sortField === col.key ? (sortDirection === 'asc' ? '\u2191' : '\u2193') : '\u2195'}
             </span>
           )}
@@ -527,7 +522,7 @@ function TaskRow({ task, claimingId, onClaim, selected, onRowClick, onViewClick 
   const isClaiming = claimingId === name;
   const isResolved = RESOLVED_STATES.includes(canonical_state);
   const stripeColor = PRIORITY_STRIPE[priority] || PRIORITY_STRIPE.Low;
-  const typeBadge = TYPE_BADGE_STYLES[task_type] || { bg: '#F1F5F9', text: '#64748B' };
+  const typeBadge = TYPE_BADGE_STYLES[task_type] || { bg: 'var(--sm-status-new-bg)', text: 'var(--sm-status-new-text)' };
   const statusBadge = STATUS_COLORS[canonical_state] || STATUS_COLORS.New;
   const unowned = isUnownedByUser(task);
 
@@ -536,23 +531,23 @@ function TaskRow({ task, claimingId, onClaim, selected, onRowClick, onViewClick 
       data-testid="task-row"
       onClick={() => onRowClick(name)}
       className={cn(
-        'flex items-center gap-2 px-3 h-[52px] border-b border-[#E2E8EB] transition-colors cursor-pointer',
-        selected ? 'bg-[#f0f7f7]' : 'hover:bg-[#f5fafa]',
+        'flex items-center gap-2 px-3 h-[52px] border-b border-[var(--sm-control-border)] transition-colors cursor-pointer',
+        selected ? 'bg-[var(--sm-glass-teal)]' : 'hover:bg-[var(--sm-surface-muted)]',
         isResolved && 'opacity-60',
         unowned && !isResolved && 'unowned-pulse-row'
       )}
       style={{
         borderLeft: unowned && !isResolved
           ? undefined
-          : `4px solid ${isResolved ? '#B0BEC5' : stripeColor}`,
+          : `4px solid ${isResolved ? 'var(--sm-priority-low)' : stripeColor}`,
       }}
     >
       {/* TASK — title + ID */}
       <div className="flex-1 min-w-0 pr-2">
-        <div className={cn('text-sm font-medium text-[#34424A] truncate', isResolved && 'line-through')}>
+        <div className={cn('text-sm font-medium text-[var(--sm-slate)] truncate', isResolved && 'line-through')}>
           {title}
         </div>
-        <div className="text-[11px] text-[#94A3B8]">{name}</div>
+        <div className="text-[11px] text-[var(--sm-text-placeholder)]">{name}</div>
       </div>
 
       {/* TYPE badge */}
@@ -584,7 +579,7 @@ function TaskRow({ task, claimingId, onClaim, selected, onRowClick, onViewClick 
         {source_system && (
           <span
             data-testid="source-badge"
-            className="inline-block text-[10px] px-2 py-0.5 rounded-full border border-[#E2E8EB] text-[#6B7A84]"
+            className="inline-block text-[10px] px-2 py-0.5 rounded-full border border-[var(--sm-control-border)] text-[var(--sm-text-muted)]"
           >
             {source_system}
           </span>
@@ -598,13 +593,13 @@ function TaskRow({ task, claimingId, onClaim, selected, onRowClick, onViewClick 
             data-testid="due-date"
             className={cn(
               'text-xs tabular-nums',
-              due.overdue ? 'text-[#FF6F61] font-medium' : due.warn ? 'text-[#B45309] font-medium' : 'text-[#34424A]'
+              due.overdue ? 'text-[var(--sm-coral)] font-medium' : due.warn ? 'text-[var(--sm-status-waiting-text)] font-medium' : 'text-[var(--sm-slate)]'
             )}
           >
             {due.text}
           </span>
         ) : (
-          <span className="text-xs text-[#B0BEC5]">&mdash;</span>
+          <span className="text-xs text-[var(--sm-priority-low)]">&mdash;</span>
         )}
       </div>
 
@@ -612,16 +607,16 @@ function TaskRow({ task, claimingId, onClaim, selected, onRowClick, onViewClick 
       <div className="w-[130px] shrink-0 flex items-center gap-1.5">
         {assigned_user ? (
           <span className="inline-flex items-center gap-1.5">
-            <span className="flex items-center justify-center h-6 w-6 rounded-full bg-[#006666] text-white text-[10px] font-bold shrink-0">
+            <span className="flex items-center justify-center h-6 w-6 rounded-full bg-[var(--sm-teal)] text-white text-[10px] font-bold shrink-0">
               {getInitials(assigned_user)}
             </span>
-            <span className="text-xs text-[#34424A] truncate">{getFirstName(assigned_user)}</span>
+            <span className="text-xs text-[var(--sm-slate)] truncate">{getFirstName(assigned_user)}</span>
           </span>
         ) : (
           <span
             data-testid="unassigned-badge"
             className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-white text-[11px] font-bold"
-            style={{ backgroundColor: '#FF6F61' }}
+            style={{ backgroundColor: 'var(--sm-coral)' }}
           >
             &#9888; {assigned_role || 'Unassigned'}
           </span>
@@ -637,19 +632,19 @@ function TaskRow({ task, claimingId, onClaim, selected, onRowClick, onViewClick 
             onClick={(e) => { e.stopPropagation(); onClaim(name); }}
             className={cn(
               'text-[11px] px-3 py-1 rounded border font-medium transition-colors',
-              'border-[#006666] text-[#006666] hover:bg-[#006666] hover:text-white',
+              'border-[var(--sm-teal)] text-[var(--sm-teal)] hover:bg-[var(--sm-teal)] hover:text-white',
               isClaiming && 'opacity-50 cursor-not-allowed'
             )}
           >
             {isClaiming ? (
-              <span data-testid="claim-spinner" className="inline-block h-3 w-3 border-2 border-teal-200 border-t-teal-600 rounded-full animate-spin" />
+              <span data-testid="claim-spinner" className="inline-block h-3 w-3 border-2 border-[var(--sm-glass-teal)] border-t-[var(--sm-teal)] rounded-full animate-spin" />
             ) : 'Claim'}
           </button>
         ) : (
           <button
             data-testid="view-button"
             onClick={(e) => { e.stopPropagation(); onViewClick(name); }}
-            className="text-[11px] px-3 py-1 rounded border border-[#006666] text-[#006666] hover:bg-[#006666] hover:text-white font-medium transition-colors"
+            className="text-[11px] px-3 py-1 rounded border border-[var(--sm-teal)] text-[var(--sm-teal)] hover:bg-[var(--sm-teal)] hover:text-white font-medium transition-colors"
           >
             View
           </button>
@@ -746,8 +741,8 @@ function TaskDetailDrawer({ task, loading, onClose, onUpdateState, onAddComment,
     }
   };
 
-  const typeColor = task ? (TYPE_COLORS[task.task_type] || 'bg-[var(--color-slate,#34424A)] text-white') : '';
-  const priorityColor = task ? (PRIORITY_COLORS[task.priority] || PRIORITY_COLORS.Low) : '';
+  const typeBadgeStyle = task ? (TYPE_BADGE_STYLES[task.task_type] || { bg: 'var(--sm-status-new-bg)', text: 'var(--sm-status-new-text)' }) : {};
+  const priorityStyle = task ? (PRIORITY_COLORS[task.priority] || PRIORITY_COLORS.Low) : {};
   const comments = task?.comments || [];
   const stateHistory = task?.state_history || [];
 
@@ -782,10 +777,10 @@ function TaskDetailDrawer({ task, loading, onClose, onUpdateState, onAddComment,
                   {task.title}
                 </h3>
                 <div className="flex items-center gap-2">
-                  <Badge className={cn('text-[10px] px-2 py-0.5 rounded-full border-0 font-medium', typeColor)}>
+                  <Badge className="text-[10px] px-2 py-0.5 rounded-full border-0 font-medium" style={{ backgroundColor: typeBadgeStyle.bg, color: typeBadgeStyle.text }}>
                     {task.task_type || 'Task'}
                   </Badge>
-                  <span className={cn('h-2.5 w-2.5 rounded-full inline-block', priorityColor)} />
+                  <span className="h-2.5 w-2.5 rounded-full inline-block" style={{ backgroundColor: priorityStyle.bg }} />
                   <span className="text-xs text-gray-500">{task.priority}</span>
                 </div>
               </div>
@@ -814,7 +809,7 @@ function TaskDetailDrawer({ task, loading, onClose, onUpdateState, onAddComment,
                       value={statusReasonInput}
                       onChange={(e) => setStatusReasonInput(e.target.value)}
                       placeholder="Enter reason..."
-                      className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-teal-400"
+                      className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[var(--sm-teal)]"
                       autoFocus
                       onKeyDown={(e) => {
                         if (e.key === 'Enter') handleConfirmStateWithReason();
@@ -826,7 +821,7 @@ function TaskDetailDrawer({ task, loading, onClose, onUpdateState, onAddComment,
                         data-testid="confirm-reason-btn"
                         onClick={handleConfirmStateWithReason}
                         disabled={!statusReasonInput.trim()}
-                        className="text-xs px-3 py-1.5 rounded bg-teal-600 text-white disabled:opacity-40"
+                        className="text-xs px-3 py-1.5 rounded bg-[var(--sm-teal)] text-white disabled:opacity-40"
                       >
                         Confirm
                       </button>
@@ -844,7 +839,7 @@ function TaskDetailDrawer({ task, loading, onClose, onUpdateState, onAddComment,
                     value={task.canonical_state || 'New'}
                     onChange={(e) => handleStateChange(e.target.value)}
                     disabled={stateChanging}
-                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-teal-400"
+                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[var(--sm-teal)]"
                   >
                     {CANONICAL_STATES.map((s) => (
                       <option key={s} value={s}>{s}</option>
@@ -896,16 +891,16 @@ function TaskDetailDrawer({ task, loading, onClose, onUpdateState, onAddComment,
                       type="date"
                       value={assignDueAt}
                       onChange={(e) => setAssignDueAt(e.target.value)}
-                      className="w-full border border-gray-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:border-teal-400"
+                      className="w-full border border-gray-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:border-[var(--sm-teal)]"
                     />
                   </div>
-                  {assignError && <p className="text-red-500 text-xs">{assignError}</p>}
+                  {assignError && <p className="text-[var(--sm-coral)] text-xs">{assignError}</p>}
                   <div className="flex gap-2">
                     <button
                       data-testid="assign-save-button"
                       onClick={handleSaveAssign}
                       disabled={assignSaving}
-                      className="text-xs px-3 py-1.5 rounded bg-teal-600 text-white disabled:opacity-40"
+                      className="text-xs px-3 py-1.5 rounded bg-[var(--sm-teal)] text-white disabled:opacity-40"
                     >
                       {assignSaving ? 'Saving...' : 'Save'}
                     </button>
@@ -987,14 +982,14 @@ function TaskDetailDrawer({ task, loading, onClose, onUpdateState, onAddComment,
                     value={commentText}
                     onChange={(e) => setCommentText(e.target.value)}
                     placeholder="Add a comment..."
-                    className="flex-1 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-teal-400"
+                    className="flex-1 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[var(--sm-teal)]"
                     onKeyDown={(e) => { if (e.key === 'Enter') handleSubmitComment(); }}
                   />
                   <button
                     data-testid="comment-submit"
                     onClick={handleSubmitComment}
                     disabled={!commentText.trim()}
-                    className="text-xs px-3 py-1.5 rounded bg-teal-600 text-white disabled:opacity-40"
+                    className="text-xs px-3 py-1.5 rounded bg-[var(--sm-teal)] text-white disabled:opacity-40"
                   >
                     Send
                   </button>
@@ -1040,7 +1035,7 @@ function TaskDetailDrawer({ task, loading, onClose, onUpdateState, onAddComment,
                       setCompleting(false);
                     }
                   }}
-                  className="w-full py-2.5 rounded-lg bg-[#FF6F61] text-white text-sm font-medium hover:bg-[#e5635a] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="w-full py-2.5 rounded-lg bg-[var(--sm-coral)] text-white text-sm font-medium hover:opacity-90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {completing ? 'Completing...' : 'Complete Task'}
                 </button>
@@ -1058,7 +1053,7 @@ function Toast({ message, visible }) {
   return (
     <div
       data-testid="inline-toast"
-      className="absolute bottom-3 left-1/2 -translate-x-1/2 bg-gray-900 text-white text-xs px-4 py-2 rounded-lg shadow-lg z-10"
+      className="absolute bottom-3 left-1/2 -translate-x-1/2 bg-[var(--sm-slate)] text-white text-xs px-4 py-2 rounded-lg shadow-lg z-10"
     >
       {message}
     </div>
@@ -1088,8 +1083,8 @@ function ViewToggle({ viewMode, onViewChange }) {
         className={cn(
           'px-3 py-1.5 rounded-full text-sm font-medium transition-colors',
           viewMode === 'list'
-            ? 'bg-[#006666] text-white'
-            : 'text-[#34424A] hover:text-gray-700'
+            ? 'bg-[var(--sm-teal)] text-white'
+            : 'text-[var(--sm-slate)] hover:text-gray-700'
         )}
         aria-label="List view"
       >
@@ -1101,8 +1096,8 @@ function ViewToggle({ viewMode, onViewChange }) {
         className={cn(
           'px-3 py-1.5 rounded-full text-sm font-medium transition-colors',
           viewMode === 'kanban'
-            ? 'bg-[#006666] text-white'
-            : 'text-[#34424A] hover:text-gray-700'
+            ? 'bg-[var(--sm-teal)] text-white'
+            : 'text-[var(--sm-slate)] hover:text-gray-700'
         )}
         aria-label="Kanban view"
       >
@@ -1156,7 +1151,7 @@ function CreateTaskModal({ open, onClose, onCreated }) {
 
   if (!open) return null;
 
-  const inputClass = 'w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-teal-400';
+  const inputClass = 'w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[var(--sm-teal)]';
 
   return (
     <>
@@ -1226,7 +1221,7 @@ function CreateTaskModal({ open, onClose, onCreated }) {
               <label className="text-xs text-gray-500 block mb-1">Description</label>
               <textarea value={form.description} onChange={(e) => handleChange('description', e.target.value)} className={cn(inputClass, 'resize-none')} rows={3} placeholder="Optional description" />
             </div>
-            {error && <p data-testid="create-error" className="text-red-500 text-xs">{error}</p>}
+            {error && <p data-testid="create-error" className="text-[var(--sm-coral)] text-xs">{error}</p>}
           </div>
           <div className="px-6 py-4 border-t border-gray-200 flex justify-end gap-2">
             <button onClick={onClose} className="text-xs px-4 py-2 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50">
@@ -1235,7 +1230,7 @@ function CreateTaskModal({ open, onClose, onCreated }) {
             <button
               data-testid="create-submit-button"
               onClick={handleSubmit} disabled={!form.title.trim() || submitting}
-              className="text-xs px-4 py-2 rounded-lg bg-[var(--color-primary,#006666)] text-white hover:opacity-90 disabled:opacity-40"
+              className="text-xs px-4 py-2 rounded-lg bg-[var(--sm-teal)] text-white hover:opacity-90 disabled:opacity-40"
             >
               {submitting ? 'Creating...' : 'Create Task'}
             </button>
@@ -1263,13 +1258,13 @@ function KanbanCard({ task, selected, onCardClick, index }) {
           onClick={() => onCardClick(name)}
           className={cn(
             'bg-white rounded-lg border border-gray-200 p-3 cursor-pointer hover:border-gray-300 transition-all',
-            selected && 'ring-1 ring-teal-500 border-teal-500',
-            snapshot.isDragging && 'shadow-lg border-teal-300',
+            selected && 'ring-1 ring-[var(--sm-teal)] border-[var(--sm-teal)]',
+            snapshot.isDragging && 'shadow-lg border-[var(--sm-teal)]',
             unowned && 'unowned-pulse-card'
           )}
         >
           <div className="flex items-start gap-2 mb-2">
-            <span className={cn('h-2 w-2 rounded-full shrink-0 mt-1', priorityColor)} />
+            <span className="h-2 w-2 rounded-full shrink-0 mt-1" style={{ backgroundColor: priorityColor.bg }} />
             <span className="text-sm font-medium text-gray-900 line-clamp-2 min-w-0">{title}</span>
           </div>
           <div className="flex items-center gap-1 text-xs text-gray-400">
@@ -1278,7 +1273,7 @@ function KanbanCard({ task, selected, onCardClick, index }) {
                 <span className="inline-flex items-center gap-1">
                   <span
                     data-testid="kanban-unowned-pulse"
-                    className="inline-block h-2 w-2 rounded-full bg-orange-400 animate-pulse"
+                    className="inline-block h-2 w-2 rounded-full bg-[var(--sm-coral)] animate-pulse"
                   />
                   {assigned_role || 'Unassigned'}
                 </span>
@@ -1290,7 +1285,7 @@ function KanbanCard({ task, selected, onCardClick, index }) {
               <span className="shrink-0">&middot;</span>
             )}
             {due && (
-              <span className={cn('tabular-nums shrink-0', due.overdue ? 'text-red-500' : '')}>
+              <span className={cn('tabular-nums shrink-0', due.overdue ? 'text-[var(--sm-coral)]' : '')}>
                 {due.text}
               </span>
             )}
@@ -1317,7 +1312,7 @@ function KanbanColumn({ columnState, tasks, selectedTaskId, onCardClick }) {
             {...provided.droppableProps}
             className={cn(
               'flex-1 space-y-2 px-1 overflow-y-auto rounded-lg min-h-[60px] transition-colors',
-              snapshot.isDraggingOver && 'bg-teal-50'
+              snapshot.isDraggingOver && 'bg-[var(--sm-glass-teal)]'
             )}
           >
             {tasks.map((task, index) => (
@@ -1649,7 +1644,7 @@ export default function WorkboardMojo() {
   if (error) {
     return (
       <div data-testid="error-state" className="flex items-center justify-center h-full p-8">
-        <p className="text-red-600 text-sm">{error}</p>
+        <p className="text-[var(--sm-coral)] text-sm">{error}</p>
       </div>
     );
   }
@@ -1658,7 +1653,7 @@ export default function WorkboardMojo() {
     return (
       <div data-testid="empty-state" className="flex flex-col items-center justify-center h-full p-8 gap-3">
         <div className="w-16 h-16 rounded-full bg-gray-100 flex items-center justify-center">
-          <span className="text-2xl text-teal-600">&#10003;</span>
+          <span className="text-2xl" style={{ color: 'var(--sm-teal)' }}>&#10003;</span>
         </div>
         <p className="text-gray-400 text-sm text-center">
           No tasks on your plate. You&apos;re all caught up.
@@ -1668,39 +1663,39 @@ export default function WorkboardMojo() {
   }
 
   return (
-    <div className="relative flex flex-col h-full bg-[#F8F9FA] text-[#34424A] overflow-hidden">
+    <div className="relative flex flex-col h-full bg-[var(--sm-offwhite)] text-[var(--sm-slate)] overflow-hidden">
       <style>{`
         @keyframes unownedPulse {
-          0%   { background-color: #ffffff; }
-          30%  { background-color: #fff0ee; }
-          60%  { background-color: #fff8e6; }
-          100% { background-color: #ffffff; }
+          0%   { background-color: var(--sm-control-bg); }
+          30%  { background-color: var(--sm-glass-coral); }
+          60%  { background-color: var(--sm-glass-gold); }
+          100% { background-color: var(--sm-control-bg); }
         }
         @keyframes borderPulse {
-          0%, 50%  { border-left-color: #FF6F61; }
-          51%, 100% { border-left-color: #FFB300; }
+          0%, 50%  { border-left-color: var(--sm-coral); }
+          51%, 100% { border-left-color: var(--sm-gold); }
         }
         @keyframes borderPulseTop {
-          0%, 50%  { border-top-color: #FF6F61; }
-          51%, 100% { border-top-color: #FFB300; }
+          0%, 50%  { border-top-color: var(--sm-coral); }
+          51%, 100% { border-top-color: var(--sm-gold); }
         }
         .unowned-pulse-row {
           animation: unownedPulse 2s infinite, borderPulse 1s infinite;
-          border-left: 8px solid #FF6F61 !important;
+          border-left: 8px solid var(--sm-coral) !important;
         }
         .unowned-pulse-card {
           animation: unownedPulse 2s infinite, borderPulseTop 1s infinite;
-          border-top: 8px solid #FF6F61 !important;
+          border-top: 8px solid var(--sm-coral) !important;
         }
       `}</style>
       {/* Header bar */}
-      <div className="bg-white border-b border-[#E2E8EB] px-4 py-2.5 flex items-center justify-between flex-shrink-0">
+      <div className="bg-white border-b border-[var(--sm-control-border)] px-4 py-2.5 flex items-center justify-between flex-shrink-0">
         <div className="flex items-center gap-2">
           {/* Mojo icon — teal checkmark, same size as Onboarding's UserCheck */}
-          <div data-testid="mojo-icon" className="text-[#006666] shrink-0">
-            <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="9" stroke="#006666" strokeWidth="2"/><path d="M6 10.5L8.5 13L14 7" stroke="#006666" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+          <div data-testid="mojo-icon" className="text-[var(--sm-teal)] shrink-0">
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="9" stroke="currentColor" strokeWidth="2"/><path d="M6 10.5L8.5 13L14 7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
           </div>
-          <h2 data-testid="workboard-title" className="text-base font-semibold text-[#34424A]">
+          <h2 data-testid="workboard-title" className="text-base font-semibold text-[var(--sm-slate)]">
             Workboard
           </h2>
         </div>
@@ -1709,7 +1704,7 @@ export default function WorkboardMojo() {
           <button
             data-testid="new-task-button"
             onClick={() => setCreateModalOpen(true)}
-            className="ml-2 px-3 py-1.5 rounded text-sm font-medium bg-[#006666] text-white hover:opacity-90 transition-colors whitespace-nowrap"
+            className="ml-2 px-3 py-1.5 rounded text-sm font-medium bg-[var(--sm-teal)] text-white hover:opacity-90 transition-colors whitespace-nowrap"
           >
             + New Task
           </button>
@@ -1737,12 +1732,12 @@ export default function WorkboardMojo() {
             <div
               data-testid="unclaimed-banner"
               style={{
-                background: 'rgba(255, 111, 97, 0.12)',
-                borderLeft: '4px solid #FF6F61',
+                background: 'var(--sm-glass-coral)',
+                borderLeft: '4px solid var(--sm-coral)',
                 padding: '8px 16px',
                 fontSize: '13px',
                 fontFamily: 'Inter, sans-serif',
-                color: '#34424A',
+                color: 'var(--sm-slate)',
                 display: 'flex',
                 alignItems: 'center',
                 gap: '8px',
@@ -1756,7 +1751,7 @@ export default function WorkboardMojo() {
                   <button
                     data-testid="view-unclaimed-link"
                     onClick={() => { setShowUnclaimedOnly(true); setFilterTab('All'); }}
-                    style={{ color: '#006666', textDecoration: 'underline', background: 'none', border: 'none', cursor: 'pointer', font: 'inherit' }}
+                    style={{ color: 'var(--sm-teal)', textDecoration: 'underline', background: 'none', border: 'none', cursor: 'pointer', font: 'inherit' }}
                   >
                     View unclaimed &rarr;
                   </button>
@@ -1768,7 +1763,7 @@ export default function WorkboardMojo() {
                   <button
                     data-testid="clear-unclaimed-filter"
                     onClick={() => setShowUnclaimedOnly(false)}
-                    style={{ color: '#006666', textDecoration: 'underline', background: 'none', border: 'none', cursor: 'pointer', font: 'inherit' }}
+                    style={{ color: 'var(--sm-teal)', textDecoration: 'underline', background: 'none', border: 'none', cursor: 'pointer', font: 'inherit' }}
                   >
                     Clear filter &times;
                   </button>
@@ -1799,7 +1794,7 @@ export default function WorkboardMojo() {
                 />
               ))}
               {sorted.length === 0 && (
-                <div className="py-8 text-center text-sm text-[#94A3B8]">
+                <div className="py-8 text-center text-sm text-[var(--sm-text-placeholder)]">
                   No tasks match the current filter.
                 </div>
               )}
@@ -1807,8 +1802,8 @@ export default function WorkboardMojo() {
           </div>
 
           {/* Table footer */}
-          <div data-testid="table-footer" className="bg-white border-t border-[#E2E8EB] px-4 py-2 flex-shrink-0">
-            <span className="text-xs text-[#6B7A84]">Showing {sorted.length} task{sorted.length !== 1 ? 's' : ''}</span>
+          <div data-testid="table-footer" className="bg-white border-t border-[var(--sm-control-border)] px-4 py-2 flex-shrink-0">
+            <span className="text-xs text-[var(--sm-text-muted)]">Showing {sorted.length} task{sorted.length !== 1 ? 's' : ''}</span>
           </div>
         </>
       ) : (

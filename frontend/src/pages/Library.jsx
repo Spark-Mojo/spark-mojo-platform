@@ -1183,10 +1183,10 @@ export default function Library() {
           {/* StatsCard */}
           <SubSection title="StatsCard" usedBy="StatsCardRow, OnboardingMojo, WorkboardMojo">
             <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 max-w-3xl">
-              <StatsCard title="Active" value={12} icon={BarChart3} color="emerald" />
-              <StatsCard title="Team" value={5} icon={Users} color="blue" />
-              <StatsCard title="Done" value={47} icon={CheckCircle} color="purple" />
-              <StatsCard title="Pending" value={3} subtitle="urgent" icon={AlertTriangle} color="amber" />
+              <StatsCard title="Active" value={12} icon={BarChart3} variant="teal" />
+              <StatsCard title="Team" value={5} icon={Users} variant="slate" />
+              <StatsCard title="Done" value={47} icon={CheckCircle} variant="coral" />
+              <StatsCard title="Pending" value={3} subtitle="urgent" icon={AlertTriangle} variant="gold" />
             </div>
           </SubSection>
 

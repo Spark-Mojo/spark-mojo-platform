@@ -71,6 +71,32 @@
   --sm-glass-coral: rgba(255, 111, 97, 0.10);
   --sm-glass-gold: rgba(255, 179, 0, 0.10);
 
+  /* ── Status Background Tints ── */
+  --sm-status-new-bg: #F1F5F9;
+  --sm-status-new-text: #64748B;
+  --sm-status-ready-bg: #E6F2F2;
+  --sm-status-ready-text: var(--sm-teal);
+  --sm-status-inprogress-bg: #EFF6FF;
+  --sm-status-inprogress-text: #2563EB;
+  --sm-status-waiting-bg: #FFF8E6;
+  --sm-status-waiting-text: #B45309;
+  --sm-status-blocked-bg: #FFF0EE;
+  --sm-status-blocked-text: #DC2626;
+  --sm-status-failed-bg: #FEE2E2;
+  --sm-status-failed-text: #B91C1C;
+  --sm-status-completed-bg: #F0FDF4;
+  --sm-status-completed-text: #16A34A;
+  --sm-status-canceled-bg: #F8FAFC;
+  --sm-status-canceled-text: #94A3B8;
+
+  /* ── Type Badge Tints ── */
+  --sm-type-action-bg: #E6F2F2;
+  --sm-type-action-text: var(--sm-teal);
+  --sm-type-review-bg: #FFF8E6;
+  --sm-type-review-text: #B45309;
+  --sm-type-approval-bg: #FFF0EE;
+  --sm-type-approval-text: var(--sm-coral);
+
   /* ── Overlay Backdrops ── */
   --sm-overlay-drawer: rgba(0, 0, 0, 0.40);
   --sm-overlay-modal: rgba(0, 0, 0, 0.50);
@@ -112,6 +138,21 @@
   --sm-shadow-drawer: -4px 0 24px rgba(0, 0, 0, 0.32);
   --sm-shadow-modal: 0 8px 32px rgba(0, 0, 0, 0.40);
   /* Brand colors stay the same — they pop on dark */
+
+  /* ── Status Background Tints (dark) ── */
+  --sm-status-new-bg: rgba(148, 163, 184, 0.12);
+  --sm-status-ready-bg: rgba(0, 102, 102, 0.12);
+  --sm-status-inprogress-bg: rgba(30, 136, 229, 0.12);
+  --sm-status-waiting-bg: rgba(255, 179, 0, 0.12);
+  --sm-status-blocked-bg: rgba(255, 111, 97, 0.12);
+  --sm-status-failed-bg: rgba(255, 111, 97, 0.15);
+  --sm-status-completed-bg: rgba(67, 160, 71, 0.12);
+  --sm-status-canceled-bg: rgba(148, 163, 184, 0.10);
+
+  /* ── Type Badge Tints (dark) ── */
+  --sm-type-action-bg: rgba(0, 102, 102, 0.12);
+  --sm-type-review-bg: rgba(255, 179, 0, 0.12);
+  --sm-type-approval-bg: rgba(255, 111, 97, 0.12);
 
   /* ── Interactive Control Tokens ── */
   --sm-control-bg: rgba(255, 255, 255, 0.06);
