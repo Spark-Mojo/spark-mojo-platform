@@ -165,3 +165,40 @@ hats:
          git push origin main
 
       ralph emit "story.committed" "STORY-NNN committed and merged to main"
+
+  cleanup:
+    name: "Cleanup"
+    description: "Sweeps all Ralph-generated artifacts from repo root into docarchive/ralph-runs/YYYY-MM-DD/. Always runs last."
+    triggers: ["queue.complete", "story.committed"]
+    publishes: ["cleanup.done"]
+    max_activations: 1
+    instructions: |
+      Your only job is to move Ralph's run artifacts out of the repo root.
+
+      Get today's date: run `date +%Y-%m-%d` and use that value everywhere below as DATE.
+
+      Create the archive folder if it doesn't exist:
+        mkdir -p /Users/jamesilsley/GitHub/spark-mojo-platform/docarchive/ralph-runs/DATE
+
+      Move all of the following into that folder (if they exist — skip silently if not):
+        - All files matching PLAN-*.md in the repo root
+        - All files matching *-COMPLETE (with or without .md extension) in the repo root
+        - NIGHT1-COMPLETE.md, QUEUE-COMPLETE.md, and any other *-COMPLETE*.md run-level files
+
+      Do NOT move any of the following:
+        - CLAUDE.md
+        - PROMPT.md
+        - hats.yml
+        - README.md
+        - DEPLOY.md
+        - deploy.sh
+        - docker-compose.poc.yml
+        - playwright.config.ts
+        - Any file whose name begins with BLOCKED-
+
+      After moving all files:
+        git add -A
+        git commit -m "chore: archive Ralph run artifacts DATE"
+        git push origin main
+
+      ralph emit "cleanup.done" "Run artifacts archived to docarchive/ralph-runs/DATE"
