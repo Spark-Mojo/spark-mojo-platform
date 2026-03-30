@@ -89,3 +89,4 @@ When all three stories are complete and merged to main:
 1. Run `./deploy.sh --phase 6` one final time if not already done for DS-003
 2. Write QUEUE-COMPLETE.md summarising what ran and any blockers encountered
 3. Output: LOOP_COMPLETE
+4. Commit push and deploy to vps when complete. 
