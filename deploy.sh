@@ -393,7 +393,7 @@ phase_6() {
 
   # Alpine sh in docker exec doesn't expand globs without sh -c
   BUNDLE=$(sudo docker exec "$FRONTEND_CONTAINER" \
-    sh -c 'ls /usr/share/nginx/html/assets/*.js 2>/dev/null | head -1 | xargs basename' 2>/dev/null || echo "")
+    sh -c 'ls /usr/share/nginx/html/assets/index-*.js 2>/dev/null | head -1 | xargs basename' 2>/dev/null || echo "")
   REFERENCED=$(sudo docker exec "$FRONTEND_CONTAINER" \
     grep -o 'assets/index-[^"]*\.js' /usr/share/nginx/html/index.html 2>/dev/null | head -1 || echo "")
   REFERENCED_BASENAME=$(basename "$REFERENCED" 2>/dev/null || echo "")
