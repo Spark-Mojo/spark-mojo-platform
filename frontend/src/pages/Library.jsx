@@ -1,6 +1,10 @@
 /* eslint-disable react/prop-types */
 import { useState } from 'react';
-import { Sun, Moon, ClipboardList, Search } from 'lucide-react';
+import {
+  Sun, Moon, ClipboardList, Search, ChevronDown, Info, AlertTriangle,
+  Home, Settings, User, Bold, Italic, Underline,
+  BarChart3, Users, CheckCircle,
+} from 'lucide-react';
 
 // Base UI components
 import { Button } from '@/components/ui/button';
@@ -56,8 +60,130 @@ import { Progress } from '@/components/ui/progress';
 import { Slider } from '@/components/ui/slider';
 import { Separator } from '@/components/ui/separator';
 
+// New base UI imports for 100% coverage
+import {
+  Accordion,
+  AccordionItem,
+  AccordionTrigger,
+  AccordionContent,
+} from '@/components/ui/accordion';
+import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
+import {
+  AlertDialog,
+  AlertDialogTrigger,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogFooter,
+  AlertDialogTitle,
+  AlertDialogDescription,
+  AlertDialogAction,
+  AlertDialogCancel,
+} from '@/components/ui/alert-dialog';
+import { AspectRatio } from '@/components/ui/aspect-ratio';
+import {
+  Breadcrumb,
+  BreadcrumbList,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbPage,
+  BreadcrumbSeparator,
+} from '@/components/ui/breadcrumb';
+import { Calendar } from '@/components/ui/calendar';
+import {
+  Carousel,
+  CarouselContent,
+  CarouselItem,
+  CarouselPrevious,
+  CarouselNext,
+} from '@/components/ui/carousel';
+import {
+  Collapsible,
+  CollapsibleTrigger,
+  CollapsibleContent,
+} from '@/components/ui/collapsible';
+import {
+  Command,
+  CommandInput,
+  CommandList,
+  CommandEmpty,
+  CommandGroup,
+  CommandItem,
+} from '@/components/ui/command';
+import {
+  ContextMenu,
+  ContextMenuTrigger,
+  ContextMenuContent,
+  ContextMenuItem,
+} from '@/components/ui/context-menu';
+import {
+  Drawer,
+  DrawerTrigger,
+  DrawerContent,
+  DrawerHeader,
+  DrawerTitle,
+  DrawerDescription,
+  DrawerFooter,
+  DrawerClose,
+} from '@/components/ui/drawer';
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+} from '@/components/ui/dropdown-menu';
+import {
+  HoverCard,
+  HoverCardTrigger,
+  HoverCardContent,
+} from '@/components/ui/hover-card';
+import {
+  InputOTP,
+  InputOTPGroup,
+  InputOTPSlot,
+  InputOTPSeparator,
+} from '@/components/ui/input-otp';
+import {
+  Menubar,
+  MenubarMenu,
+  MenubarTrigger,
+  MenubarContent,
+  MenubarItem,
+  MenubarSeparator,
+} from '@/components/ui/menubar';
+import {
+  NavigationMenu,
+  NavigationMenuList,
+  NavigationMenuItem,
+  NavigationMenuLink,
+} from '@/components/ui/navigation-menu';
+import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationLink,
+  PaginationPrevious,
+  PaginationNext,
+  PaginationEllipsis,
+} from '@/components/ui/pagination';
+import {
+  Popover,
+  PopoverTrigger,
+  PopoverContent,
+} from '@/components/ui/popover';
+import {
+  ResizablePanelGroup,
+  ResizablePanel,
+  ResizableHandle,
+} from '@/components/ui/resizable';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Toggle } from '@/components/ui/toggle';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
+
 // Mojo pattern components
 import MojoHeader from '@/components/mojo-patterns/MojoHeader';
+import StatsCard from '@/components/mojo-patterns/StatsCard';
 import StatsCardRow from '@/components/mojo-patterns/StatsCardRow';
 import FilterTabBar from '@/components/mojo-patterns/FilterTabBar';
 import StatusBadge from '@/components/mojo-patterns/StatusBadge';
@@ -254,6 +380,8 @@ export default function Library() {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [sliderVal, setSliderVal] = useState([50]);
   const [progressVal] = useState(65);
+  const [calendarDate, setCalendarDate] = useState(undefined);
+  const [collapsibleOpen, setCollapsibleOpen] = useState(false);
 
   const toggleDarkMode = () => {
     const next = !darkMode;
@@ -400,6 +528,97 @@ export default function Library() {
         {/* ────────────────── SECTION 2: BASE COMPONENTS ────────────────── */}
 
         <Section title="Base Components" description="shadcn/ui primitives themed with Spark Mojo tokens">
+          {/* Accordion */}
+          <SubSection title="Accordion">
+            <Accordion type="single" collapsible className="max-w-md">
+              <AccordionItem value="item-1">
+                <AccordionTrigger>What is Spark Mojo?</AccordionTrigger>
+                <AccordionContent>
+                  A unified business OS for small and mid-sized businesses with a desktop-style UI paradigm.
+                </AccordionContent>
+              </AccordionItem>
+              <AccordionItem value="item-2">
+                <AccordionTrigger>How does theming work?</AccordionTrigger>
+                <AccordionContent>
+                  All colors use semantic CSS custom properties from tokens.css. Dark mode is activated via data-theme attribute.
+                </AccordionContent>
+              </AccordionItem>
+              <AccordionItem value="item-3">
+                <AccordionTrigger>What is liquid glass?</AccordionTrigger>
+                <AccordionContent>
+                  A frosted glass aesthetic using backdrop-blur and translucent backgrounds, inspired by Ein UI.
+                </AccordionContent>
+              </AccordionItem>
+            </Accordion>
+          </SubSection>
+
+          {/* Alert */}
+          <SubSection title="Alert">
+            <div className="space-y-3 max-w-md">
+              <Alert>
+                <Info className="h-4 w-4" />
+                <AlertTitle>Default Alert</AlertTitle>
+                <AlertDescription>This is an informational alert using the default variant.</AlertDescription>
+              </Alert>
+              <Alert variant="destructive">
+                <AlertTriangle className="h-4 w-4" />
+                <AlertTitle>Destructive Alert</AlertTitle>
+                <AlertDescription>Something went wrong. Please try again.</AlertDescription>
+              </Alert>
+            </div>
+          </SubSection>
+
+          {/* AlertDialog */}
+          <SubSection title="AlertDialog">
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button variant="outline">Delete Item</Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    This action cannot be undone. This will permanently delete the item.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction>Continue</AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          </SubSection>
+
+          {/* AspectRatio */}
+          <SubSection title="AspectRatio">
+            <div className="max-w-[200px]">
+              <AspectRatio ratio={16 / 9}>
+                <div className="flex h-full w-full items-center justify-center rounded-md bg-muted text-xs text-muted-foreground">
+                  16:9
+                </div>
+              </AspectRatio>
+            </div>
+          </SubSection>
+
+          {/* Breadcrumb */}
+          <SubSection title="Breadcrumb">
+            <Breadcrumb>
+              <BreadcrumbList>
+                <BreadcrumbItem>
+                  <BreadcrumbLink href="#">Home</BreadcrumbLink>
+                </BreadcrumbItem>
+                <BreadcrumbSeparator />
+                <BreadcrumbItem>
+                  <BreadcrumbLink href="#">Settings</BreadcrumbLink>
+                </BreadcrumbItem>
+                <BreadcrumbSeparator />
+                <BreadcrumbItem>
+                  <BreadcrumbPage>Profile</BreadcrumbPage>
+                </BreadcrumbItem>
+              </BreadcrumbList>
+            </Breadcrumb>
+          </SubSection>
+
           {/* Buttons */}
           <SubSection title="Button">
             <div className="flex flex-wrap gap-3">
@@ -409,6 +628,16 @@ export default function Library() {
               <Button variant="outline">Outline</Button>
               <Button variant="ghost">Ghost</Button>
             </div>
+          </SubSection>
+
+          {/* Calendar */}
+          <SubSection title="Calendar">
+            <Calendar
+              mode="single"
+              selected={calendarDate}
+              onSelect={setCalendarDate}
+              className="rounded-md border max-w-fit"
+            />
           </SubSection>
 
           {/* Card */}
@@ -425,6 +654,27 @@ export default function Library() {
                 </p>
               </CardContent>
             </Card>
+          </SubSection>
+
+          {/* Carousel */}
+          <SubSection title="Carousel">
+            <div className="max-w-xs mx-auto px-12">
+              <Carousel>
+                <CarouselContent>
+                  {[1, 2, 3].map((n) => (
+                    <CarouselItem key={n}>
+                      <Card className="sm-glass">
+                        <CardContent className="flex items-center justify-center p-6">
+                          <span className="text-2xl font-semibold text-[var(--sm-slate)]">{n}</span>
+                        </CardContent>
+                      </Card>
+                    </CarouselItem>
+                  ))}
+                </CarouselContent>
+                <CarouselPrevious />
+                <CarouselNext />
+              </Carousel>
+            </div>
           </SubSection>
 
           {/* Badge */}
@@ -467,24 +717,6 @@ export default function Library() {
             </div>
           </SubSection>
 
-          {/* Input, Textarea, Select */}
-          <SubSection title="Input / Textarea / Select">
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 max-w-2xl">
-              <Input placeholder="Text input..." />
-              <Textarea placeholder="Textarea..." className="min-h-[38px]" />
-              <Select>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select option" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="a">Option A</SelectItem>
-                  <SelectItem value="b">Option B</SelectItem>
-                  <SelectItem value="c">Option C</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </SubSection>
-
           {/* Checkbox, Switch, Radio */}
           <SubSection title="Checkbox / Switch / Radio">
             <div className="flex flex-wrap gap-8">
@@ -509,6 +741,54 @@ export default function Library() {
             </div>
           </SubSection>
 
+          {/* Collapsible */}
+          <SubSection title="Collapsible">
+            <Collapsible open={collapsibleOpen} onOpenChange={setCollapsibleOpen} className="max-w-sm space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium text-[var(--sm-slate)]">3 items</span>
+                <CollapsibleTrigger asChild>
+                  <Button variant="ghost" size="sm">
+                    <ChevronDown className={`h-4 w-4 transition-transform ${collapsibleOpen ? 'rotate-180' : ''}`} />
+                  </Button>
+                </CollapsibleTrigger>
+              </div>
+              <div className="rounded-md border px-4 py-2 text-sm">Item 1 (always visible)</div>
+              <CollapsibleContent className="space-y-2">
+                <div className="rounded-md border px-4 py-2 text-sm">Item 2</div>
+                <div className="rounded-md border px-4 py-2 text-sm">Item 3</div>
+              </CollapsibleContent>
+            </Collapsible>
+          </SubSection>
+
+          {/* Command */}
+          <SubSection title="Command">
+            <Command className="rounded-lg border max-w-sm">
+              <CommandInput placeholder="Type a command or search..." />
+              <CommandList>
+                <CommandEmpty>No results found.</CommandEmpty>
+                <CommandGroup heading="Suggestions">
+                  <CommandItem><Search className="mr-2 h-4 w-4" /> Search tasks</CommandItem>
+                  <CommandItem><User className="mr-2 h-4 w-4" /> View profile</CommandItem>
+                  <CommandItem><Settings className="mr-2 h-4 w-4" /> Settings</CommandItem>
+                </CommandGroup>
+              </CommandList>
+            </Command>
+          </SubSection>
+
+          {/* ContextMenu */}
+          <SubSection title="ContextMenu">
+            <ContextMenu>
+              <ContextMenuTrigger className="flex h-24 w-64 items-center justify-center rounded-md border border-dashed text-sm text-muted-foreground">
+                Right-click here
+              </ContextMenuTrigger>
+              <ContextMenuContent>
+                <ContextMenuItem>Edit</ContextMenuItem>
+                <ContextMenuItem>Duplicate</ContextMenuItem>
+                <ContextMenuItem>Delete</ContextMenuItem>
+              </ContextMenuContent>
+            </ContextMenu>
+          </SubSection>
+
           {/* Dialog */}
           <SubSection title="Dialog">
             <Dialog>
@@ -529,8 +809,234 @@ export default function Library() {
             </Dialog>
           </SubSection>
 
-          {/* Sheet / Drawer */}
-          <SubSection title="Sheet / Drawer">
+          {/* Drawer */}
+          <SubSection title="Drawer">
+            <Drawer>
+              <DrawerTrigger asChild>
+                <Button variant="outline">Open Drawer</Button>
+              </DrawerTrigger>
+              <DrawerContent>
+                <DrawerHeader>
+                  <DrawerTitle>Drawer Title</DrawerTitle>
+                  <DrawerDescription>A bottom drawer using the vaul library.</DrawerDescription>
+                </DrawerHeader>
+                <div className="p-4">
+                  <p className="text-sm text-[var(--sm-slate)]">Drawer content goes here.</p>
+                </div>
+                <DrawerFooter>
+                  <Button>Submit</Button>
+                  <DrawerClose asChild>
+                    <Button variant="outline">Cancel</Button>
+                  </DrawerClose>
+                </DrawerFooter>
+              </DrawerContent>
+            </Drawer>
+          </SubSection>
+
+          {/* DropdownMenu */}
+          <SubSection title="DropdownMenu">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline">Open Menu</Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent>
+                <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem>Edit</DropdownMenuItem>
+                <DropdownMenuItem>Duplicate</DropdownMenuItem>
+                <DropdownMenuItem>Archive</DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem className="text-destructive">Delete</DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </SubSection>
+
+          {/* HoverCard */}
+          <SubSection title="HoverCard">
+            <HoverCard>
+              <HoverCardTrigger asChild>
+                <Button variant="link">Hover for details</Button>
+              </HoverCardTrigger>
+              <HoverCardContent>
+                <div className="space-y-1">
+                  <h4 className="text-sm font-semibold text-[var(--sm-slate)]">Spark Mojo</h4>
+                  <p className="text-xs text-muted-foreground">A unified business OS with liquid glass aesthetics.</p>
+                </div>
+              </HoverCardContent>
+            </HoverCard>
+          </SubSection>
+
+          {/* Input, Textarea, Select */}
+          <SubSection title="Input / Textarea / Select">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 max-w-2xl">
+              <Input placeholder="Text input..." />
+              <Textarea placeholder="Textarea..." className="min-h-[38px]" />
+              <Select>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select option" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="a">Option A</SelectItem>
+                  <SelectItem value="b">Option B</SelectItem>
+                  <SelectItem value="c">Option C</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </SubSection>
+
+          {/* InputOTP */}
+          <SubSection title="InputOTP">
+            <InputOTP maxLength={6}>
+              <InputOTPGroup>
+                <InputOTPSlot index={0} />
+                <InputOTPSlot index={1} />
+                <InputOTPSlot index={2} />
+              </InputOTPGroup>
+              <InputOTPSeparator />
+              <InputOTPGroup>
+                <InputOTPSlot index={3} />
+                <InputOTPSlot index={4} />
+                <InputOTPSlot index={5} />
+              </InputOTPGroup>
+            </InputOTP>
+          </SubSection>
+
+          {/* Menubar */}
+          <SubSection title="Menubar">
+            <Menubar>
+              <MenubarMenu>
+                <MenubarTrigger>File</MenubarTrigger>
+                <MenubarContent>
+                  <MenubarItem>New</MenubarItem>
+                  <MenubarItem>Open</MenubarItem>
+                  <MenubarSeparator />
+                  <MenubarItem>Save</MenubarItem>
+                </MenubarContent>
+              </MenubarMenu>
+              <MenubarMenu>
+                <MenubarTrigger>Edit</MenubarTrigger>
+                <MenubarContent>
+                  <MenubarItem>Undo</MenubarItem>
+                  <MenubarItem>Redo</MenubarItem>
+                </MenubarContent>
+              </MenubarMenu>
+              <MenubarMenu>
+                <MenubarTrigger>View</MenubarTrigger>
+                <MenubarContent>
+                  <MenubarItem>Zoom In</MenubarItem>
+                  <MenubarItem>Zoom Out</MenubarItem>
+                </MenubarContent>
+              </MenubarMenu>
+            </Menubar>
+          </SubSection>
+
+          {/* NavigationMenu */}
+          <SubSection title="NavigationMenu">
+            <NavigationMenu>
+              <NavigationMenuList>
+                <NavigationMenuItem>
+                  <NavigationMenuLink className="group inline-flex h-9 w-max items-center justify-center rounded-md bg-background px-4 py-2 text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground">
+                    <Home className="mr-2 h-4 w-4" /> Home
+                  </NavigationMenuLink>
+                </NavigationMenuItem>
+                <NavigationMenuItem>
+                  <NavigationMenuLink className="group inline-flex h-9 w-max items-center justify-center rounded-md bg-background px-4 py-2 text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground">
+                    <Settings className="mr-2 h-4 w-4" /> Settings
+                  </NavigationMenuLink>
+                </NavigationMenuItem>
+              </NavigationMenuList>
+            </NavigationMenu>
+          </SubSection>
+
+          {/* Pagination */}
+          <SubSection title="Pagination">
+            <Pagination>
+              <PaginationContent>
+                <PaginationItem>
+                  <PaginationPrevious href="#" />
+                </PaginationItem>
+                <PaginationItem>
+                  <PaginationLink href="#" isActive>1</PaginationLink>
+                </PaginationItem>
+                <PaginationItem>
+                  <PaginationLink href="#">2</PaginationLink>
+                </PaginationItem>
+                <PaginationItem>
+                  <PaginationLink href="#">3</PaginationLink>
+                </PaginationItem>
+                <PaginationItem>
+                  <PaginationEllipsis />
+                </PaginationItem>
+                <PaginationItem>
+                  <PaginationNext href="#" />
+                </PaginationItem>
+              </PaginationContent>
+            </Pagination>
+          </SubSection>
+
+          {/* Popover */}
+          <SubSection title="Popover">
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="outline">Open Popover</Button>
+              </PopoverTrigger>
+              <PopoverContent>
+                <div className="space-y-2">
+                  <h4 className="font-medium text-sm text-[var(--sm-slate)]">Popover Content</h4>
+                  <p className="text-xs text-muted-foreground">
+                    Glass-styled popover with frosted surface treatment.
+                  </p>
+                </div>
+              </PopoverContent>
+            </Popover>
+          </SubSection>
+
+          {/* Progress & Slider */}
+          <SubSection title="Progress / Slider">
+            <div className="space-y-4 max-w-sm">
+              <div>
+                <p className="text-xs text-gray-400 mb-2">Progress ({progressVal}%)</p>
+                <Progress value={progressVal} />
+              </div>
+              <div>
+                <p className="text-xs text-gray-400 mb-2">Slider ({sliderVal[0]})</p>
+                <Slider value={sliderVal} onValueChange={setSliderVal} max={100} step={1} />
+              </div>
+            </div>
+          </SubSection>
+
+          {/* Resizable */}
+          <SubSection title="Resizable">
+            <div className="max-w-md">
+              <ResizablePanelGroup direction="horizontal" className="rounded-lg border min-h-[100px]">
+                <ResizablePanel defaultSize={50}>
+                  <div className="flex h-full items-center justify-center p-4">
+                    <span className="text-sm text-muted-foreground">Panel A</span>
+                  </div>
+                </ResizablePanel>
+                <ResizableHandle withHandle />
+                <ResizablePanel defaultSize={50}>
+                  <div className="flex h-full items-center justify-center p-4">
+                    <span className="text-sm text-muted-foreground">Panel B</span>
+                  </div>
+                </ResizablePanel>
+              </ResizablePanelGroup>
+            </div>
+          </SubSection>
+
+          {/* ScrollArea */}
+          <SubSection title="ScrollArea">
+            <ScrollArea className="h-32 w-48 rounded-md border">
+              <div className="p-4">
+                {Array.from({ length: 15 }, (_, i) => (
+                  <div key={i} className="text-sm py-1 text-[var(--sm-slate)]">Item {i + 1}</div>
+                ))}
+              </div>
+            </ScrollArea>
+          </SubSection>
+
+          {/* Sheet / Side panel */}
+          <SubSection title="Sheet">
             <Sheet>
               <SheetTrigger asChild>
                 <Button variant="outline">Open Sheet</Button>
@@ -544,6 +1050,15 @@ export default function Library() {
                 </p>
               </SheetContent>
             </Sheet>
+          </SubSection>
+
+          {/* Skeleton */}
+          <SubSection title="Skeleton">
+            <div className="space-y-2 max-w-sm">
+              <Skeleton className="h-4 w-3/4" />
+              <Skeleton className="h-4 w-1/2" />
+              <Skeleton className="h-10 w-full" />
+            </div>
           </SubSection>
 
           {/* Tabs */}
@@ -593,6 +1108,22 @@ export default function Library() {
             </div>
           </SubSection>
 
+          {/* Toggle / ToggleGroup */}
+          <SubSection title="Toggle / ToggleGroup">
+            <div className="space-y-4">
+              <div className="flex gap-2">
+                <Toggle aria-label="Toggle bold"><Bold className="h-4 w-4" /></Toggle>
+                <Toggle aria-label="Toggle italic"><Italic className="h-4 w-4" /></Toggle>
+                <Toggle aria-label="Toggle underline"><Underline className="h-4 w-4" /></Toggle>
+              </div>
+              <ToggleGroup type="single" defaultValue="left">
+                <ToggleGroupItem value="left" aria-label="Left">Left</ToggleGroupItem>
+                <ToggleGroupItem value="center" aria-label="Center">Center</ToggleGroupItem>
+                <ToggleGroupItem value="right" aria-label="Right">Right</ToggleGroupItem>
+              </ToggleGroup>
+            </div>
+          </SubSection>
+
           {/* Tooltip */}
           <SubSection title="Tooltip">
             <Tooltip>
@@ -605,26 +1136,26 @@ export default function Library() {
             </Tooltip>
           </SubSection>
 
-          {/* Skeleton */}
-          <SubSection title="Skeleton">
-            <div className="space-y-2 max-w-sm">
-              <Skeleton className="h-4 w-3/4" />
-              <Skeleton className="h-4 w-1/2" />
-              <Skeleton className="h-10 w-full" />
-            </div>
-          </SubSection>
-
-          {/* Progress & Slider */}
-          <SubSection title="Progress / Slider">
-            <div className="space-y-4 max-w-sm">
-              <div>
-                <p className="text-xs text-gray-400 mb-2">Progress ({progressVal}%)</p>
-                <Progress value={progressVal} />
-              </div>
-              <div>
-                <p className="text-xs text-gray-400 mb-2">Slider ({sliderVal[0]})</p>
-                <Slider value={sliderVal} onValueChange={setSliderVal} max={100} step={1} />
-              </div>
+          {/* Utility Components — reference-only section */}
+          <SubSection title="Utility Components">
+            <p className="text-xs text-gray-400 mb-3">
+              Internal / infrastructure components that don&apos;t have standalone visual demos.
+            </p>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              {[
+                { name: 'Chart', desc: 'Recharts wrapper for data viz' },
+                { name: 'Form', desc: 'react-hook-form integration' },
+                { name: 'Sidebar', desc: 'Layout sidebar with collapse' },
+                { name: 'Sonner', desc: 'Toast notifications (sonner)' },
+                { name: 'Toast', desc: 'Toast primitive' },
+                { name: 'Toaster', desc: 'Toast container/renderer' },
+                { name: 'useToast', desc: 'Toast hook (imperative API)' },
+              ].map((c) => (
+                <div key={c.name} className="rounded-md border p-3">
+                  <p className="text-xs font-medium text-[var(--sm-slate)]">{c.name}</p>
+                  <p className="text-[11px] text-muted-foreground">{c.desc}</p>
+                </div>
+              ))}
             </div>
           </SubSection>
         </Section>
@@ -647,6 +1178,16 @@ export default function Library() {
                 </div>
               }
             />
+          </SubSection>
+
+          {/* StatsCard */}
+          <SubSection title="StatsCard" usedBy="StatsCardRow, OnboardingMojo, WorkboardMojo">
+            <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 max-w-3xl">
+              <StatsCard title="Active" value={12} icon={BarChart3} color="emerald" />
+              <StatsCard title="Team" value={5} icon={Users} color="blue" />
+              <StatsCard title="Done" value={47} icon={CheckCircle} color="purple" />
+              <StatsCard title="Pending" value={3} subtitle="urgent" icon={AlertTriangle} color="amber" />
+            </div>
           </SubSection>
 
           {/* StatsCardRow */}
