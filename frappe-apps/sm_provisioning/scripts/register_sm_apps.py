@@ -8,13 +8,20 @@ Also suppresses the ERPNext setup wizard automatically. The wizard has no skip
 option and intercepts all URLs including /app. This must be suppressed on every
 provisioned site. It is never a human step.
 
+NOTE on sm_connectors: sm_connectors is currently an empty placeholder app.
+It is NOT in DEFAULT_SM_APPS and must NOT be registered until the app is
+properly scaffolded as a real Frappe app. Registering a non-existent app causes
+bench list-apps discrepancies. See BACKLOG: scaffold sm_connectors.
+
 Usage:
   python3 register_sm_apps.py --site willow.sparkmojo.com
-  python3 register_sm_apps.py --site willow.sparkmojo.com --apps sm_widgets,sm_connectors
+  python3 register_sm_apps.py --site willow.sparkmojo.com --apps sm_widgets,sm_provisioning
 """
 import argparse
 
-DEFAULT_SM_APPS = ['sm_widgets', 'sm_connectors', 'sm_provisioning']
+# sm_connectors intentionally excluded — it is an empty placeholder, not a real Frappe app yet
+# Do not add sm_connectors here until it is scaffolded with pyproject.toml and module directory
+DEFAULT_SM_APPS = ['sm_widgets', 'sm_provisioning']
 
 
 def suppress_setup_wizard(frappe, site_name):
@@ -33,7 +40,6 @@ def suppress_setup_wizard(frappe, site_name):
     """
     try:
         if frappe.is_setup_complete():
-            # Still check for stale home_page even if setup is complete
             home_page = frappe.db.sql(
                 "SELECT defvalue FROM tabDefaultValue "
                 "WHERE defkey='desktop:home_page' AND parent='__default'",
@@ -84,7 +90,6 @@ def suppress_setup_wizard(frappe, site_name):
         print(f'Setup wizard suppressed on {site_name}')
     except Exception as e:
         print(f'Warning: Could not suppress setup wizard on {site_name}: {e}')
-        # Non-fatal — site may still work, log and continue
 
 
 def register_sm_apps(site_name, apps=None):
@@ -105,8 +110,6 @@ def register_sm_apps(site_name, apps=None):
             app_name,
         )
         if not exists:
-            # Installed Application is a child table — insert directly via SQL
-            # to avoid parent/parenttype validation issues across Frappe versions
             frappe.db.sql(
                 """INSERT INTO `tabInstalled Application`
                    (name, app_name, creation, modified, modified_by, owner, docstatus, idx)
@@ -138,8 +141,8 @@ if __name__ == '__main__':
     )
     parser.add_argument('--site', required=True, help='Frappe site name')
     parser.add_argument('--apps', default=None,
-                        help='Comma-separated app names (default: sm_widgets,sm_connectors,sm_provisioning)')
+                        help='Comma-separated app names (default: sm_widgets,sm_provisioning)')
     args = parser.parse_args()
 
-    apps = args.apps.split(',') if args.apps else None
+    apps = args.apps.split(',') if args.args else None
     register_sm_apps(args.site, apps)
