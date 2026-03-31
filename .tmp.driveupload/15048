@@ -1,0 +1,218 @@
+0000000000000000000000000000000000000000 f460449c24b2559a4c33e5244bf6d295d1419599 JamesSparkMojo <james@sparkmojo.com> 1774294103 -0400	clone: from https://github.com/Spark-Mojo/spark-mojo-platform.git
+f460449c24b2559a4c33e5244bf6d295d1419599 985c8a04e3fd85401854c2c2f17f50dedcb876b4 JamesSparkMojo <james@sparkmojo.com> 1774294983 -0400	checkout: moving from main to claude/willow-feature-comparison-T99Dj
+985c8a04e3fd85401854c2c2f17f50dedcb876b4 454d88957325b8c4bc69d368247f35a45ad474a0 JamesSparkMojo <james@sparkmojo.com> 1774294995 -0400	commit: chore: temp files for Willow feature comparison analysis
+454d88957325b8c4bc69d368247f35a45ad474a0 f460449c24b2559a4c33e5244bf6d295d1419599 JamesSparkMojo <james@sparkmojo.com> 1774296400 -0400	checkout: moving from claude/willow-feature-comparison-T99Dj to main
+f460449c24b2559a4c33e5244bf6d295d1419599 23a8ce48c7d610dc5bf5ca0eba309df7c09759a5 JamesSparkMojo <james@sparkmojo.com> 1774296414 -0400	commit: docs: Willow → Spark Mojo feature comparison analysis
+23a8ce48c7d610dc5bf5ca0eba309df7c09759a5 20877820d0cffa836fe7dea19cab94293cd2a2ce JamesSparkMojo <james@sparkmojo.com> 1774483866 -0400	pull origin: Fast-forward
+20877820d0cffa836fe7dea19cab94293cd2a2ce 339454334d609e86ab57a2bd1cb9c160a9364be1 JamesSparkMojo <james@sparkmojo.com> 1774502343 -0400	pull: Fast-forward
+339454334d609e86ab57a2bd1cb9c160a9364be1 172ec7ee822ea09118136f5b3620b60ad367b32e JamesSparkMojo <james@sparkmojo.com> 1774503263 -0400	pull: Fast-forward
+172ec7ee822ea09118136f5b3620b60ad367b32e 628dac07d1bdc3be53ea54604b9f87f6629c48ec JamesSparkMojo <james@sparkmojo.com> 1774503561 -0400	pull: Fast-forward
+628dac07d1bdc3be53ea54604b9f87f6629c48ec cd5e01eadae582c8a3b694ddd4786057d77dd4e9 JamesSparkMojo <james@sparkmojo.com> 1774504321 -0400	commit: chore: auto-commit before merge (loop primary)
+cd5e01eadae582c8a3b694ddd4786057d77dd4e9 4bf692850835c73924fbb5da22ee5b8cb9e5b642 JamesSparkMojo <james@sparkmojo.com> 1774506117 -0400	commit: chore: auto-commit before merge (loop primary)
+4bf692850835c73924fbb5da22ee5b8cb9e5b642 4bf692850835c73924fbb5da22ee5b8cb9e5b642 JamesSparkMojo <james@sparkmojo.com> 1774506953 -0400	reset: moving to HEAD
+4bf692850835c73924fbb5da22ee5b8cb9e5b642 68637e653b837d3f191ab48288e81a417b6ff7b2 JamesSparkMojo <james@sparkmojo.com> 1774506959 -0400	pull (start): checkout 68637e653b837d3f191ab48288e81a417b6ff7b2
+68637e653b837d3f191ab48288e81a417b6ff7b2 4bf692850835c73924fbb5da22ee5b8cb9e5b642 JamesSparkMojo <james@sparkmojo.com> 1774506990 -0400	rebase (abort): returning to refs/heads/main
+4bf692850835c73924fbb5da22ee5b8cb9e5b642 68637e653b837d3f191ab48288e81a417b6ff7b2 JamesSparkMojo <james@sparkmojo.com> 1774507008 -0400	reset: moving to origin/main
+68637e653b837d3f191ab48288e81a417b6ff7b2 761456081ce0eef80cf7f0cc93c09c4ac19a94d3 JamesSparkMojo <james@sparkmojo.com> 1774507157 -0400	pull: Fast-forward
+761456081ce0eef80cf7f0cc93c09c4ac19a94d3 9aa873dde7f9c45c5b78906d3fc338955c04cf16 JamesSparkMojo <james@sparkmojo.com> 1774507571 -0400	commit: chore: auto-commit before merge (loop primary)
+9aa873dde7f9c45c5b78906d3fc338955c04cf16 9aa873dde7f9c45c5b78906d3fc338955c04cf16 JamesSparkMojo <james@sparkmojo.com> 1774507968 -0400	checkout: moving from main to story/STORY-003-sm-task-doctype-core
+9aa873dde7f9c45c5b78906d3fc338955c04cf16 5cda5ad3d1d0565db648ac0d55409cc27e6616a5 JamesSparkMojo <james@sparkmojo.com> 1774508014 -0400	commit: feat(sm-widgets): SM Task DocType core fields and state lifecycle hooks
+5cda5ad3d1d0565db648ac0d55409cc27e6616a5 e4ca3e07b4f6f9f51c19c4afbae6c2b4d5e60936 JamesSparkMojo <james@sparkmojo.com> 1774508141 -0400	commit: chore: auto-commit STORY-003 orchestration state and completion marker
+e4ca3e07b4f6f9f51c19c4afbae6c2b4d5e60936 e4ca3e07b4f6f9f51c19c4afbae6c2b4d5e60936 JamesSparkMojo <james@sparkmojo.com> 1774508261 -0400	checkout: moving from story/STORY-003-sm-task-doctype-core to story/STORY-004-sm-task-child-tables
+e4ca3e07b4f6f9f51c19c4afbae6c2b4d5e60936 038b1c7e4f27c231e3a18af7a3ffd7d004dac78a JamesSparkMojo <james@sparkmojo.com> 1774508351 -0400	commit: feat(sm-widgets): SM Task child tables — watchers, tags, state history, assignment history, comments
+038b1c7e4f27c231e3a18af7a3ffd7d004dac78a 9e00782a091cc323aec0857d92a5cff930f8c3b5 JamesSparkMojo <james@sparkmojo.com> 1774508481 -0400	commit: chore: auto-commit STORY-004 orchestration state and completion marker
+9e00782a091cc323aec0857d92a5cff930f8c3b5 9e00782a091cc323aec0857d92a5cff930f8c3b5 JamesSparkMojo <james@sparkmojo.com> 1774508589 -0400	checkout: moving from story/STORY-004-sm-task-child-tables to story/STORY-005-sm-task-extended-fields
+9e00782a091cc323aec0857d92a5cff930f8c3b5 aa946b306a9249d2b1906158541f13b35e186cb2 JamesSparkMojo <james@sparkmojo.com> 1774508621 -0400	commit: feat(sm-widgets): SM Task extended fields — SLA, source system, recurrence, execution logic
+aa946b306a9249d2b1906158541f13b35e186cb2 3f3eeb3ec63d32476f6c5c3fc1c0fe198ba89180 JamesSparkMojo <james@sparkmojo.com> 1774508738 -0400	commit: chore: auto-commit STORY-005 orchestration state and completion marker
+3f3eeb3ec63d32476f6c5c3fc1c0fe198ba89180 3f3eeb3ec63d32476f6c5c3fc1c0fe198ba89180 JamesSparkMojo <james@sparkmojo.com> 1774508865 -0400	checkout: moving from story/STORY-005-sm-task-extended-fields to story/STORY-006-tasks-api-list-get
+3f3eeb3ec63d32476f6c5c3fc1c0fe198ba89180 b598a1f5325274dfac5d2fc865b37c0690dc1ab1 JamesSparkMojo <james@sparkmojo.com> 1774508980 -0400	commit: feat(abstraction-layer): tasks/list and tasks/get endpoints
+b598a1f5325274dfac5d2fc865b37c0690dc1ab1 2a158a5591e1a98ec03befd681dee4beceb6604a JamesSparkMojo <james@sparkmojo.com> 1774509121 -0400	commit: chore: auto-commit STORY-006 orchestration state and completion marker
+2a158a5591e1a98ec03befd681dee4beceb6604a 2a158a5591e1a98ec03befd681dee4beceb6604a JamesSparkMojo <james@sparkmojo.com> 1774509248 -0400	checkout: moving from story/STORY-006-tasks-api-list-get to story/STORY-007-tasks-api-write
+2a158a5591e1a98ec03befd681dee4beceb6604a f3a7edcc9bd99159c6f23251680fc27d409927e7 JamesSparkMojo <james@sparkmojo.com> 1774509342 -0400	commit: feat(abstraction-layer): tasks write endpoints — create, claim, assign, update_state, add_comment, complete
+f3a7edcc9bd99159c6f23251680fc27d409927e7 fe3d7d4875296895e4073d213434a8e70783e9a6 JamesSparkMojo <james@sparkmojo.com> 1774509470 -0400	commit: chore: auto-commit STORY-007 orchestration state and completion marker
+fe3d7d4875296895e4073d213434a8e70783e9a6 53bff5e88ab5d69fd3cb201717aca29101a11d13 JamesSparkMojo <james@sparkmojo.com> 1774509485 -0400	commit: chore: update scratchpad with STORY-007 committer entry
+53bff5e88ab5d69fd3cb201717aca29101a11d13 53bff5e88ab5d69fd3cb201717aca29101a11d13 JamesSparkMojo <james@sparkmojo.com> 1774509755 -0400	checkout: moving from story/STORY-007-tasks-api-write to story/STORY-008a-workboard-list-view
+53bff5e88ab5d69fd3cb201717aca29101a11d13 28ec75208690e2be7086c39af4b77f5edb0b09d4 JamesSparkMojo <james@sparkmojo.com> 1774509979 -0400	commit: feat(frontend): WorkboardMojo task list view — personal and role queue
+28ec75208690e2be7086c39af4b77f5edb0b09d4 6cc2fc87c672fbd630c4d6eb43047621300c61c0 JamesSparkMojo <james@sparkmojo.com> 1774510113 -0400	commit: chore: auto-commit STORY-008a orchestration state and completion marker
+6cc2fc87c672fbd630c4d6eb43047621300c61c0 6cc2fc87c672fbd630c4d6eb43047621300c61c0 JamesSparkMojo <james@sparkmojo.com> 1774510246 -0400	checkout: moving from story/STORY-008a-workboard-list-view to story/STORY-008b-workboard-claim-sort
+6cc2fc87c672fbd630c4d6eb43047621300c61c0 370e5159eba08abbb98f7ae3522a74ac88d16ae4 JamesSparkMojo <james@sparkmojo.com> 1774510361 -0400	commit: feat(frontend): WorkboardMojo claim action and sort controls
+370e5159eba08abbb98f7ae3522a74ac88d16ae4 298ba03b5140d241be3125d30e99d9a7684d5368 JamesSparkMojo <james@sparkmojo.com> 1774510488 -0400	commit: chore: auto-commit STORY-008b orchestration state and completion marker
+298ba03b5140d241be3125d30e99d9a7684d5368 298ba03b5140d241be3125d30e99d9a7684d5368 JamesSparkMojo <james@sparkmojo.com> 1774510683 -0400	checkout: moving from story/STORY-008b-workboard-claim-sort to story/STORY-009-task-detail-drawer
+298ba03b5140d241be3125d30e99d9a7684d5368 dc1949c9d03765cc807c07d2498fe7f679299092 JamesSparkMojo <james@sparkmojo.com> 1774510885 -0400	commit: feat(frontend): WorkboardMojo task detail drawer
+dc1949c9d03765cc807c07d2498fe7f679299092 0539767a13e829650445789ecaf3f566756fa8d4 JamesSparkMojo <james@sparkmojo.com> 1774510987 -0400	commit: chore: auto-commit STORY-009 orchestration state and completion marker
+0539767a13e829650445789ecaf3f566756fa8d4 0539767a13e829650445789ecaf3f566756fa8d4 JamesSparkMojo <james@sparkmojo.com> 1774511126 -0400	checkout: moving from story/STORY-009-task-detail-drawer to story/STORY-010-workboard-kanban
+0539767a13e829650445789ecaf3f566756fa8d4 47cc49cfc4d5bef966ac7d43c629a894d23598e3 JamesSparkMojo <james@sparkmojo.com> 1774511229 -0400	commit: feat(frontend): WorkboardMojo kanban view toggle
+47cc49cfc4d5bef966ac7d43c629a894d23598e3 a9e17b31b25497c8aea49741bf0f81d1fa92d0e5 JamesSparkMojo <james@sparkmojo.com> 1774511350 -0400	commit: chore: auto-commit STORY-010 orchestration state and completion marker
+a9e17b31b25497c8aea49741bf0f81d1fa92d0e5 447718adc57894570629d9892d89e9a017f90c07 JamesSparkMojo <james@sparkmojo.com> 1774511499 -0400	commit: chore: auto-commit before merge (loop primary)
+447718adc57894570629d9892d89e9a017f90c07 e4ca3e07b4f6f9f51c19c4afbae6c2b4d5e60936 sleepy-youthful-davinci <sleepy-youthful-davinci@claude.(none)> 1774558085 -0400	checkout: moving from story/STORY-010-workboard-kanban to pr-4
+e4ca3e07b4f6f9f51c19c4afbae6c2b4d5e60936 e4ca3e07b4f6f9f51c19c4afbae6c2b4d5e60936 JamesSparkMojo <james@sparkmojo.com> 1774563636 -0400	reset: moving to HEAD
+e4ca3e07b4f6f9f51c19c4afbae6c2b4d5e60936 9aa873dde7f9c45c5b78906d3fc338955c04cf16 JamesSparkMojo <james@sparkmojo.com> 1774563636 -0400	checkout: moving from pr-4 to main
+9aa873dde7f9c45c5b78906d3fc338955c04cf16 acd204104769c78824c6a9f8f3d7512d116e0246 JamesSparkMojo <james@sparkmojo.com> 1774563636 -0400	pull (start): checkout acd204104769c78824c6a9f8f3d7512d116e0246
+acd204104769c78824c6a9f8f3d7512d116e0246 b491f9145154e37922a358bc2c5673445f7dc9bc JamesSparkMojo <james@sparkmojo.com> 1774563636 -0400	pull (pick): chore: auto-commit before merge (loop primary)
+b491f9145154e37922a358bc2c5673445f7dc9bc b491f9145154e37922a358bc2c5673445f7dc9bc JamesSparkMojo <james@sparkmojo.com> 1774563636 -0400	pull (finish): returning to refs/heads/main
+b491f9145154e37922a358bc2c5673445f7dc9bc b491f9145154e37922a358bc2c5673445f7dc9bc JamesSparkMojo <james@sparkmojo.com> 1774563640 -0400	checkout: moving from main to fix/codex-review-batch-1
+b491f9145154e37922a358bc2c5673445f7dc9bc b491f9145154e37922a358bc2c5673445f7dc9bc JamesSparkMojo <james@sparkmojo.com> 1774563703 -0400	checkout: moving from fix/codex-review-batch-1 to main
+b491f9145154e37922a358bc2c5673445f7dc9bc 1178071f9073e3de04b2d0c5d923c39852bf7958 JamesSparkMojo <james@sparkmojo.com> 1774563710 -0400	commit (merge): Merge branch 'story/STORY-010-workboard-kanban'
+1178071f9073e3de04b2d0c5d923c39852bf7958 1178071f9073e3de04b2d0c5d923c39852bf7958 JamesSparkMojo <james@sparkmojo.com> 1774563713 -0400	checkout: moving from main to fix/codex-review-batch-1
+1178071f9073e3de04b2d0c5d923c39852bf7958 7e8edad57c17008b92c4c7dcfdf561e48a883106 JamesSparkMojo <james@sparkmojo.com> 1774563993 -0400	commit: fix: address codex review batch 1 — 12 post-merge issues
+7e8edad57c17008b92c4c7dcfdf561e48a883106 d822027e93892e2dcb00b89d603285fd8a6342c5 JamesSparkMojo <james@sparkmojo.com> 1774568000 -0400	commit: fix: add Traefik route for /health on poc.sparkmojo.com
+d822027e93892e2dcb00b89d603285fd8a6342c5 1178071f9073e3de04b2d0c5d923c39852bf7958 JamesSparkMojo <james@sparkmojo.com> 1774568007 -0400	checkout: moving from fix/codex-review-batch-1 to main
+1178071f9073e3de04b2d0c5d923c39852bf7958 d822027e93892e2dcb00b89d603285fd8a6342c5 JamesSparkMojo <james@sparkmojo.com> 1774568008 -0400	merge fix/codex-review-batch-1: Fast-forward
+d822027e93892e2dcb00b89d603285fd8a6342c5 405944831e99de11b3d1a9f9409c404c527fa7fb JamesSparkMojo <james@sparkmojo.com> 1774568012 -0400	pull origin main --rebase (start): checkout 405944831e99de11b3d1a9f9409c404c527fa7fb
+405944831e99de11b3d1a9f9409c404c527fa7fb d822027e93892e2dcb00b89d603285fd8a6342c5 JamesSparkMojo <james@sparkmojo.com> 1774568018 -0400	rebase (abort): returning to refs/heads/main
+d822027e93892e2dcb00b89d603285fd8a6342c5 405944831e99de11b3d1a9f9409c404c527fa7fb JamesSparkMojo <james@sparkmojo.com> 1774568025 -0400	reset: moving to origin/main
+405944831e99de11b3d1a9f9409c404c527fa7fb 5e22e49daf7c7b806d4cf74eca78db08e072035a JamesSparkMojo <james@sparkmojo.com> 1774568032 -0400	cherry-pick: fix: add Traefik route for /health on poc.sparkmojo.com
+5e22e49daf7c7b806d4cf74eca78db08e072035a 602d0a090d5ee38e62ed67a20d71c6f6630909a9 JamesSparkMojo <james@sparkmojo.com> 1774568353 -0400	commit: feat(sm-widgets): add hooks.py and pyproject.toml for Frappe app install
+602d0a090d5ee38e62ed67a20d71c6f6630909a9 c46082cecc8b6a248bcb96abc2430406e667cd07 JamesSparkMojo <james@sparkmojo.com> 1774568413 -0400	commit: fix(sm-widgets): add __version__ to __init__.py for flit/pip install
+c46082cecc8b6a248bcb96abc2430406e667cd07 7ad311e453fd2facf2e646841d568fa2aff5c430 JamesSparkMojo <james@sparkmojo.com> 1774568980 -0400	commit: fix(sm-widgets): move doctype/ into module subdirectory for Frappe discovery
+7ad311e453fd2facf2e646841d568fa2aff5c430 8498a0f3f0b26697707385a3cdb53d7e2a9eb334 JamesSparkMojo <james@sparkmojo.com> 1774569160 -0400	commit: docs: add Frappe DocType/module directory structure pattern to CLAUDE.md
+8498a0f3f0b26697707385a3cdb53d7e2a9eb334 a2bb189ff6a71b5604d9194388e21d63f4875c22 JamesSparkMojo <james@sparkmojo.com> 1774577378 -0400	commit: docs: document apps.txt vs tabInstalled Application distinction
+a2bb189ff6a71b5604d9194388e21d63f4875c22 5c90b0b2847fc31caa5fffa3503e7f24b39bfc3e JamesSparkMojo <james@sparkmojo.com> 1774577657 -0400	commit: fix: add Traefik route for /api/modules/ on poc.sparkmojo.com
+5c90b0b2847fc31caa5fffa3503e7f24b39bfc3e 68673d52ed58163bc581902a2e9cf0fd9a3cdc3c JamesSparkMojo <james@sparkmojo.com> 1774579840 -0400	commit: feat: add deploy.sh — automated POC deployment script
+68673d52ed58163bc581902a2e9cf0fd9a3cdc3c 1ebea7c84443a0317f456603c027042c315996ec JamesSparkMojo <james@sparkmojo.com> 1774579894 -0400	commit: fix(deploy): accept PermissionError as PASS for SM Task API check
+1ebea7c84443a0317f456603c027042c315996ec ab39689251e1745875ed53bb5704d5873bfe2565 JamesSparkMojo <james@sparkmojo.com> 1774580269 -0400	commit: docs: add Rules 13–17 to CLAUDE.md from session 5 deployment learnings
+ab39689251e1745875ed53bb5704d5873bfe2565 b6e91ab2bdf553ea7ec5792afbd55d07e66ae12f JamesSparkMojo <james@sparkmojo.com> 1774580276 -0400	commit: feat: make deploy.sh generic across all frappe-apps + add volume mount
+b6e91ab2bdf553ea7ec5792afbd55d07e66ae12f ead247b429f6e1b55ef6003a4469b8c9afff3822 JamesSparkMojo <james@sparkmojo.com> 1774582016 -0400	commit: fix(deploy): skip non-installable apps in Phase 2, handle bench errors
+ead247b429f6e1b55ef6003a4469b8c9afff3822 8599b1be2626e3556ebc20a81dfc7127a953ca4b JamesSparkMojo <james@sparkmojo.com> 1774582255 -0400	commit: fix(deploy): remove non-installable apps from apps.txt in Phase 2
+8599b1be2626e3556ebc20a81dfc7127a953ca4b 3944b9d36f70b4b5374094b2b5d6640a5d9bca6a JamesSparkMojo <james@sparkmojo.com> 1774582428 -0400	commit: fix(deploy): use sh -c for glob expansion in Alpine container
+3944b9d36f70b4b5374094b2b5d6640a5d9bca6a 7ff2502ef44872912f965fd2899e3654793e9d24 JamesSparkMojo <james@sparkmojo.com> 1774583864 -0400	commit: fix(deploy): abort Phase 6 if frontend/ has uncommitted changes
+7ff2502ef44872912f965fd2899e3654793e9d24 1d13d79a0a48c065d0b1533f337da7afcfbc183e JamesSparkMojo <james@sparkmojo.com> 1774584435 -0400	commit: chore: fix branding — title, logo, remove Nometria references
+1d13d79a0a48c065d0b1533f337da7afcfbc183e d3b94a549abbaa7173a3604410ad7a8f7cbfd362 JamesSparkMojo <james@sparkmojo.com> 1774584782 -0400	commit: docs: add deployment instructions to CLAUDE.md
+d3b94a549abbaa7173a3604410ad7a8f7cbfd362 d3ece12f1d74ed49af96983d70acb0cc04d80021 JamesSparkMojo <james@sparkmojo.com> 1774585140 -0400	commit: docs: add hybrid git workflow — PRs for features, direct for fixes
+d3ece12f1d74ed49af96983d70acb0cc04d80021 7ac2fcbea3d6c24194eda4a8f4b61f2d31b822f0 JamesSparkMojo <james@sparkmojo.com> 1774585531 -0400	commit: feat: replace Desktop widget view with traditional sidebar layout
+7ac2fcbea3d6c24194eda4a8f4b61f2d31b822f0 0b3b69e2173dfb6c1dbf9ffe09615d35cc66884e JamesSparkMojo <james@sparkmojo.com> 1774586906 -0400	commit: docs: add Session 5 post-mortem, VPS rules, and deployment docs
+0b3b69e2173dfb6c1dbf9ffe09615d35cc66884e f9fcf00fa58600dfc793a755d7e8b843de265735 JamesSparkMojo <james@sparkmojo.com> 1774589346 -0400	commit: fix: WorkboardMojo match OnboardingMojo design, auth roles, claim validation, spelling, and sort fields
+f9fcf00fa58600dfc793a755d7e8b843de265735 d3d59d4ca203f0729490a952ab3cd720ce326673 JamesSparkMojo <james@sparkmojo.com> 1774591208 -0400	commit: feat: add kanban drag-and-drop with @hello-pangea/dnd
+d3d59d4ca203f0729490a952ab3cd720ce326673 85243309eb4ae361895d80f76dd61204dd23a94f JamesSparkMojo <james@sparkmojo.com> 1774592158 -0400	commit: fix: optimistic UI update after task claim removes Claim button immediately
+85243309eb4ae361895d80f76dd61204dd23a94f 10370764a7e39395ea30a7cfb9c8fc4bca643fae JamesSparkMojo <james@sparkmojo.com> 1774592333 -0400	commit: fix: set sm_session cookie domain to cover all subdomains
+10370764a7e39395ea30a7cfb9c8fc4bca643fae 094374f11ca44be8b55bf9e322d4f38f0750b6d8 JamesSparkMojo <james@sparkmojo.com> 1774630292 -0400	commit: feat(workboard): list row enhancements, new task, history, reassign
+094374f11ca44be8b55bf9e322d4f38f0750b6d8 e6a98ac7174d6421207596c0e5cad8a551d330ab JamesSparkMojo <james@sparkmojo.com> 1774644108 -0400	pull: Fast-forward
+e6a98ac7174d6421207596c0e5cad8a551d330ab e6a98ac7174d6421207596c0e5cad8a551d330ab JamesSparkMojo <james@sparkmojo.com> 1774644182 -0400	checkout: moving from main to fix/workboard-bugs-qa-round1
+e6a98ac7174d6421207596c0e5cad8a551d330ab f0268009ffb0b42f0767bbc768132d9a281d4e86 JamesSparkMojo <james@sparkmojo.com> 1774644704 -0400	commit: fix: resolve 8 WorkboardMojo bugs from QA round 1
+f0268009ffb0b42f0767bbc768132d9a281d4e86 e6a98ac7174d6421207596c0e5cad8a551d330ab JamesSparkMojo <james@sparkmojo.com> 1774645375 -0400	checkout: moving from fix/workboard-bugs-qa-round1 to main
+e6a98ac7174d6421207596c0e5cad8a551d330ab 625d662191a7ff03fcb1617efccef86c178a3dbb JamesSparkMojo <james@sparkmojo.com> 1774645377 -0400	pull --ff-only origin main: Fast-forward
+625d662191a7ff03fcb1617efccef86c178a3dbb 625d662191a7ff03fcb1617efccef86c178a3dbb JamesSparkMojo <james@sparkmojo.com> 1774645382 -0400	checkout: moving from main to main
+625d662191a7ff03fcb1617efccef86c178a3dbb 625d662191a7ff03fcb1617efccef86c178a3dbb JamesSparkMojo <james@sparkmojo.com> 1774647391 -0400	checkout: moving from main to main
+625d662191a7ff03fcb1617efccef86c178a3dbb 625d662191a7ff03fcb1617efccef86c178a3dbb JamesSparkMojo <james@sparkmojo.com> 1774647391 -0400	checkout: moving from main to feature/workboard-round2
+625d662191a7ff03fcb1617efccef86c178a3dbb d7ed7426382fbf3c92f2a51b9eff6fcb56429304 JamesSparkMojo <james@sparkmojo.com> 1774647781 -0400	commit: feat: WorkboardMojo column-header table redesign + fix error parsing
+d7ed7426382fbf3c92f2a51b9eff6fcb56429304 625d662191a7ff03fcb1617efccef86c178a3dbb JamesSparkMojo <james@sparkmojo.com> 1774647809 -0400	checkout: moving from feature/workboard-round2 to main
+625d662191a7ff03fcb1617efccef86c178a3dbb 5e47f8bffec19e582e28ce45d81d7cc81752fb6f JamesSparkMojo <james@sparkmojo.com> 1774647809 -0400	pull --ff-only origin main: Fast-forward
+5e47f8bffec19e582e28ce45d81d7cc81752fb6f 5e47f8bffec19e582e28ce45d81d7cc81752fb6f JamesSparkMojo <james@sparkmojo.com> 1774647816 -0400	checkout: moving from main to main
+5e47f8bffec19e582e28ce45d81d7cc81752fb6f 5e47f8bffec19e582e28ce45d81d7cc81752fb6f JamesSparkMojo <james@sparkmojo.com> 1774649876 -0400	checkout: moving from main to main
+5e47f8bffec19e582e28ce45d81d7cc81752fb6f 5e47f8bffec19e582e28ce45d81d7cc81752fb6f JamesSparkMojo <james@sparkmojo.com> 1774649883 -0400	reset: moving to HEAD
+5e47f8bffec19e582e28ce45d81d7cc81752fb6f 5e47f8bffec19e582e28ce45d81d7cc81752fb6f JamesSparkMojo <james@sparkmojo.com> 1774649890 -0400	checkout: moving from main to fix/bug006-assign-cors
+5e47f8bffec19e582e28ce45d81d7cc81752fb6f f2edef8c1b76841793534d018dbbdea2573adea3 JamesSparkMojo <james@sparkmojo.com> 1774649929 -0400	commit: fix: handle Frappe 4xx errors in task endpoints to prevent CORS-less 503
+f2edef8c1b76841793534d018dbbdea2573adea3 5e47f8bffec19e582e28ce45d81d7cc81752fb6f JamesSparkMojo <james@sparkmojo.com> 1774649957 -0400	checkout: moving from fix/bug006-assign-cors to main
+5e47f8bffec19e582e28ce45d81d7cc81752fb6f 5e47f8bffec19e582e28ce45d81d7cc81752fb6f JamesSparkMojo <james@sparkmojo.com> 1774649972 -0400	checkout: moving from main to main
+5e47f8bffec19e582e28ce45d81d7cc81752fb6f ed77a8f00c3d53a814bfc88098c88a5b412468e9 JamesSparkMojo <james@sparkmojo.com> 1774650019 -0400	reset: moving to origin/main
+ed77a8f00c3d53a814bfc88098c88a5b412468e9 ed77a8f00c3d53a814bfc88098c88a5b412468e9 JamesSparkMojo <james@sparkmojo.com> 1774652601 -0400	checkout: moving from main to feature/workboard-round3
+ed77a8f00c3d53a814bfc88098c88a5b412468e9 ddf7fbfbd4f2321a11d58c7b591bbc017e5b8303 JamesSparkMojo <james@sparkmojo.com> 1774653008 -0400	commit: feat: WorkboardMojo header parity + unassigned animation + assignment UX redesign
+ddf7fbfbd4f2321a11d58c7b591bbc017e5b8303 ed77a8f00c3d53a814bfc88098c88a5b412468e9 JamesSparkMojo <james@sparkmojo.com> 1774653596 -0400	checkout: moving from feature/workboard-round3 to main
+ed77a8f00c3d53a814bfc88098c88a5b412468e9 4539b7845b1a2141cc0b525b2c2f6f0b630e9ea3 JamesSparkMojo <james@sparkmojo.com> 1774653597 -0400	pull --ff-only origin main: Fast-forward
+4539b7845b1a2141cc0b525b2c2f6f0b630e9ea3 4539b7845b1a2141cc0b525b2c2f6f0b630e9ea3 JamesSparkMojo <james@sparkmojo.com> 1774653604 -0400	checkout: moving from main to main
+4539b7845b1a2141cc0b525b2c2f6f0b630e9ea3 4539b7845b1a2141cc0b525b2c2f6f0b630e9ea3 JamesSparkMojo <james@sparkmojo.com> 1774655346 -0400	checkout: moving from main to main
+4539b7845b1a2141cc0b525b2c2f6f0b630e9ea3 4539b7845b1a2141cc0b525b2c2f6f0b630e9ea3 JamesSparkMojo <james@sparkmojo.com> 1774655370 -0400	checkout: moving from main to feature/workboard-round4
+4539b7845b1a2141cc0b525b2c2f6f0b630e9ea3 662b8b696ebb9d01f28cc9c33ed754ba3bffba46 JamesSparkMojo <james@sparkmojo.com> 1774655754 -0400	commit: fix: header parity corrections + glow/Claim logic fix (any unclaimed task)
+662b8b696ebb9d01f28cc9c33ed754ba3bffba46 4539b7845b1a2141cc0b525b2c2f6f0b630e9ea3 JamesSparkMojo <james@sparkmojo.com> 1774655786 -0400	checkout: moving from feature/workboard-round4 to main
+4539b7845b1a2141cc0b525b2c2f6f0b630e9ea3 4539b7845b1a2141cc0b525b2c2f6f0b630e9ea3 JamesSparkMojo <james@sparkmojo.com> 1774655798 -0400	checkout: moving from main to main
+4539b7845b1a2141cc0b525b2c2f6f0b630e9ea3 46fd9891e1fb80866d3de5ca6028fe124f5d3556 JamesSparkMojo <james@sparkmojo.com> 1774655805 -0400	merge origin/main: Fast-forward
+46fd9891e1fb80866d3de5ca6028fe124f5d3556 46fd9891e1fb80866d3de5ca6028fe124f5d3556 JamesSparkMojo <james@sparkmojo.com> 1774664518 -0400	checkout: moving from main to main
+46fd9891e1fb80866d3de5ca6028fe124f5d3556 46fd9891e1fb80866d3de5ca6028fe124f5d3556 JamesSparkMojo <james@sparkmojo.com> 1774664523 -0400	checkout: moving from main to feature/workboard-round5
+46fd9891e1fb80866d3de5ca6028fe124f5d3556 e0540db6f54cf737f794637eaf3b6320f85017f1 JamesSparkMojo <james@sparkmojo.com> 1774664783 -0400	commit: feat: source filter + unclaimed banner + optimistic claim + active tab pill fix
+e0540db6f54cf737f794637eaf3b6320f85017f1 46fd9891e1fb80866d3de5ca6028fe124f5d3556 JamesSparkMojo <james@sparkmojo.com> 1774664816 -0400	checkout: moving from feature/workboard-round5 to main
+46fd9891e1fb80866d3de5ca6028fe124f5d3556 b7164fdfa3b3637d7c4f18fef367204066ee878c JamesSparkMojo <james@sparkmojo.com> 1774664817 -0400	pull --ff-only origin main: Fast-forward
+b7164fdfa3b3637d7c4f18fef367204066ee878c b7164fdfa3b3637d7c4f18fef367204066ee878c JamesSparkMojo <james@sparkmojo.com> 1774664824 -0400	checkout: moving from main to main
+b7164fdfa3b3637d7c4f18fef367204066ee878c b7164fdfa3b3637d7c4f18fef367204066ee878c JamesSparkMojo <james@sparkmojo.com> 1774665693 -0400	checkout: moving from main to main
+b7164fdfa3b3637d7c4f18fef367204066ee878c b7164fdfa3b3637d7c4f18fef367204066ee878c JamesSparkMojo <james@sparkmojo.com> 1774665705 -0400	checkout: moving from main to feature/workboard-round6
+b7164fdfa3b3637d7c4f18fef367204066ee878c d95abfd75d6b4102701e20228d20b2099637df3b JamesSparkMojo <james@sparkmojo.com> 1774666007 -0400	commit: fix: due date editing in drawer + useCountUp zero-reset + surgical claim rollback
+d95abfd75d6b4102701e20228d20b2099637df3b b7164fdfa3b3637d7c4f18fef367204066ee878c JamesSparkMojo <james@sparkmojo.com> 1774666037 -0400	checkout: moving from feature/workboard-round6 to main
+b7164fdfa3b3637d7c4f18fef367204066ee878c a5f3b3894c336a5a3cbe7bfde8beec91566b176c JamesSparkMojo <james@sparkmojo.com> 1774666038 -0400	pull --ff-only origin main: Fast-forward
+a5f3b3894c336a5a3cbe7bfde8beec91566b176c a5f3b3894c336a5a3cbe7bfde8beec91566b176c JamesSparkMojo <james@sparkmojo.com> 1774666045 -0400	checkout: moving from main to main
+a5f3b3894c336a5a3cbe7bfde8beec91566b176c b035a99bb4cef1927416cb53e49bd92b919bd743 JamesSparkMojo <james@sparkmojo.com> 1774671863 -0400	commit: the old promptse
+b035a99bb4cef1927416cb53e49bd92b919bd743 3e671528c05f2fffcfcab24b48bde46381ea31c2 JamesSparkMojo <james@sparkmojo.com> 1774672434 -0400	commit: docs: design system ADR + component inventory + Night 1 Ralph config
+3e671528c05f2fffcfcab24b48bde46381ea31c2 3e671528c05f2fffcfcab24b48bde46381ea31c2 JamesSparkMojo <james@sparkmojo.com> 1774676636 -0400	checkout: moving from main to feature/design-system-foundation
+3e671528c05f2fffcfcab24b48bde46381ea31c2 60b479097757b85d746ce0794b0f6797ee55596e JamesSparkMojo <james@sparkmojo.com> 1774676781 -0400	commit: feat: add design token system (tokens.css)
+60b479097757b85d746ce0794b0f6797ee55596e aad5b411f4a0ce5035b80e74b1066ba90c75641a JamesSparkMojo <james@sparkmojo.com> 1774676978 -0400	commit: feat: install and initialize shadcn/ui component library
+aad5b411f4a0ce5035b80e74b1066ba90c75641a d9053569cbe134cbe556e4930d122901784beda5 JamesSparkMojo <james@sparkmojo.com> 1774677756 -0400	commit: feat: theme all shadcn/ui components with Spark Mojo glass tokens
+d9053569cbe134cbe556e4930d122901784beda5 daa4a1f628fff007b5808878b046837e1849f0bf JamesSparkMojo <james@sparkmojo.com> 1774678816 -0400	commit: feat: build mojo-pattern composite components
+daa4a1f628fff007b5808878b046837e1849f0bf 6bb7db1ac73c2fe02108d78ae632fb7f3580ea41 JamesSparkMojo <james@sparkmojo.com> 1774679266 -0400	commit: feat: add /library component demo page (dev-only)
+6bb7db1ac73c2fe02108d78ae632fb7f3580ea41 4b3051b1e5def100e9cd7b3b98b7b4d7c91aa2e8 JamesSparkMojo <james@sparkmojo.com> 1774679646 -0400	commit: chore: update CLAUDE.md + final verification — design system foundation complete
+4b3051b1e5def100e9cd7b3b98b7b4d7c91aa2e8 994c0bd47b5550cf97ced6a67c3625fb20ae26e1 JamesSparkMojo <james@sparkmojo.com> 1774679892 -0400	commit: chore: auto-commit before merge (loop primary)
+994c0bd47b5550cf97ced6a67c3625fb20ae26e1 994c0bd47b5550cf97ced6a67c3625fb20ae26e1 JamesSparkMojo <james@sparkmojo.com> 1774812402 -0400	reset: moving to HEAD
+994c0bd47b5550cf97ced6a67c3625fb20ae26e1 994c0bd47b5550cf97ced6a67c3625fb20ae26e1 JamesSparkMojo <james@sparkmojo.com> 1774812510 -0400	reset: moving to HEAD
+994c0bd47b5550cf97ced6a67c3625fb20ae26e1 8bf48ada3facbf18fa93a1f843183d328b6a3c5a JamesSparkMojo <james@sparkmojo.com> 1774812777 -0400	merge origin/feature/design-system-foundation: Fast-forward
+8bf48ada3facbf18fa93a1f843183d328b6a3c5a 3e671528c05f2fffcfcab24b48bde46381ea31c2 JamesSparkMojo <james@sparkmojo.com> 1774813619 -0400	checkout: moving from feature/design-system-foundation to main
+3e671528c05f2fffcfcab24b48bde46381ea31c2 b432cb6a345521fcaf24e3dd6dcbf2d59bf75eca JamesSparkMojo <james@sparkmojo.com> 1774813620 -0400	merge origin/main: Merge made by the 'ort' strategy.
+b432cb6a345521fcaf24e3dd6dcbf2d59bf75eca b432cb6a345521fcaf24e3dd6dcbf2d59bf75eca JamesSparkMojo <james@sparkmojo.com> 1774813632 -0400	checkout: moving from main to feature/design-system-foundation
+b432cb6a345521fcaf24e3dd6dcbf2d59bf75eca 9d866e7250ef756d5dbb867a944d92c74b55ae0e JamesSparkMojo <james@sparkmojo.com> 1774813808 -0400	commit: fix: resolve all light-mode contrast issues on /library page
+9d866e7250ef756d5dbb867a944d92c74b55ae0e b432cb6a345521fcaf24e3dd6dcbf2d59bf75eca JamesSparkMojo <james@sparkmojo.com> 1774813847 -0400	checkout: moving from feature/design-system-foundation to main
+b432cb6a345521fcaf24e3dd6dcbf2d59bf75eca b432cb6a345521fcaf24e3dd6dcbf2d59bf75eca JamesSparkMojo <james@sparkmojo.com> 1774813865 -0400	checkout: moving from main to main
+b432cb6a345521fcaf24e3dd6dcbf2d59bf75eca ccbfdd773c11cfda69af1c447c237ef12a9a0143 JamesSparkMojo <james@sparkmojo.com> 1774813865 -0400	reset: moving to origin/main
+ccbfdd773c11cfda69af1c447c237ef12a9a0143 ccbfdd773c11cfda69af1c447c237ef12a9a0143 JamesSparkMojo <james@sparkmojo.com> 1774815054 -0400	checkout: moving from main to main
+ccbfdd773c11cfda69af1c447c237ef12a9a0143 ccbfdd773c11cfda69af1c447c237ef12a9a0143 JamesSparkMojo <james@sparkmojo.com> 1774815055 -0400	reset: moving to origin/main
+ccbfdd773c11cfda69af1c447c237ef12a9a0143 ccbfdd773c11cfda69af1c447c237ef12a9a0143 JamesSparkMojo <james@sparkmojo.com> 1774815061 -0400	checkout: moving from main to feature/design-system-foundation
+ccbfdd773c11cfda69af1c447c237ef12a9a0143 9945923f776418635e2ab565b3e3948c859badec JamesSparkMojo <james@sparkmojo.com> 1774815433 -0400	commit: fix: comprehensive light-mode contrast overhaul with theme-aware tokens
+9945923f776418635e2ab565b3e3948c859badec ccbfdd773c11cfda69af1c447c237ef12a9a0143 JamesSparkMojo <james@sparkmojo.com> 1774815475 -0400	checkout: moving from feature/design-system-foundation to main
+ccbfdd773c11cfda69af1c447c237ef12a9a0143 ccbfdd773c11cfda69af1c447c237ef12a9a0143 JamesSparkMojo <james@sparkmojo.com> 1774815494 -0400	checkout: moving from main to main
+ccbfdd773c11cfda69af1c447c237ef12a9a0143 ad2dbdb2bcdb91defd1dac8ee06f483e6bac6c19 JamesSparkMojo <james@sparkmojo.com> 1774815495 -0400	reset: moving to origin/main
+ad2dbdb2bcdb91defd1dac8ee06f483e6bac6c19 373a2733cf47eb904ffe8390cf9d130424a60cfe JamesSparkMojo <james@sparkmojo.com> 1774833057 -0400	commit: fix: onboarding list excludes Cancelled by default, increase page limit to 200
+373a2733cf47eb904ffe8390cf9d130424a60cfe 7dcc4107dee6ba9c4e970b954b04c227dc993be7 JamesSparkMojo <james@sparkmojo.com> 1774833069 -0400	pull --rebase origin main (start): checkout 7dcc4107dee6ba9c4e970b954b04c227dc993be7
+7dcc4107dee6ba9c4e970b954b04c227dc993be7 c4ca49fb622dbdbaa39013d8accdf299e2413d94 JamesSparkMojo <james@sparkmojo.com> 1774833069 -0400	pull --rebase origin main (pick): fix: onboarding list excludes Cancelled by default, increase page limit to 200
+c4ca49fb622dbdbaa39013d8accdf299e2413d94 c4ca49fb622dbdbaa39013d8accdf299e2413d94 JamesSparkMojo <james@sparkmojo.com> 1774833069 -0400	pull --rebase origin main (finish): returning to refs/heads/main
+c4ca49fb622dbdbaa39013d8accdf299e2413d94 3c42b048ad43bb06f0a815c2b36e7aec208acb26 JamesSparkMojo <james@sparkmojo.com> 1774833264 -0400	commit (amend): fix: onboarding list excludes Cancelled by default, increase page limit to 200
+3c42b048ad43bb06f0a815c2b36e7aec208acb26 ed4a273b09f90deaba1a990e7a6ae8f70f581949 JamesSparkMojo <james@sparkmojo.com> 1774833892 -0400	commit: fix: skip N+1 detail fetch for Ready clients in onboarding list
+ed4a273b09f90deaba1a990e7a6ae8f70f581949 0a7100b7580972adefb5156600f660bc816a055b JamesSparkMojo <james@sparkmojo.com> 1774834188 -0400	commit: feat: Workboard stats cards act as clickable filters (matching Onboarding)
+0a7100b7580972adefb5156600f660bc816a055b 77bc20f6f383e7dcd4eaaf55cbbcd7f20176a4ae JamesSparkMojo <james@sparkmojo.com> 1774834777 -0400	commit: fix: default statsFilter to 'active' on load (matching Onboarding)
+77bc20f6f383e7dcd4eaaf55cbbcd7f20176a4ae 7380f478e66923ced14919f65df778037a5c2675 JamesSparkMojo <james@sparkmojo.com> 1774838351 -0400	pull: Fast-forward
+7380f478e66923ced14919f65df778037a5c2675 31285c947d20b96a597d8ef7770b4928caa2c2d2 JamesSparkMojo <james@sparkmojo.com> 1774838682 -0400	pull: Fast-forward
+31285c947d20b96a597d8ef7770b4928caa2c2d2 7cca1d10389786f0d34a2b6fa14dcd855f2bbfb9 JamesSparkMojo <james@sparkmojo.com> 1774838916 -0400	commit: chore: remove Icon carriage-return junk files
+7cca1d10389786f0d34a2b6fa14dcd855f2bbfb9 7cca1d10389786f0d34a2b6fa14dcd855f2bbfb9 JamesSparkMojo <james@sparkmojo.com> 1774839081 -0400	checkout: moving from main to main
+7cca1d10389786f0d34a2b6fa14dcd855f2bbfb9 7cca1d10389786f0d34a2b6fa14dcd855f2bbfb9 JamesSparkMojo <james@sparkmojo.com> 1774839087 -0400	reset: moving to HEAD
+7cca1d10389786f0d34a2b6fa14dcd855f2bbfb9 7cca1d10389786f0d34a2b6fa14dcd855f2bbfb9 JamesSparkMojo <james@sparkmojo.com> 1774839087 -0400	checkout: moving from main to story/STORY-011-component-inventory-library
+7cca1d10389786f0d34a2b6fa14dcd855f2bbfb9 484f04eb6ce9e0d576906fa378e060e416c3c3b2 JamesSparkMojo <james@sparkmojo.com> 1774839440 -0400	commit: feat(design-system): STORY-011 COMPONENT_INVENTORY + fill /library to 100%
+484f04eb6ce9e0d576906fa378e060e416c3c3b2 7cca1d10389786f0d34a2b6fa14dcd855f2bbfb9 JamesSparkMojo <james@sparkmojo.com> 1774839550 -0400	checkout: moving from story/STORY-011-component-inventory-library to main
+7cca1d10389786f0d34a2b6fa14dcd855f2bbfb9 484f04eb6ce9e0d576906fa378e060e416c3c3b2 JamesSparkMojo <james@sparkmojo.com> 1774839555 -0400	merge story/STORY-011-component-inventory-library: Fast-forward
+484f04eb6ce9e0d576906fa378e060e416c3c3b2 484f04eb6ce9e0d576906fa378e060e416c3c3b2 JamesSparkMojo <james@sparkmojo.com> 1774839778 -0400	checkout: moving from main to main
+484f04eb6ce9e0d576906fa378e060e416c3c3b2 484f04eb6ce9e0d576906fa378e060e416c3c3b2 JamesSparkMojo <james@sparkmojo.com> 1774839782 -0400	reset: moving to HEAD
+484f04eb6ce9e0d576906fa378e060e416c3c3b2 484f04eb6ce9e0d576906fa378e060e416c3c3b2 JamesSparkMojo <james@sparkmojo.com> 1774839787 -0400	checkout: moving from main to story/STORY-012-token-compliance
+484f04eb6ce9e0d576906fa378e060e416c3c3b2 484f04eb6ce9e0d576906fa378e060e416c3c3b2 JamesSparkMojo <james@sparkmojo.com> 1774839875 -0400	checkout: moving from story/STORY-012-token-compliance to main
+484f04eb6ce9e0d576906fa378e060e416c3c3b2 484f04eb6ce9e0d576906fa378e060e416c3c3b2 JamesSparkMojo <james@sparkmojo.com> 1774839877 -0400	reset: moving to HEAD
+484f04eb6ce9e0d576906fa378e060e416c3c3b2 647bc6e5bb543aead23ca07ce543ce9bae56f06c JamesSparkMojo <james@sparkmojo.com> 1774841160 -0400	commit: fix(design-system): STORY-012 token compliance retrofit StatsCard + WorkboardMojo
+647bc6e5bb543aead23ca07ce543ce9bae56f06c 647bc6e5bb543aead23ca07ce543ce9bae56f06c JamesSparkMojo <james@sparkmojo.com> 1774841359 -0400	checkout: moving from main to main
+647bc6e5bb543aead23ca07ce543ce9bae56f06c 647bc6e5bb543aead23ca07ce543ce9bae56f06c JamesSparkMojo <james@sparkmojo.com> 1774841362 -0400	reset: moving to HEAD
+647bc6e5bb543aead23ca07ce543ce9bae56f06c 647bc6e5bb543aead23ca07ce543ce9bae56f06c JamesSparkMojo <james@sparkmojo.com> 1774841367 -0400	checkout: moving from main to story/STORY-013-animated-theme-toggler
+647bc6e5bb543aead23ca07ce543ce9bae56f06c 449c716817d07390263360877e72c40a5c0534ef JamesSparkMojo <james@sparkmojo.com> 1774841499 -0400	commit: feat(design-system): STORY-013 AnimatedThemeToggler universal component
+449c716817d07390263360877e72c40a5c0534ef 647bc6e5bb543aead23ca07ce543ce9bae56f06c JamesSparkMojo <james@sparkmojo.com> 1774841596 -0400	checkout: moving from story/STORY-013-animated-theme-toggler to main
+647bc6e5bb543aead23ca07ce543ce9bae56f06c 449c716817d07390263360877e72c40a5c0534ef JamesSparkMojo <james@sparkmojo.com> 1774841599 -0400	merge story/STORY-013-animated-theme-toggler: Fast-forward
+449c716817d07390263360877e72c40a5c0534ef 518d6838b434939ee2ba1f6497c5bd8fcf879297 JamesSparkMojo <james@sparkmojo.com> 1774841656 -0400	commit: chore: replace ADR-design-system.md with pointer to DECISION-015
+518d6838b434939ee2ba1f6497c5bd8fcf879297 fe928bf897915e6520fa83ae92ef583d1912936f JamesSparkMojo <james@sparkmojo.com> 1774841742 -0400	commit: chore: auto-commit before merge (loop primary)
+fe928bf897915e6520fa83ae92ef583d1912936f 6e7dd23911b4667d58981773ffda523122431fd5 JamesSparkMojo <james@sparkmojo.com> 1774849765 -0400	commit: fix: add .dockerignore to prevent stale node_modules from breaking builds
+6e7dd23911b4667d58981773ffda523122431fd5 af149eea2287c01d4e86ffd1c9a2568334cf011b JamesSparkMojo <james@sparkmojo.com> 1774849955 -0400	commit: fix: deploy.sh bundle hash check matches index-*.js specifically
+af149eea2287c01d4e86ffd1c9a2568334cf011b 403806e644276414c89e5e75be86778ddc6eed12 JamesSparkMojo <james@sparkmojo.com> 1774855870 -0400	commit: chore: commit ralph handoff + remove .tmp.driveupload temp files
+403806e644276414c89e5e75be86778ddc6eed12 dd6f1cf5cb6ceb795c9264fb8dd96d985986a8d1 JamesSparkMojo <james@sparkmojo.com> 1774855892 -0400	commit: chore: ignore .tmp.driveupload google drive temp files
+dd6f1cf5cb6ceb795c9264fb8dd96d985986a8d1 dd6f1cf5cb6ceb795c9264fb8dd96d985986a8d1 JamesSparkMojo <james@sparkmojo.com> 1774855959 -0400	checkout: moving from main to main
+dd6f1cf5cb6ceb795c9264fb8dd96d985986a8d1 38b4a7d5e6246878e10623144f50442750219a88 JamesSparkMojo <james@sparkmojo.com> 1774855983 -0400
+38b4a7d5e6246878e10623144f50442750219a88 ea427844a11dcd0eb6df65637d435ff62d39d36e JamesSparkMojo <james@sparkmojo.com> 1774856005 -0400	commit: chore: ignore .tmp.driveupload google drive temp files
+ea427844a11dcd0eb6df65637d435ff62d39d36e 91207316db67886ce44acaac607b36691d9b9887 JamesSparkMojo <james@sparkmojo.com> 1774856183 -0400	commit: chore: remove corrupt .tmp.driveupload entries from tracking
+91207316db67886ce44acaac607b36691d9b9887 9e928457afcf0e602be1b09476708aca0b60d63e JamesSparkMojo <james@sparkmojo.com> 1774856215 -0400	commit: chore: tell Ralph to commit, push and deploy on completion
+9e928457afcf0e602be1b09476708aca0b60d63e 9e928457afcf0e602be1b09476708aca0b60d63e JamesSparkMojo <james@sparkmojo.com> 1774857315 -0400	checkout: moving from main to main
+9e928457afcf0e602be1b09476708aca0b60d63e 9e928457afcf0e602be1b09476708aca0b60d63e JamesSparkMojo <james@sparkmojo.com> 1774857321 -0400	reset: moving to HEAD
+9e928457afcf0e602be1b09476708aca0b60d63e 9e928457afcf0e602be1b09476708aca0b60d63e JamesSparkMojo <james@sparkmojo.com> 1774857321 -0400	checkout: moving from main to hotfix/library-route-guard
+9e928457afcf0e602be1b09476708aca0b60d63e 6e0afc929a5e6100a06ab45955095d5eb4b85a77 JamesSparkMojo <james@sparkmojo.com> 1774857354 -0400	commit: fix: remove /library production guard — route accessible in all environments
+6e0afc929a5e6100a06ab45955095d5eb4b85a77 9e928457afcf0e602be1b09476708aca0b60d63e JamesSparkMojo <james@sparkmojo.com> 1774857431 -0400	checkout: moving from hotfix/library-route-guard to main
+9e928457afcf0e602be1b09476708aca0b60d63e 6e0afc929a5e6100a06ab45955095d5eb4b85a77 JamesSparkMojo <james@sparkmojo.com> 1774857431 -0400	merge hotfix/library-route-guard: Fast-forward
+6e0afc929a5e6100a06ab45955095d5eb4b85a77 6e0afc929a5e6100a06ab45955095d5eb4b85a77 JamesSparkMojo <james@sparkmojo.com> 1774857676 -0400	checkout: moving from main to main
+6e0afc929a5e6100a06ab45955095d5eb4b85a77 6e0afc929a5e6100a06ab45955095d5eb4b85a77 JamesSparkMojo <james@sparkmojo.com> 1774857680 -0400	reset: moving to HEAD
+6e0afc929a5e6100a06ab45955095d5eb4b85a77 6e0afc929a5e6100a06ab45955095d5eb4b85a77 JamesSparkMojo <james@sparkmojo.com> 1774857705 -0400	checkout: moving from main to design-system/ds-002-semantic-token-rename
+6e0afc929a5e6100a06ab45955095d5eb4b85a77 0d79022e6b0e83046caca3293acf7d09848018d2 JamesSparkMojo <james@sparkmojo.com> 1774857857 -0400	commit: refactor: rename color tokens to semantic roles — teal→primary, coral→danger, gold→warning
+0d79022e6b0e83046caca3293acf7d09848018d2 6e0afc929a5e6100a06ab45955095d5eb4b85a77 JamesSparkMojo <james@sparkmojo.com> 1774857948 -0400	checkout: moving from design-system/ds-002-semantic-token-rename to main
+6e0afc929a5e6100a06ab45955095d5eb4b85a77 0d79022e6b0e83046caca3293acf7d09848018d2 JamesSparkMojo <james@sparkmojo.com> 1774857949 -0400	merge design-system/ds-002-semantic-token-rename: Fast-forward
+0d79022e6b0e83046caca3293acf7d09848018d2 0d79022e6b0e83046caca3293acf7d09848018d2 JamesSparkMojo <james@sparkmojo.com> 1774858300 -0400	checkout: moving from main to main
+0d79022e6b0e83046caca3293acf7d09848018d2 0d79022e6b0e83046caca3293acf7d09848018d2 JamesSparkMojo <james@sparkmojo.com> 1774858304 -0400	reset: moving to HEAD
+0d79022e6b0e83046caca3293acf7d09848018d2 0d79022e6b0e83046caca3293acf7d09848018d2 JamesSparkMojo <james@sparkmojo.com> 1774858308 -0400	checkout: moving from main to design-system/ds-003-onboarding-mojo-refactor
+0d79022e6b0e83046caca3293acf7d09848018d2 087cd2762b3eb1e9f194cc58302945a6dab8be5d JamesSparkMojo <james@sparkmojo.com> 1774858653 -0400	commit: refactor(onboarding): replace inline colors with design system mojo-patterns
+087cd2762b3eb1e9f194cc58302945a6dab8be5d 0d79022e6b0e83046caca3293acf7d09848018d2 JamesSparkMojo <james@sparkmojo.com> 1774858728 -0400	checkout: moving from design-system/ds-003-onboarding-mojo-refactor to main
+0d79022e6b0e83046caca3293acf7d09848018d2 087cd2762b3eb1e9f194cc58302945a6dab8be5d JamesSparkMojo <james@sparkmojo.com> 1774858728 -0400	merge design-system/ds-003-onboarding-mojo-refactor: Fast-forward
+087cd2762b3eb1e9f194cc58302945a6dab8be5d 4e241e36c30e09a1364bdc85c72b62a5c3820ab1 JamesSparkMojo <james@sparkmojo.com> 1774858888 -0400	commit: docs: update QUEUE-COMPLETE.md with Session 11 results
+4e241e36c30e09a1364bdc85c72b62a5c3820ab1 4e241e36c30e09a1364bdc85c72b62a5c3820ab1 JamesSparkMojo <james@sparkmojo.com> 1774917934 -0400	reset: moving to HEAD
+4e241e36c30e09a1364bdc85c72b62a5c3820ab1 3f1dc90136bfadfb29efa0608ec69a1238c44642 JamesSparkMojo <james@sparkmojo.com> 1774917963 -0400	pull --rebase origin main: Fast-forward
