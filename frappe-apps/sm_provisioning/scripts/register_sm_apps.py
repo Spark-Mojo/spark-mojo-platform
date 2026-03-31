@@ -50,12 +50,19 @@ def register_sm_apps(site_name, apps=None):
     already_present = []
 
     for app_name in apps:
-        if not frappe.db.exists('Installed Application', app_name):
-            doc = frappe.get_doc({
-                'doctype': 'Installed Application',
-                'app_name': app_name
-            })
-            doc.insert(ignore_permissions=True)
+        exists = frappe.db.sql(
+            "SELECT name FROM `tabInstalled Application` WHERE app_name=%s",
+            app_name,
+        )
+        if not exists:
+            # Installed Application is a child table — insert directly via SQL
+            # to avoid parent/parenttype validation issues across Frappe versions
+            frappe.db.sql(
+                """INSERT INTO `tabInstalled Application`
+                   (name, app_name, creation, modified, modified_by, owner, docstatus, idx)
+                   VALUES (%s, %s, NOW(), NOW(), 'Administrator', 'Administrator', 0, 0)""",
+                (frappe.generate_hash(length=10), app_name),
+            )
             registered.append(app_name)
         else:
             already_present.append(app_name)
