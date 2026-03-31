@@ -503,7 +503,7 @@ phase_7() {
 
   # CHECK 4 — Frontend loads with root element
   TOTAL_CHECKS=$((TOTAL_CHECKS + 1))
-  FE_RESULT=$(curl -s --max-time 10 https://poc-dev.app.sparkmojo.com 2>/dev/null || echo "")
+  FE_RESULT=$(curl -sk --max-time 10 https://poc-dev.app.sparkmojo.com 2>/dev/null || echo "")
   if echo "$FE_RESULT" | grep -q 'id="root"'; then
     echo "  Frontend root element              PASS"
     PASS_COUNT=$((PASS_COUNT + 1))
