@@ -50,8 +50,8 @@ services:
       - "traefik.http.routers.api-health.entrypoints=websecure"
       - "traefik.http.routers.api-health.tls.certresolver=mytlschallenge"
       - "traefik.http.routers.api-health.priority=100"
-      # Wildcard modules: all *.app.sparkmojo.com/api/modules/*
-      - "traefik.http.routers.api-modules.rule=HostRegexp(`^[a-z0-9-]+\\.app\\.sparkmojo\\.com$`) && PathPrefix(`/api/modules/`)"
+      # Wildcard modules: all sparkmojo.com subdomains /api/modules/*
+      - "traefik.http.routers.api-modules.rule=(Host(`poc.sparkmojo.com`) || Host(`admin.sparkmojo.com`) || HostRegexp(`^[a-z0-9-]+\\.app\\.sparkmojo\\.com$`)) && PathPrefix(`/api/modules/`)"
       - "traefik.http.routers.api-modules.entrypoints=websecure"
       - "traefik.http.routers.api-modules.tls.certresolver=mytlschallenge"
       - "traefik.http.routers.api-modules.priority=100"
