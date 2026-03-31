@@ -20,16 +20,30 @@ services:
       - root_web
     labels:
       - "traefik.enable=true"
-      # Wildcard: all *.app.sparkmojo.com subdomains → React frontend
-      - "traefik.http.routers.app-all.rule=HostRegexp(`^[a-z0-9-]+\\.app\\.sparkmojo\\.com$`)"
-      - "traefik.http.routers.app-all.entrypoints=websecure"
-      - "traefik.http.routers.app-all.tls.certresolver=mytlschallenge"
-      - "traefik.http.services.app-all.loadbalancer.server.port=80"
-      # Legacy: preserve existing app.poc.sparkmojo.com route until DNS migration
+      # Explicit host rules for each app subdomain — required for ACME cert issuance
+      # (HostRegexp rules do not trigger ACME cert requests)
+      - "traefik.http.routers.app-poc-dev.rule=Host(`poc-dev.app.sparkmojo.com`)"
+      - "traefik.http.routers.app-poc-dev.entrypoints=websecure"
+      - "traefik.http.routers.app-poc-dev.tls.certresolver=mytlschallenge"
+      - "traefik.http.routers.app-poc-dev.service=app-frontend"
+      - "traefik.http.routers.app-internal.rule=Host(`internal.app.sparkmojo.com`)"
+      - "traefik.http.routers.app-internal.entrypoints=websecure"
+      - "traefik.http.routers.app-internal.tls.certresolver=mytlschallenge"
+      - "traefik.http.routers.app-internal.service=app-frontend"
+      - "traefik.http.routers.app-willow.rule=Host(`willow.app.sparkmojo.com`)"
+      - "traefik.http.routers.app-willow.entrypoints=websecure"
+      - "traefik.http.routers.app-willow.tls.certresolver=mytlschallenge"
+      - "traefik.http.routers.app-willow.service=app-frontend"
+      - "traefik.http.routers.app-admin.rule=Host(`admin.app.sparkmojo.com`)"
+      - "traefik.http.routers.app-admin.entrypoints=websecure"
+      - "traefik.http.routers.app-admin.tls.certresolver=mytlschallenge"
+      - "traefik.http.routers.app-admin.service=app-frontend"
+      # Legacy: preserve existing app.poc.sparkmojo.com
       - "traefik.http.routers.app-poc-legacy.rule=Host(`app.poc.sparkmojo.com`)"
       - "traefik.http.routers.app-poc-legacy.entrypoints=websecure"
       - "traefik.http.routers.app-poc-legacy.tls.certresolver=mytlschallenge"
-      - "traefik.http.routers.app-poc-legacy.service=app-all"
+      - "traefik.http.routers.app-poc-legacy.service=app-frontend"
+      - "traefik.http.services.app-frontend.loadbalancer.server.port=80"
       - "traefik.docker.network=root_web"
     restart: unless-stopped
 
@@ -45,20 +59,23 @@ services:
       - .env.poc
     labels:
       - "traefik.enable=true"
-      # Wildcard health: all hosts /health
+      # Health endpoint — all hosts
       - "traefik.http.routers.api-health.rule=PathPrefix(`/health`)"
       - "traefik.http.routers.api-health.entrypoints=websecure"
       - "traefik.http.routers.api-health.tls.certresolver=mytlschallenge"
       - "traefik.http.routers.api-health.priority=100"
-      # Wildcard modules: all sparkmojo.com subdomains /api/modules/*
-      - "traefik.http.routers.api-modules.rule=(Host(`poc.sparkmojo.com`) || Host(`admin.sparkmojo.com`) || HostRegexp(`^[a-z0-9-]+\\.app\\.sparkmojo\\.com$`)) && PathPrefix(`/api/modules/`)"
+      - "traefik.http.routers.api-health.service=api-backend"
+      # Modules router — all app subdomains + legacy
+      - "traefik.http.routers.api-modules.rule=(Host(`poc.sparkmojo.com`) || Host(`poc-dev.app.sparkmojo.com`) || Host(`internal.app.sparkmojo.com`) || Host(`willow.app.sparkmojo.com`) || Host(`admin.app.sparkmojo.com`) || Host(`app.poc.sparkmojo.com`)) && PathPrefix(`/api/modules/`)"
       - "traefik.http.routers.api-modules.entrypoints=websecure"
       - "traefik.http.routers.api-modules.tls.certresolver=mytlschallenge"
       - "traefik.http.routers.api-modules.priority=100"
-      # Specific legacy routes (preserve existing poc.sparkmojo.com routing)
+      - "traefik.http.routers.api-modules.service=api-backend"
+      # Legacy api subdomain
       - "traefik.http.routers.api-poc.rule=Host(`api.poc.sparkmojo.com`)"
       - "traefik.http.routers.api-poc.entrypoints=websecure"
       - "traefik.http.routers.api-poc.tls.certresolver=mytlschallenge"
-      - "traefik.http.services.api-poc.loadbalancer.server.port=8001"
+      - "traefik.http.routers.api-poc.service=api-backend"
+      - "traefik.http.services.api-backend.loadbalancer.server.port=8001"
       - "traefik.docker.network=root_web"
     restart: unless-stopped
