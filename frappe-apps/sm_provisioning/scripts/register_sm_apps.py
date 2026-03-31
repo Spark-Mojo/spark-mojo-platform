@@ -29,10 +29,26 @@ def suppress_setup_wizard(frappe, site_name):
     1. tabInstalled Application.is_setup_complete (the authoritative check)
     2. tabSingles System Settings.setup_complete
     3. tabDefaultValue __default.setup_complete
+    4. tabDefaultValue desktop:home_page (prevents redirect loop)
     """
     try:
         if frappe.is_setup_complete():
-            print(f'Setup wizard already suppressed on {site_name}')
+            # Still check for stale home_page even if setup is complete
+            home_page = frappe.db.sql(
+                "SELECT defvalue FROM tabDefaultValue "
+                "WHERE defkey='desktop:home_page' AND parent='__default'",
+                as_dict=True,
+            )
+            if home_page and home_page[0].get('defvalue') == 'setup-wizard':
+                frappe.db.sql(
+                    "UPDATE tabDefaultValue SET defvalue='desktop' "
+                    "WHERE defkey='desktop:home_page' AND parent='__default'"
+                )
+                frappe.db.commit()
+                frappe.clear_cache()
+                print(f'Setup wizard already suppressed on {site_name} (fixed stale home_page)')
+            else:
+                print(f'Setup wizard already suppressed on {site_name}')
             return
 
         # 1. The real check: tabInstalled Application
@@ -56,6 +72,12 @@ def suppress_setup_wizard(frappe, site_name):
                 "VALUES (%s, 'setup_complete', '1', '__default', '__default', 'system_defaults')",
                 frappe.generate_hash(length=10),
             )
+
+        # 4. Fix home_page if it points to setup-wizard (causes redirect loop)
+        frappe.db.sql(
+            "UPDATE tabDefaultValue SET defvalue='desktop' "
+            "WHERE defkey='desktop:home_page' AND defvalue='setup-wizard' AND parent='__default'"
+        )
 
         frappe.db.commit()
         frappe.clear_cache()
