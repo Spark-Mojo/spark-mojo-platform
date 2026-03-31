@@ -40,8 +40,8 @@ for i in "${!SITES[@]}"; do
   fi
 
   # TEST 3: Frappe site in bench
-  SITE_EXISTS=$(ssh sparkmojo "docker exec ${FRAPPE_CONTAINER} bench list-sites" 2>/dev/null | \
-    grep -c "${FRAPPE_SITE}" || echo "0")
+  SITE_EXISTS=$(docker exec ${FRAPPE_CONTAINER} bench list-sites 2>/dev/null | \
+    grep -c "${FRAPPE_SITE}" || true)
   if [[ "$SITE_EXISTS" -gt 0 ]]; then
     echo "✓ Frappe site: registered in bench"
   else
@@ -50,8 +50,8 @@ for i in "${!SITES[@]}"; do
   fi
 
   # TEST 4: SM Site Registry active
-  REGISTRY=$(ssh sparkmojo "docker exec ${FRAPPE_CONTAINER} bench --site admin.sparkmojo.com execute \
-    frappe.db.get_value --args \"['SM Site Registry', '${SUBDOMAIN}', 'is_active']\"" 2>/dev/null || echo "error")
+  REGISTRY=$(docker exec ${FRAPPE_CONTAINER} bench --site admin.sparkmojo.com execute \
+    "frappe.db.get_value" --args "['SM Site Registry', '${SUBDOMAIN}', 'is_active']" 2>/dev/null || echo "error")
   if [[ "$REGISTRY" == *"1"* ]]; then
     echo "✓ SM Site Registry: active"
   else
