@@ -1,0 +1,46 @@
+# INFRA-TRAEFIK Complete
+
+**Date:** 2026-03-31
+**Status:** All routing verified
+
+## Changes Applied
+
+### docker-compose.poc.yml (committed to git)
+- `poc-frontend`: Wildcard `*.app.sparkmojo.com` via HostRegexp (Traefik v3 syntax)
+- `poc-frontend`: Legacy `app.poc.sparkmojo.com` route preserved
+- `poc-api`: Health endpoint on all hosts via `PathPrefix(/health)` priority=100
+- `poc-api`: Modules endpoint on `*.app.sparkmojo.com/api/modules/` priority=100
+- `poc-api`: Legacy `api.poc.sparkmojo.com` route preserved
+
+### pwd.yml (edited on VPS only — /home/ops/frappe-poc/pwd.yml)
+- Added Traefik labels for `admin.sparkmojo.com`, `internal.sparkmojo.com`, `willow.sparkmojo.com`
+- All route to Frappe Desk on port 8080 (service=frappe-poc)
+- **FRAPPE_SITE_NAME_HEADER: NOT changed** — remains `frontend`
+  - Must stay `frontend` until site rename happens in INFRA-007 Step 1
+  - Change to `$$host` is deferred to INFRA-007
+
+## Verification Results
+
+| URL | Status |
+|-----|--------|
+| poc.sparkmojo.com | HTTP/2 200 |
+| poc.sparkmojo.com/health | {"status":"ok","frappe_connected":true} |
+| app.poc.sparkmojo.com | HTTP/2 200 |
+| admin.sparkmojo.com | HTTP/2 200 |
+| internal.sparkmojo.com | HTTP/2 200 |
+| willow.sparkmojo.com | HTTP/2 200 |
+| poc-dev.app.sparkmojo.com | HTTP/2 200 |
+| internal.app.sparkmojo.com | HTTP/2 200 |
+| willow.app.sparkmojo.com | HTTP/2 200 |
+
+## Note on TLS Certs
+
+New `*.app.sparkmojo.com` subdomains initially served self-signed certs.
+Traefik ACME will issue Let's Encrypt certs automatically (may take a few minutes).
+The Frappe Desk subdomains (admin, internal, willow) already have valid certs.
+
+## Note on Traefik Version
+
+Traefik v3.5.2 is running. The INFRA-TRAEFIK.md spec used Traefik v2 HostRegexp
+syntax (`{name:pattern}`), which was corrected to Traefik v3 raw regex syntax
+(`^[a-z0-9-]+\.app\.sparkmojo\.com$`).
