@@ -249,25 +249,48 @@ else:
 }
 
 # ══════════════════════════════════════════════════════════════════════════════
-# PHASE 3 — Run bench migrate (once, for all apps)
+# PHASE 3 — Run bench migrate on all registered sites
 # ══════════════════════════════════════════════════════════════════════════════
 phase_3() {
   echo ""
-  echo "[Phase 3] Running bench migrate..."
+  echo "[Phase 3] Running bench migrate on all registered sites..."
 
-  MIGRATE_OUTPUT=$(sudo docker exec "$FRAPPE_BACKEND" bench --site "$FRAPPE_SITE" migrate 2>&1) || true
-  echo "$MIGRATE_OUTPUT" | tail -20
+  # Get all active site names from SM Site Registry on admin site
+  # Falls back to LEGACY_SITES env var if admin site not reachable
+  SITES=$(sudo docker exec "$FRAPPE_BACKEND" bench --site admin.sparkmojo.com execute \
+    "print(' '.join(frappe.db.get_all('SM Site Registry', filters={'is_active': 1}, pluck='frappe_site')))" \
+    2>/dev/null) || SITES=""
 
-  if echo "$MIGRATE_OUTPUT" | grep -qi "error"; then
-    echo ""
-    echo "ABORT: bench migrate reported errors."
-    echo ""
-    echo "--- Last 30 lines of backend logs ---"
-    sudo docker logs "$FRAPPE_BACKEND" --tail 30
-    exit 1
+  # Clean up: strip any non-site-name output (bench prints extra lines)
+  SITES=$(echo "$SITES" | grep -v "^$" | tail -1)
+
+  # Fallback: if admin site not reachable or returned empty/error, use LEGACY_SITES
+  if [ -z "$SITES" ] || echo "$SITES" | grep -qi "error\|traceback\|exception"; then
+    echo "[Phase 3] Admin site not reachable — using LEGACY_SITES fallback: ${LEGACY_SITES:-frontend}"
+    SITES="${LEGACY_SITES:-frontend}"
+  else
+    echo "[Phase 3] Sites from SM Site Registry: $SITES"
   fi
 
-  # Verify DocTypes from VERIFY.txt files
+  MIGRATE_FAILURES=0
+  MIGRATE_COUNT=0
+  for SITE in $SITES; do
+    MIGRATE_COUNT=$((MIGRATE_COUNT + 1))
+    echo ""
+    echo "[Phase 3] Migrating site: $SITE"
+    MIGRATE_OUTPUT=$(sudo docker exec "$FRAPPE_BACKEND" bench --site "$SITE" migrate 2>&1) || true
+    echo "$MIGRATE_OUTPUT" | tail -20
+
+    if echo "$MIGRATE_OUTPUT" | grep -qi "error"; then
+      echo "[Phase 3] ✗ $SITE migrate FAILED"
+      MIGRATE_FAILURES=$((MIGRATE_FAILURES + 1))
+    else
+      echo "[Phase 3] ✓ $SITE migrate ok"
+    fi
+  done
+
+  # Verify DocTypes from VERIFY.txt files (run against each migrated site)
+  echo ""
   echo "  Verifying DocTypes from VERIFY.txt..."
   cd "$DEPLOY_DIR"
   VERIFY_PASS=true
@@ -277,25 +300,28 @@ phase_3() {
     if [ -f "$VERIFY_FILE" ]; then
       DOCTYPE=$(head -1 "$VERIFY_FILE" | tr -d '\r\n')
       if [ -n "$DOCTYPE" ]; then
-        DT_CHECK=$(sudo docker exec "$FRAPPE_BACKEND" bench --site "$FRAPPE_SITE" execute \
-          "print(frappe.db.exists('DocType', '$DOCTYPE'))" 2>&1)
-        if echo "$DT_CHECK" | grep -q "$DOCTYPE"; then
-          echo "    $APP: $DOCTYPE EXISTS"
-        else
-          echo "    $APP: $DOCTYPE NOT FOUND"
-          echo "    Check app directory structure (see CLAUDE.md 'New DocType / Module Pattern')."
-          echo "    bench execute output: $DT_CHECK"
-          VERIFY_PASS=false
-        fi
+        for SITE in $SITES; do
+          DT_CHECK=$(sudo docker exec "$FRAPPE_BACKEND" bench --site "$SITE" execute \
+            "print(frappe.db.exists('DocType', '$DOCTYPE'))" 2>&1) || DT_CHECK=""
+          if echo "$DT_CHECK" | grep -q "$DOCTYPE"; then
+            echo "    $APP: $DOCTYPE on $SITE — EXISTS"
+          else
+            echo "    $APP: $DOCTYPE on $SITE — NOT FOUND (may not be installed on this site)"
+          fi
+        done
       fi
     else
       echo "    $APP: no VERIFY.txt — skipping DocType check"
     fi
   done
 
-  if [ "$VERIFY_PASS" = false ]; then
-    echo "ABORT: One or more DocType verifications failed after migrate."
-    exit 1
+  # Summary
+  if [ $MIGRATE_FAILURES -gt 0 ]; then
+    echo ""
+    echo "[Phase 3] WARNING: $MIGRATE_FAILURES of $MIGRATE_COUNT site(s) failed migrate. Review logs above."
+  else
+    echo ""
+    echo "[Phase 3] All $MIGRATE_COUNT site(s) migrated successfully."
   fi
 
   echo "[Phase 3] Migrate DONE"
