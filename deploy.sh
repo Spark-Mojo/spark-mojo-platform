@@ -16,7 +16,7 @@ FRAPPE_WORKERS="frappe-poc-queue-short-1 frappe-poc-queue-long-1 frappe-poc-sche
 ALL_FRAPPE_CONTAINERS="$FRAPPE_BACKEND $FRAPPE_WORKERS"
 FRONTEND_CONTAINER="spark-mojo-platform-poc-frontend-1"
 FRAPPE_BENCH="/home/frappe/frappe-bench"
-FRAPPE_SITE="frontend"
+FRAPPE_SITE="poc-dev.sparkmojo.com"
 FRAPPE_APPS_DIR="frappe-apps"
 LOG_DIR="/home/ops/deploy-logs"
 START_TIME=$(date +%s)
@@ -339,7 +339,7 @@ phase_4() {
 
   HEALTHY=false
   for i in {1..12}; do
-    response=$(curl -s --max-time 5 https://poc.sparkmojo.com/api/method/frappe.ping 2>/dev/null || true)
+    response=$(curl -s --max-time 5 https://admin.sparkmojo.com/api/method/frappe.ping 2>/dev/null || true)
     if echo "$response" | grep -q "pong"; then
       echo "  Frappe healthy after $((i * 5)) seconds"
       HEALTHY=true
@@ -469,7 +469,7 @@ phase_7() {
 
   # CHECK 1 — Frappe ping
   TOTAL_CHECKS=$((TOTAL_CHECKS + 1))
-  if curl -s --max-time 10 https://poc.sparkmojo.com/api/method/frappe.ping | grep -q "pong"; then
+  if curl -s --max-time 10 https://admin.sparkmojo.com/api/method/frappe.ping | grep -q "pong"; then
     echo "  Frappe ping                       PASS"
     PASS_COUNT=$((PASS_COUNT + 1))
   else
@@ -479,7 +479,7 @@ phase_7() {
 
   # CHECK 2 — Health endpoint
   TOTAL_CHECKS=$((TOTAL_CHECKS + 1))
-  HEALTH_RESULT=$(curl -s --max-time 10 https://poc.sparkmojo.com/health 2>/dev/null || echo "")
+  HEALTH_RESULT=$(curl -s --max-time 10 https://admin.sparkmojo.com/health 2>/dev/null || echo "")
   if echo "$HEALTH_RESULT" | grep -q '"status"'; then
     echo "  Health endpoint                    PASS"
     PASS_COUNT=$((PASS_COUNT + 1))
@@ -491,7 +491,7 @@ phase_7() {
 
   # CHECK 3 — Abstraction layer tasks/list (must NOT be Frappe DoesNotExistError)
   TOTAL_CHECKS=$((TOTAL_CHECKS + 1))
-  AL_RESULT=$(curl -s --max-time 10 https://poc.sparkmojo.com/api/modules/tasks/list 2>/dev/null || echo "")
+  AL_RESULT=$(curl -s --max-time 10 https://admin.sparkmojo.com/api/modules/tasks/list 2>/dev/null || echo "")
   if echo "$AL_RESULT" | python3 -c "import sys,json; d=json.load(sys.stdin); sys.exit(0 if 'DoesNotExistError' not in str(d) and 'exc_type' not in str(d) else 1)" 2>/dev/null; then
     echo "  Abstraction layer tasks/list       PASS"
     PASS_COUNT=$((PASS_COUNT + 1))
@@ -503,7 +503,7 @@ phase_7() {
 
   # CHECK 4 — Frontend loads with root element
   TOTAL_CHECKS=$((TOTAL_CHECKS + 1))
-  FE_RESULT=$(curl -s --max-time 10 https://app.poc.sparkmojo.com 2>/dev/null || echo "")
+  FE_RESULT=$(curl -s --max-time 10 https://poc-dev.app.sparkmojo.com 2>/dev/null || echo "")
   if echo "$FE_RESULT" | grep -q 'id="root"'; then
     echo "  Frontend root element              PASS"
     PASS_COUNT=$((PASS_COUNT + 1))
@@ -523,7 +523,7 @@ phase_7() {
 
         # Check via Frappe REST API (PermissionError = DocType exists but auth needed)
         ENCODED_DT=$(python3 -c "import urllib.parse; print(urllib.parse.quote('$DOCTYPE'))")
-        API_RESULT=$(curl -s --max-time 10 "https://poc.sparkmojo.com/api/resource/${ENCODED_DT}?limit=1" 2>/dev/null || echo "")
+        API_RESULT=$(curl -s --max-time 10 "https://admin.sparkmojo.com/api/resource/${ENCODED_DT}?limit=1" 2>/dev/null || echo "")
         if echo "$API_RESULT" | grep -q '"data"'; then
           echo "  $APP: $DOCTYPE API               PASS"
           PASS_COUNT=$((PASS_COUNT + 1))
