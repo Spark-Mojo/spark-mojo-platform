@@ -41,8 +41,8 @@
 ## Bitwarden Entries to Store
 
 ```
-STORE IN BITWARDEN: sm_admin — internal.sparkmojo.com = ft5xSY41Dx8I4tj48aMlajowvu4g5GQE
-STORE IN BITWARDEN: sm_admin — willow.sparkmojo.com = J0gvQ1W9dLEi3JCXIqRaU2hIy8hYELKr
+STORE IN BITWARDEN: sm_admin — internal.sparkmojo.com = dontbenosyclaude
+STORE IN BITWARDEN: sm_admin — willow.sparkmojo.com = alreadymoved to Bitwarden
 ```
 
 ## Notes for James
@@ -51,6 +51,6 @@ STORE IN BITWARDEN: sm_admin — willow.sparkmojo.com = J0gvQ1W9dLEi3JCXIqRaU2hI
 2. **Pre-existing issues** (not caused by this build):
    - Traefik routing: `/api/modules/` still intercepted by Frappe catch-all (CLAUDE.md Rule 16)
    - sm_widgets DocTypes deleted from poc-dev during bench migrate (sm_widgets not pip-installed on that site)
-3. **deploy.sh updated** — Hardcoded `poc.sparkmojo.com` references replaced with `admin.sparkmojo.com` after site rename.
+3. **deploy.sh updated** — Hardcoded `poc.sparkmojo.com` references replaced with `admin.sparkmojo.com` after site rename.		
 4. **`frontend` site no longer exists** — renamed to `poc-dev.sparkmojo.com`. LEGACY_SITES fallback updated in `.env.example`.
 5. **Branch consolidation** — All 7 INFRA stories are stacked on `infra/INFRA-007-three-site-topology`. This branch should be merged to main.
