@@ -19,18 +19,46 @@ DEFAULT_SM_APPS = ['sm_widgets', 'sm_connectors', 'sm_provisioning']
 
 def suppress_setup_wizard(frappe, site_name):
     """
-    Suppress the ERPNext setup wizard by setting setup_complete = 1 in System Settings.
-    The wizard intercepts ALL URLs (including /app) until this flag is set.
-    There is no skip option. This is required on every provisioned site.
-    See PROVISIONING_RUNBOOK.md Phase 5d.
+    Suppress the ERPNext setup wizard.
+
+    frappe.is_setup_complete() checks tabInstalled Application — it returns True
+    only when BOTH 'frappe' and 'erpnext' rows have is_setup_complete = 1.
+    The tabSingles / tabDefaultValue entries alone are NOT sufficient.
+
+    This function sets all three locations for belt-and-suspenders safety:
+    1. tabInstalled Application.is_setup_complete (the authoritative check)
+    2. tabSingles System Settings.setup_complete
+    3. tabDefaultValue __default.setup_complete
     """
     try:
-        current = frappe.db.get_single_value('System Settings', 'setup_complete')
-        if current:
+        if frappe.is_setup_complete():
             print(f'Setup wizard already suppressed on {site_name}')
             return
+
+        # 1. The real check: tabInstalled Application
+        frappe.db.sql(
+            "UPDATE `tabInstalled Application` SET is_setup_complete=1 "
+            "WHERE app_name IN ('frappe', 'erpnext')"
+        )
+
+        # 2. tabSingles (System Settings)
         frappe.db.set_single_value('System Settings', 'setup_complete', 1)
+
+        # 3. tabDefaultValue (sysdefaults cache)
+        if frappe.db.exists('DefaultValue', {'defkey': 'setup_complete', 'parent': '__default'}):
+            frappe.db.sql(
+                "UPDATE tabDefaultValue SET defvalue='1' "
+                "WHERE defkey='setup_complete' AND parent='__default'"
+            )
+        else:
+            frappe.db.sql(
+                "INSERT INTO tabDefaultValue (name, defkey, defvalue, parent, parenttype, parentfield) "
+                "VALUES (%s, 'setup_complete', '1', '__default', '__default', 'system_defaults')",
+                frappe.generate_hash(length=10),
+            )
+
         frappe.db.commit()
+        frappe.clear_cache()
         print(f'Setup wizard suppressed on {site_name}')
     except Exception as e:
         print(f'Warning: Could not suppress setup wizard on {site_name}: {e}')
