@@ -15,17 +15,31 @@ from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 
 from auth import validate_frappe_session, get_current_user
-from registry import ConnectorRegistry
+from registry import ConnectorRegistry, SiteRegistry
 from connectors import frappe_native, simplepractice, valant, plane
 from routes.onboarding import router as onboarding_router
 from google_auth import router as google_auth_router
 from modules.tasks.routes import router as tasks_router
 
 
+import logging
+
+logger = logging.getLogger("abstraction-layer")
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Startup/shutdown lifecycle."""
     app.state.registry = ConnectorRegistry()
+
+    # Initialize SiteRegistry (DocType-backed, env var fallback)
+    site_registry = SiteRegistry()
+    try:
+        await site_registry.load()
+    except RuntimeError:
+        logger.warning("SiteRegistry: no sites available at startup, continuing anyway")
+    app.state.site_registry = site_registry
+
     yield
 
 
@@ -82,6 +96,30 @@ async def health():
         except Exception:
             frappe_connected = False
     return {"status": "ok", "frappe_connected": frappe_connected}
+
+
+@app.post("/admin/registry/refresh")
+async def registry_refresh(request: Request):
+    """Force refresh the SiteRegistry cache from SM Site Registry DocType."""
+    site_registry: SiteRegistry = request.app.state.site_registry
+    await site_registry.refresh()
+    return {"status": "refreshed", "sites": site_registry.site_count}
+
+
+def extract_subdomain(host: str) -> str | None:
+    """
+    Extract subdomain from Host header.
+    e.g. 'willow.app.sparkmojo.com' → 'willow'
+         'poc.sparkmojo.com' → 'poc'
+         'localhost:5173' → None
+    """
+    # Strip port
+    host = host.split(":")[0]
+    parts = host.split(".")
+    # Need at least 3 parts: subdomain.domain.tld
+    if len(parts) >= 3 and parts[-2] == "sparkmojo" and parts[-1] == "com":
+        return parts[0]
+    return None
 
 
 # ---------------------------------------------------------------------------
