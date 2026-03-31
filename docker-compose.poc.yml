@@ -20,10 +20,16 @@ services:
       - root_web
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.app-poc.rule=Host(`app.poc.sparkmojo.com`)"
-      - "traefik.http.routers.app-poc.entrypoints=websecure"
-      - "traefik.http.routers.app-poc.tls.certresolver=mytlschallenge"
-      - "traefik.http.services.app-poc.loadbalancer.server.port=80"
+      # Wildcard: all *.app.sparkmojo.com subdomains → React frontend
+      - "traefik.http.routers.app-all.rule=HostRegexp(`{subdomain:[a-z0-9-]+}.app.sparkmojo.com`)"
+      - "traefik.http.routers.app-all.entrypoints=websecure"
+      - "traefik.http.routers.app-all.tls.certresolver=mytlschallenge"
+      - "traefik.http.services.app-all.loadbalancer.server.port=80"
+      # Legacy: preserve existing app.poc.sparkmojo.com route until DNS migration
+      - "traefik.http.routers.app-poc-legacy.rule=Host(`app.poc.sparkmojo.com`)"
+      - "traefik.http.routers.app-poc-legacy.entrypoints=websecure"
+      - "traefik.http.routers.app-poc-legacy.tls.certresolver=mytlschallenge"
+      - "traefik.http.routers.app-poc-legacy.service=app-all"
       - "traefik.docker.network=root_web"
     restart: unless-stopped
 
@@ -39,20 +45,20 @@ services:
       - .env.poc
     labels:
       - "traefik.enable=true"
-      # Primary router: api.poc.sparkmojo.com (all paths)
+      # Wildcard health: all hosts /health
+      - "traefik.http.routers.api-health.rule=PathPrefix(`/health`)"
+      - "traefik.http.routers.api-health.entrypoints=websecure"
+      - "traefik.http.routers.api-health.tls.certresolver=mytlschallenge"
+      - "traefik.http.routers.api-health.priority=100"
+      # Wildcard modules: all *.app.sparkmojo.com/api/modules/*
+      - "traefik.http.routers.api-modules.rule=HostRegexp(`{subdomain:[a-z0-9-]+}.app.sparkmojo.com`) && PathPrefix(`/api/modules/`)"
+      - "traefik.http.routers.api-modules.entrypoints=websecure"
+      - "traefik.http.routers.api-modules.tls.certresolver=mytlschallenge"
+      - "traefik.http.routers.api-modules.priority=100"
+      # Specific legacy routes (preserve existing poc.sparkmojo.com routing)
       - "traefik.http.routers.api-poc.rule=Host(`api.poc.sparkmojo.com`)"
       - "traefik.http.routers.api-poc.entrypoints=websecure"
       - "traefik.http.routers.api-poc.tls.certresolver=mytlschallenge"
-      # Health router: poc.sparkmojo.com/health (higher priority than Frappe catch-all)
-      - "traefik.http.routers.api-poc-health.rule=Host(`poc.sparkmojo.com`) && Path(`/health`)"
-      - "traefik.http.routers.api-poc-health.entrypoints=websecure"
-      - "traefik.http.routers.api-poc-health.tls.certresolver=mytlschallenge"
-      - "traefik.http.routers.api-poc-health.priority=100"
-      # Modules router: poc.sparkmojo.com/api/modules/* (higher priority than Frappe /api/ catch-all)
-      - "traefik.http.routers.api-poc-modules.rule=Host(`poc.sparkmojo.com`) && PathPrefix(`/api/modules/`)"
-      - "traefik.http.routers.api-poc-modules.entrypoints=websecure"
-      - "traefik.http.routers.api-poc-modules.tls.certresolver=mytlschallenge"
-      - "traefik.http.routers.api-poc-modules.priority=100"
       - "traefik.http.services.api-poc.loadbalancer.server.port=8001"
       - "traefik.docker.network=root_web"
     restart: unless-stopped
