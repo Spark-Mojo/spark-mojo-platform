@@ -7,9 +7,9 @@
 If it exists and is accurate, continue that in-progress task.
 If it exists but is stale, overwrite it with current state before proceeding.
 
-**Step 2:** Read `platform/README.md` in sparkmojo-internal:
-`/Users/jamesilsley/GitHub/sparkmojo-internal/platform/README.md`
-That is the master navigation key for all platform documentation.
+**Step 2:** Read `platform/AGENT_CONTEXT.md` in sparkmojo-internal:
+`/Users/jamesilsley/GitHub/sparkmojo-internal/platform/AGENT_CONTEXT.md`
+That is the master cold-start context for all agents.
 
 **Step 3:** Read the story file for your current task:
 `/Users/jamesilsley/GitHub/sparkmojo-internal/platform/feature-library/stories/STORY-NNN.md`
@@ -21,17 +21,22 @@ Read this file completely before taking any action. This is the authoritative co
 
 ---
 
-## Step 0 — Before Anything Else
+## Container Names — Critical Reference
 
-**Read the platform master navigation key in the governance repo:**
+The Frappe stack runs under `frappe-poc` Docker Compose. The correct container names are:
 
-```
-/Users/jamesilsley/GitHub/sparkmojo-internal/platform/README.md
-```
+| Container | Name | Use for |
+|-----------|------|--------|
+| **Backend (bench commands)** | `frappe-poc-backend-1` | All `bench --site` commands |
+| Frontend (nginx) | `frappe-poc-frontend-1` | Traefik routing only |
+| Database | `frappe-poc-db-1` | Direct MariaDB access |
+| Scheduler | `frappe-poc-scheduler-1` | Background jobs |
+| Websocket | `frappe-poc-websocket-1` | Realtime |
 
-That document is the index of all platform documentation — what every doc is, how they relate, and the sync rules. It takes 2 minutes to read and prevents 2-hour debugging sessions caused by acting on stale or conflicting information.
+**NEVER use `spark-mojo-platform-poc-frappe-1` — that container does not exist.**
+The correct bench container is `frappe-poc-backend-1`.
 
-After reading it, come back here and continue.
+Verify at any time: `ssh sparkmojo 'docker ps --format "{{.Names}}" | grep frappe'`
 
 ---
 
@@ -49,7 +54,7 @@ This is NOT a greenfield build. Architecture is fully designed. Your job is to e
 |------|---------------|
 | This repo | `/Users/jamesilsley/GitHub/spark-mojo-platform/` |
 | Governance repo | `/Users/jamesilsley/GitHub/sparkmojo-internal/` |
-| Platform nav key | `/Users/jamesilsley/GitHub/sparkmojo-internal/platform/README.md` |
+| Agent context | `/Users/jamesilsley/GitHub/sparkmojo-internal/platform/AGENT_CONTEXT.md` |
 | Story files | `/Users/jamesilsley/GitHub/sparkmojo-internal/platform/feature-library/stories/` |
 | Feature specs | `/Users/jamesilsley/GitHub/sparkmojo-internal/platform/feature-library/` |
 | Architecture decisions | `/Users/jamesilsley/GitHub/sparkmojo-internal/platform/decisions/` |
@@ -61,12 +66,12 @@ This is NOT a greenfield build. Architecture is fully designed. Your job is to e
 
 | File | What it is |
 |------|------------|
-| `platform/README.md` (governance repo) | Master nav key — doc index, sync rules, conflict protocol |
+| `platform/AGENT_CONTEXT.md` (governance repo) | Master cold-start context |
 | `platform/WORKING_AGREEMENT.md` | Rules of engagement, architecture constants, global build rules |
 | `platform/decisions/DECISION-003-abstraction-layer.md` | Abstraction layer — immutable |
 | `platform/decisions/DECISION-014-sm-task-custom-doctype.md` | SM Task is custom DocType, NOT ERPNext Task extension |
-| `platform/decisions/DECISION-015-design-system.md` | Design system architecture — semantic tokens, layer model, theming |
-| `platform/feature-library/TASK-WORKBOARD.md` | Full Task & Workboard feature spec and schema |
+| `platform/decisions/DECISION-015-design-system.md` | Design system architecture |
+| `platform/feature-library/TASK-WORKBOARD.md` | Full Task & Workboard feature spec |
 | `platform/feature-library/stories/STORY-NNN.md` | Individual story spec for current work |
 
 ---
@@ -77,7 +82,7 @@ This is NOT a greenfield build. Architecture is fully designed. Your job is to e
 spark-mojo-platform/
 ├── CLAUDE.md                        # This file — read first every session
 ├── PROMPT.md                        # Current overnight task queue
-├── hats.yml                         # Ralph workflow — run with: ralph run --config hats.yml
+├── hats.yml                         # Ralph workflow
 ├── frontend/                        # React app (Vite + React 18, JSX, pnpm)
 │   ├── src/
 │   │   ├── api/
@@ -90,24 +95,23 @@ spark-mojo-platform/
 │   │   ├── pages/
 │   │   │   └── Desktop.jsx          # Desktop canvas — DO NOT MODIFY STRUCTURE
 │   │   ├── styles/
-│   │   │   └── tokens.css           # Design tokens (colors, glass, typography, spacing)
+│   │   │   └── tokens.css           # Design tokens
 │   │   └── types/                   # Static TS type files — reference only
 │   ├── package.json
 │   ├── vite.config.js
 │   └── eslint.config.js
 ├── abstraction-layer/               # Mojo Abstraction Layer (Python FastAPI)
-│   ├── main.py                      # FastAPI app, router registration
-│   ├── auth.py                      # Session validation
-│   ├── routes/                      # Capability routers — one file per capability
-│   │   └── onboarding.py            # Pattern to follow for new routers
-│   ├── tests/                       # pytest tests
-│   └── requirements.txt
+│   ├── main.py
+│   ├── auth.py
+│   ├── routes/
+│   └── tests/
 ├── frappe-apps/                     # Frappe custom apps
-│   ├── sm_connectors/               # Canonical DocTypes
+│   ├── sm_connectors/
 │   ├── sm_widgets/                  # SM Task DocType lives here
 │   ├── sm_billing/
 │   └── sm_provisioning/
 └── scripts/
+    └── smoke_test.sh                # 16-check smoke test across all 4 sites
 ```
 
 ---
@@ -122,7 +126,7 @@ spark-mojo-platform/
 | Abstraction Layer | Python FastAPI — uvicorn |
 | Automation | n8n (cross-system), Frappe Server Scripts (internal) |
 
-**Frontend is JSX, not TypeScript.** Do not create `.tsx` or `.ts` files. Do not install TypeScript.
+**Frontend is JSX, not TypeScript.** Do not create `.tsx` or `.ts` files.
 
 ---
 
@@ -133,7 +137,7 @@ spark-mojo-platform/
 pnpm install
 pnpm run dev
 pnpm run build
-pnpm run lint                         # Must pass with 0 warnings, 0 errors
+pnpm run lint
 pnpm run test
 pnpm run test:coverage
 
@@ -142,158 +146,126 @@ uvicorn main:app --reload
 pytest tests/ -v
 pytest tests/ --cov=. --cov-report=term-missing --cov-fail-under=70
 
-# Frappe — run from Frappe bench root (NOT from this repo)
-bench --site poc.sparkmojo.com migrate          # ALWAYS after any DocType change
-bench --site poc.sparkmojo.com console          # Interactive testing
+# Frappe bench — ALWAYS use frappe-poc-backend-1
+ssh sparkmojo "docker exec frappe-poc-backend-1 bench --site poc-dev.sparkmojo.com migrate"
+ssh sparkmojo "docker exec frappe-poc-backend-1 bench --site poc-dev.sparkmojo.com console"
+ssh sparkmojo "docker exec frappe-poc-backend-1 bench list-sites"
 
-# POC deployment — use deploy.sh (see Deployment section below)
+# POC deployment
+ssh sparkmojo 'cd /home/ops/spark-mojo-platform && git pull origin main && ./deploy.sh'
 ```
+
+---
+
+## Three-Site Topology — Live Sites
+
+| Site | Subdomain | Type | Frappe site name |
+|------|-----------|------|------------------|
+| Admin Console | admin.sparkmojo.com | admin | admin.sparkmojo.com |
+| POC/Dev | poc-dev.app.sparkmojo.com | dev | poc-dev.sparkmojo.com |
+| SM Internal | internal.app.sparkmojo.com | internal | internal.sparkmojo.com |
+| Willow Center | willow.app.sparkmojo.com | behavioral_health | willow.sparkmojo.com |
+
+**Legacy access:** `poc.sparkmojo.com` (Frappe Desk), `app.poc.sparkmojo.com` (React) — both preserved.
+
+**Frappe site name = hostname** (not `frontend` anymore). `FRAPPE_SITE_NAME_HEADER: $$host` in pwd.yml.
+
+**Frappe Desk login:** `Administrator` + site admin password from Bitwarden.
+Navigate to `/app` after login — the setup wizard is suppressed on all sites via Phase 5d.
 
 ---
 
 ## Deployment — Always Deploy to Production
 
-**After every code change, deploy to the POC VPS.** Do not leave changes
-undeployed unless the user explicitly says not to deploy.
+**After every code change, deploy to the POC VPS.**
 
-### If SSH is available (Claude can run `ssh sparkmojo`):
-
-Deploy automatically — do not ask the user for permission to deploy:
+### If SSH is available:
 
 ```bash
 ssh sparkmojo 'cd /home/ops/spark-mojo-platform && git pull origin main && ./deploy.sh'
 ```
 
-For frontend-only changes, use `--phase 6` instead of a full deploy:
-
+For frontend-only changes:
 ```bash
 ssh sparkmojo 'cd /home/ops/spark-mojo-platform && git pull origin main && ./deploy.sh --phase 6'
 ```
 
-After deploying, run `--verify-only` and report the results:
-
+After deploying, verify:
 ```bash
 ssh sparkmojo 'cd /home/ops/spark-mojo-platform && ./deploy.sh --verify-only'
 ```
 
-### If SSH is NOT available (user must deploy manually):
+### If SSH is NOT available:
 
-Tell the user clearly: **"This change is committed and pushed but NOT deployed.
-Run these commands on the VPS to deploy:"**
-
-Then give them these exact steps:
-
+Tell the user clearly: **"This change is committed and pushed but NOT deployed. Run on VPS:"**
 ```
-1. SSH into the VPS:
-     ssh sparkmojo
-
-2. Pull and deploy:
-     cd /home/ops/spark-mojo-platform
-     git pull origin main
-     ./deploy.sh
-
-3. If deploy.sh is not executable:
-     chmod +x deploy.sh && ./deploy.sh
-
-4. Verify (if deploy.sh didn't run Phase 7):
-     ./deploy.sh --verify-only
+ssh sparkmojo
+cd /home/ops/spark-mojo-platform
+git pull origin main
+./deploy.sh
 ```
 
-### deploy.sh phases and flags
+### deploy.sh phases
 
 | Phase | Name | What it does |
 |-------|------|-------------|
-| 0 | Pre-flight | Verify directory, Docker, Frappe backend running |
-| 1 | Pull | `git pull origin main`, print HEAD commit |
-| 2 | Sync frappe-apps | docker cp + pip install into ALL Frappe containers, apps.txt, tabInstalled Application. Removes non-installable apps from apps.txt. |
-| 3 | Migrate | `bench --site frontend migrate`, verify DocTypes via VERIFY.txt |
-| 4 | Restart | Restart Frappe backend + workers, poll health for 60s |
-| 5 | Abstraction layer | `docker compose build --no-cache poc-api` + restart |
-| 6 | Frontend | `docker compose build --no-cache poc-frontend` + restart. Aborts if frontend/ has uncommitted changes. Verifies bundle hash sync. |
-| 7 | Verification | 6 end-to-end checks: Frappe ping, health, abstraction layer, frontend, per-app DocType checks |
-
-| Command | What it does |
-|---------|-------------|
-| `./deploy.sh` | Full deploy — all 7 phases |
-| `./deploy.sh --verify-only` | Check current state, no changes |
-| `./deploy.sh --phase 2` | Sync frappe-apps only |
-| `./deploy.sh --phase 3` | bench migrate only |
-| `./deploy.sh --phase 6` | Frontend rebuild only |
+| 0 | Pre-flight | Verify directory, Docker, Frappe running |
+| 1 | Pull | `git pull origin main` |
+| 2 | Sync frappe-apps | docker cp + pip install into Frappe containers |
+| 3 | Migrate | `bench --site [all sites] migrate` via SM Site Registry loop |
+| 4 | Restart | Restart Frappe backend + workers |
+| 5 | Abstraction layer | Build + restart poc-api |
+| 6 | Frontend | Build + restart poc-frontend |
+| 7 | Verification | End-to-end checks |
 
 ---
 
 ## VPS Deployment Rules
 
 1. **NEVER modify files directly on the VPS.** All changes go through git.
-   History: on 2026-03-27 an uncommitted `index.jsx` on the VPS had a completely
-   different routing structure. When deploy.sh ran `git pull`, it overwrote
-   the local state and broke the UI. This triggered an 18-hour debug session.
-2. **The VPS must always be a clean checkout of main.** No local modifications.
-3. **deploy.sh is the ONLY way code gets onto the VPS.** Do not manually
-   `docker compose build` or `docker cp` outside of deploy.sh.
-4. **If you SSH in and modify ANY file**, you MUST `git add`, `git commit`,
-   `git push` before ending the session. No exceptions.
-5. **After pushing changes, always run deploy.sh** to ensure the VPS matches main.
+2. **The VPS must always be a clean checkout of main.**
+3. **deploy.sh is the ONLY way code gets onto the VPS.**
+4. **If you SSH in and modify ANY file**, commit and push before ending the session.
+5. **After pushing changes, always run deploy.sh.**
 
 ---
 
 ## Known Gotchas
 
-- **Frappe site name** inside the Docker container is `frontend`, NOT
-  `poc.sparkmojo.com`. All `bench --site` commands use `frontend`.
-- **SM Task `canonical_state`** maps to "Status" in the Frappe UI — not `status`.
-- **Non-installable apps in apps.txt** (e.g. `sm_billing` without `pyproject.toml`)
-  cause `ModuleNotFoundError` during `bench migrate`. This makes Frappe treat valid
-  DocTypes from other apps as "orphaned" and **DELETE them**. deploy.sh Phase 2
-  now removes non-installable apps from apps.txt automatically.
-- **Alpine-based containers** (nginx) need `sh -c` wrapper for glob expansion
-  in `docker exec` commands. `docker exec container ls *.js` fails silently;
-  use `docker exec container sh -c 'ls *.js'` instead.
-- **Phase 7 `<div id="root">` check is a false positive.** A stale bundle still
-  has `<div id="root">`. Always verify by grepping the bundle for expected string
-  literals (e.g. `api/modules/tasks`). See "Verifying Production Bundles" section.
-- **Desktop.jsx is archived** (`_archive/`). The sidebar layout is production.
-  Do not import Desktop.jsx — it will pull in all widget/desktop components
-  and bloat the bundle. WorkboardMojo renders inside the sidebar layout, not
-  as a draggable desktop window.
+- **Frappe site names are now hostnames** — `poc-dev.sparkmojo.com`, `admin.sparkmojo.com`, etc. The old `frontend` site name no longer exists. `FRAPPE_SITE_NAME_HEADER: $$host` in pwd.yml means Frappe uses the Host header to select the site.
+- **Bench container is `frappe-poc-backend-1`** — NOT `spark-mojo-platform-poc-frappe-1`. The wrong name will give "No such container" errors.
+- **Setup wizard must be suppressed on every new site** — run `frappe.db.set_single_value('System Settings', 'setup_complete', 1)` in bench execute. Without this, ALL URLs including `/app` redirect to the setup wizard. There is no skip button. See PROVISIONING_RUNBOOK.md Phase 5d.
+- **HostRegexp rules do NOT trigger ACME cert issuance** — every subdomain needs an explicit `Host()` rule in `docker-compose.poc.yml` for Let's Encrypt to issue a cert. Certs will not issue for wildcard/regex rules regardless of how long you wait.
+- **SM Task `canonical_state`** maps to "Status" in the Frappe UI.
+- **Non-installable apps in apps.txt** cause `ModuleNotFoundError` and total Frappe outage.
+- **Alpine-based containers** need `sh -c` wrapper for glob expansion in `docker exec`.
+- **Phase 7 `<div id="root">` check is a false positive.** Grep for unique string literals instead.
 
 ---
 
 ## Ralph Orchestrator Rules
 
-- Every story **MUST** include a smoke test step that verifies the feature is
-  navigable from the live UI, not just that the component file exists.
-- After merging feature branches, **always trigger a deploy** to the VPS.
-- Never mark a story as complete if the feature is unreachable from the UI.
-- If a story adds a new route or component, the smoke test must verify:
-  1. The route is defined in `pages/index.jsx`
-  2. The sidebar link exists in `pages/Layout.jsx`
-  3. The production bundle contains the component's string literals
-- **Design system verification** (run on any story touching `frontend/src/`):
-  - No hardcoded hex colors in changed files: `grep -r '#[0-9a-fA-F]\{6\}' frontend/src/components/`
-  - Every new component file has a corresponding section in Library.jsx
-  - COMPONENT_INVENTORY.md updated if components/ changed
-  - All `var(--sm-*)` references resolve to defined tokens in tokens.css
+- Every story **MUST** include a smoke test step.
+- After merging feature branches, **always trigger a deploy**.
+- Never mark a story complete if the feature is unreachable from the UI.
+- **Design system verification** on any story touching `frontend/src/`:
+  - No hardcoded hex colors
+  - Every new component in Library.jsx
+  - COMPONENT_INVENTORY.md updated
+  - All `var(--sm-*)` references resolve
   - `npm run build` succeeds
 
 ---
 
 ## Verifying Production Bundles
 
-Vite minifies all component and function names in production builds. **Never grep
-for a React component name** (e.g. `WorkboardMojo`) to verify it is in the bundle —
-the name will not survive minification.
-
-Instead, grep for **unique string literals** that the component defines:
-- API URL paths (e.g. `api/modules/tasks`)
-- localStorage keys (e.g. `workboard_sort_preference`)
-- Hard-coded display strings
+Vite minifies component names. Never grep for React component names — grep for unique string literals:
 
 ```bash
-# Wrong — will always return 0
+# Wrong
 grep -c "WorkboardMojo" /usr/share/nginx/html/assets/index-*.js
 
-# Right — checks for a string literal the component must contain
+# Right
 grep -c "api/modules/tasks" /usr/share/nginx/html/assets/index-*.js
 ```
 
@@ -301,11 +273,9 @@ grep -c "api/modules/tasks" /usr/share/nginx/html/assets/index-*.js
 
 ## Definition of Done
 
-A story is ONLY complete when ALL gates for its type pass:
-
 **Frappe DocType stories:**
-1. `bench --site poc.sparkmojo.com migrate` — exit 0
-2. All fields from story spec visible in Frappe Desk
+1. `bench --site [site] migrate` — exit 0
+2. All fields visible in Frappe Desk
 3. Controller hooks verified in bench console
 
 **Python API stories:**
@@ -317,9 +287,9 @@ A story is ONLY complete when ALL gates for its type pass:
 1. `pnpm run lint` — 0 warnings, 0 errors
 2. `pnpm run test` — 0 failures
 3. `pnpm run build` — succeeds
-4. Design system pre-commit checklist passes (see Design System Rules section)
+4. Design system pre-commit checklist passes
 
-Never emit `LOOP_COMPLETE` or mark a task done without running every gate.
+Never emit `LOOP_COMPLETE` without running every gate.
 
 ---
 
@@ -327,7 +297,7 @@ Never emit `LOOP_COMPLETE` or mark a task done without running every gate.
 
 1. **React NEVER calls Frappe directly.** Always via `/api/modules/[capability]/[action]`.
 2. **Never use `frappe.db.set_value()`.** Always `frappe.get_doc("DocType", name).save()`.
-3. **Custom logic lives in SM custom apps only.** Never modify core Frappe or ERPNext.
+3. **Custom logic lives in SM custom apps only.**
 4. **All SM DocTypes prefixed `SM`.** SM Task goes in `sm_widgets`.
 5. **SM Task is a custom DocType — NOT ERPNext Task extension.** See DECISION-014.
 6. **All custom API endpoints use `@frappe.whitelist()` decorator.**
@@ -336,115 +306,54 @@ Never emit `LOOP_COMPLETE` or mark a task done without running every gate.
 9. **Background jobs use `frappe.enqueue()`.** Never Python threading.
 10. **New Mojo components go in `frontend/src/components/mojos/` only.**
 11. **Never run `bench install-app` or `bench get-app` without explicit story instruction.**
-    These commands add the app to `sites/apps.txt`, which makes Frappe try to
-    `import {app}.hooks` on every gunicorn request. If the Python package isn't
-    available to all worker processes, the entire Frappe Desk goes down with
-    `ModuleNotFoundError` — no partial failure, total outage.
-    History: `frappe_types` crashed the scheduler; `sm_widgets` crashed all of Desk.
-    **Instead:** Create DocType files directly in existing apps. If a new app is
-    truly needed, register it in `tabInstalled Application` via MariaDB only —
-    never in `apps.txt`.
-12. **`apps.txt` vs `tabInstalled Application` — know the difference.**
-    - `apps.txt` → Frappe imports `{app}.hooks` at startup. App MUST be pip-installed
-      in the bench venv. Adding an entry here without a working Python package = total outage.
-    - `tabInstalled Application` → database record for module routing and DocType discovery.
-      Safe to add via MariaDB INSERT. Does NOT trigger Python imports.
-    - For SM custom apps deployed via `docker cp`: add to `tabInstalled Application` only.
-      Never add to `apps.txt` unless the app is pip-installed in all Frappe containers.
-13. **Custom Frappe app directory structure must have an extra module subfolder.**
-    Frappe expects: `frappe-apps/{app}/{app}/{module_folder}/doctype/`
-    NOT: `frappe-apps/{app}/{app}/doctype/`
-    The module subfolder (same name as the app) must exist between the app
-    root and the doctype folder. If it's missing, `bench migrate` runs silently
-    and creates no DocTypes. This burned 6+ hours on 2026-03-26.
-    Before creating any new DocType in a custom app, verify the directory
-    structure matches the pattern above. The sm_widgets fix is in commit 7ad311e.
+    These add to `sites/apps.txt` which imports `{app}.hooks` on every request.
+    If the Python package isn't available → total Frappe outage.
+    **Instead:** Register in `tabInstalled Application` via MariaDB only.
+12. **`apps.txt` vs `tabInstalled Application`:**
+    - `apps.txt` → Frappe imports at startup. App MUST be pip-installed. Adding without pip install = outage.
+    - `tabInstalled Application` → database record for module routing. Safe via MariaDB INSERT.
+    - SM custom apps deployed via `docker cp`: add to `tabInstalled Application` only.
+13. **Custom Frappe app directory structure requires extra module subfolder:**
+    `frappe-apps/{app}/{app}/{module_folder}/doctype/`
+    NOT `frappe-apps/{app}/{app}/doctype/`
 14. **Use `deploy.sh` for all deployments — never deploy manually.**
-    A `deploy.sh` script exists in the repo root. It must be used for all
-    deployments. It handles: git pull, sm_widgets sync (apps.txt +
-    tabInstalled Application + pip install), bench migrate, Docker rebuilds
-    with `--no-cache`, and post-deploy verification.
-    Never execute deployment steps manually — the manual process is what
-    caused the 18-hour incident on 2026-03-26.
-    If `deploy.sh` doesn't exist yet, create it before deploying. The spec
-    for `deploy.sh` is in DEPLOY.md.
 15. **Docker `--no-cache` builds change the Vite bundle filename hash.**
-    When rebuilding the frontend with `--no-cache`, Vite generates a new
-    content-hash filename (e.g. `index-BeuH284U.js` → `index-XxYzAb12.js`).
-    If nginx continues serving the old `index.html`, the app loads as a blank
-    page with no `<div id="root">`.
     `deploy.sh` handles this automatically (Phase 6 verifies hash sync).
-    If you ever rebuild the frontend outside of `deploy.sh`, manually verify:
-    `docker exec {frontend-container} grep -o 'assets/index-[^"]*\.js' /usr/share/nginx/html/index.html`
-    `docker exec {frontend-container} ls /usr/share/nginx/html/assets/*.js`
-    Both must reference the same filename.
 16. **/api/modules/ routing requires Traefik priority rule.**
-    The Mojo Abstraction Layer serves all routes under `/api/modules/`.
-    Frappe has a catch-all rule for `/api/` that intercepts these routes
-    unless Traefik gives the abstraction layer a higher priority.
-    If `/api/modules/tasks/list` returns a Frappe `DoesNotExistError`, the
-    Traefik priority rule is missing or wrong — not a code bug.
-    This is the same class of issue fixed in commit 5e22e49d for `/health`.
-    `deploy.sh` Phase 7 Check 4 verifies this explicitly on every deploy.
+    The abstraction layer must have higher priority than Frappe's `/api/` catch-all.
+    If `/api/modules/tasks/list` returns a Frappe error, the Traefik priority rule is missing.
 17. **`frappe-apps/` is not volume-mounted in the POC — this is intentional.**
-    The Frappe Docker container does not have `frappe-apps/` volume-mounted.
-    This is a known POC trade-off. The fix (volume mount) is in the
-    `deploy.sh` upgrade task. The production fix is Frappe Press (Phase 5).
-    Do not attempt to "fix" this by modifying the `frappe-poc` docker-compose.yml
-    without reading DEPLOY.md first and understanding the full deployment flow.
+    Do not attempt to fix this without reading DEPLOY.md.
+18. **Setup wizard must be suppressed on every new site** — see Known Gotchas.
+19. **HostRegexp rules do NOT trigger ACME cert issuance** — see Known Gotchas.
 
 ---
 
 ## New DocType / Module Pattern
 
-Frappe discovers DocTypes by walking `apps/{app}/{package}/{module_folder}/doctype/`.
-**The module folder is a subdirectory inside the package**, named as the snake_case
-of the module title in `modules.txt`. Getting this nesting wrong causes `bench migrate`
-to silently skip every DocType with no error.
-
-Required directory structure for a custom app:
-
+Required directory structure:
 ```
-frappe-apps/{app_name}/                         # app root
-├── pyproject.toml                              # flit build config
-└── {app_name}/                                 # Python package
-    ├── __init__.py                             # MUST contain __version__ = "x.y.z"
-    ├── hooks.py                                # app_name, app_title, etc.
-    ├── modules.txt                             # one module name per line
-    └── {module_folder}/                        # snake_case of module name
-        ├── __init__.py                         # can be empty
-        └── doctype/
-            ├── __init__.py
-            └── {doctype_folder}/               # snake_case of DocType name
-                ├── __init__.py
-                ├── {doctype_name}.json          # DocType schema
-                └── {doctype_name}.py            # controller
-
-```
-
-Example: app `sm_widgets`, module "SM Widgets", DocType "SM Task":
-
-```
-frappe-apps/sm_widgets/
+frappe-apps/{app_name}/
 ├── pyproject.toml
-└── sm_widgets/
-    ├── __init__.py          # __version__ = "0.1.0"
+└── {app_name}/
+    ├── __init__.py         # MUST contain __version__ = "x.y.z"
     ├── hooks.py
-    ├── modules.txt          # "SM Widgets"
-    └── sm_widgets/          # ← module folder matches "SM Widgets"
+    ├── modules.txt
+    └── {module_folder}/    # snake_case of module name
         ├── __init__.py
         └── doctype/
-            └── sm_task/
+            ├── __init__.py
+            └── {doctype_folder}/
                 ├── __init__.py
-                ├── sm_task.json
-                └── sm_task.py
+                ├── {doctype_name}.json
+                └── {doctype_name}.py
 ```
 
-**Checklist for every new DocType:**
-1. Module folder exists and matches the snake_case of the module name in `modules.txt`
-2. Every directory in the path has an `__init__.py`
-3. JSON `"module"` field matches the exact title in `modules.txt` (e.g. `"SM Widgets"`)
-4. Child table DocTypes go in the same module folder alongside the parent
+Checklist:
+1. Module folder exists and matches snake_case of module name in `modules.txt`
+2. Every directory has an `__init__.py`
+3. JSON `"module"` field matches title in `modules.txt`
+4. Child table DocTypes go in the same module folder
 
 ---
 
@@ -462,48 +371,34 @@ frappe-apps/sm_widgets/
 1. Create `frontend/src/components/mojos/[Name]Mojo.jsx`
 2. Default export: `export default function [Name]Mojo() {}`
 3. All data via abstraction layer — never direct Frappe calls
-4. Check /library page before building any UI — use existing components from `components/ui/` and `components/mojo-patterns/`
-5. Use `var(--sm-*)` tokens from `tokens.css` — NEVER hardcode hex, NEVER use Tailwind color classes
-6. Register in Mojo registry (`sparkmojo-internal/platform/MOJO_REGISTRY.md`)
-7. Add cross-links: feature spec → stories → MOJO_REGISTRY (see platform/README.md sync rules)
-8. See the Design System Rules section below for full component creation protocol
+4. Check /library page before building any UI
+5. Use `var(--sm-*)` tokens — NEVER hardcode hex
+6. Register in Mojo registry
+7. Add cross-links: feature spec → stories → MOJO_REGISTRY
 
 ---
 
 ## Brand Tokens
 
-Use `var(--sm-*)` CSS variables from `frontend/src/styles/tokens.css`. Never hardcode hex in component files.
-
-| Semantic Token | Role | Value |
-|----------------|------|-------|
-| `--sm-primary` | Primary actions, active states, avatars | `#006666` |
-| `--sm-danger` | Warnings, urgent states, errors | `#FF6F61` |
-| `--sm-warning` | Medium priority, pending, review | `#FFB300` |
-| `--sm-slate` | Text, headers | `#34424A` |
-| `--sm-offwhite` | Page background | `#F8F9FA` |
-
-**Rename status:** Current code uses `--sm-teal`, `--sm-coral`, `--sm-gold` (brand-specific names). Semantic rename to `--sm-primary`, `--sm-danger`, `--sm-warning` is a pending Ralph build (DECISION-015). Use semantic names in ALL new code. The rename is mechanical — find/replace plus token file update.
+| Semantic Token | Role |
+|----------------|------|
+| `--sm-primary` | Primary actions, active states, avatars |
+| `--sm-danger` | Warnings, urgent states, errors |
+| `--sm-warning` | Medium priority, pending, review |
+| `--sm-slate` | Text, headers |
+| `--sm-offwhite` | Page background |
 
 ---
 
 ## Do Not Touch
 
 - `frontend/src/pages/Desktop.jsx` — immutable structure
-- `frontend/src/pages/index.jsx` — protect the core routing structure only.
-  **NEVER remove the Desktop.jsx import or the main layout wrapper.** Route additions,
-  removals, and modifications (e.g. adding/removing a `/library` route) are permitted
-  when explicitly specified in a story. The danger is wholesale replacement, not targeted
-  route edits. History: on 2026-03-27 this file was REPLACED ENTIRELY on the VPS by a
-  tool, removing the Desktop import. The bundle silently lost all Mojo code.
+- `frontend/src/pages/index.jsx` — protect core routing structure only
 - `frontend/src/api/frappe-client.js` — load-bearing, do not modify
 - `frontend/src/types/` — static reference files
-- All legacy component folders (cash/, pos/, quickrepairs/, workorder/, technicians/, orders/, inventory/)
+- All legacy component folders
 - `sites/apps.txt` on the bench
 - Core Frappe or ERPNext source
-
-**VPS working tree must match git HEAD before any Docker build.**
-Never modify files directly on the VPS without committing. `deploy.sh` Phase 6
-will abort if `frontend/` has uncommitted changes.
 
 ---
 
@@ -511,7 +406,7 @@ will abort if `frontend/` has uncommitted changes.
 
 - Check story spec file first
 - Check `platform/feature-library/TASK-WORKBOARD.md`
-- Check `platform/decisions/` for architectural decisions
+- Check `platform/decisions/`
 - **Write `BLOCKED-[STORY-NNN].md` and stop** — never improvise on architecture
 
 ---
@@ -519,165 +414,47 @@ will abort if `frontend/` has uncommitted changes.
 ## Git Workflow
 
 ### Commit prefixes
-
 `feat:` / `chore:` / `fix:` / `docs:` / `test:`
 
 ### When to use PRs vs direct commits
 
-| Change type | Workflow | Example |
-|-------------|----------|---------|
-| Story / feature work | PR on feature branch | New Mojo component, new DocType, new API route |
-| Bug fixes to app code | PR on feature branch | Fixing a broken component, controller logic |
-| Deploy/infra fixes | Direct to main | deploy.sh changes, Traefik routing, Docker config |
-| Docs / CLAUDE.md | Direct to main | Updating instructions, adding conventions |
-| Branding / config | Direct to main | Title changes, env vars, .env files |
-
-### PR workflow (for story/feature/bugfix work)
-
-```bash
-# 1. Create branch
-git checkout -b story/STORY-NNN-short-description
-
-# 2. Make changes, commit
-git add <files>
-git commit -m "feat: description"
-
-# 3. Push and create PR
-git push -u origin story/STORY-NNN-short-description
-gh pr create --title "feat: description" --body "## Summary\n- ..."
-
-# 4. After approval/merge, clean up
-git checkout main
-git pull origin main
-git branch -d story/STORY-NNN-short-description
-```
-
-When creating PRs, use `gh pr create` (GitHub CLI). After the PR is merged,
-delete the remote branch: `gh pr merge --delete-branch`
-
-### Direct-to-main workflow (for fixes/docs/deploy)
-
-```bash
-git add <files>
-git commit -m "fix: description"
-git push origin main
-```
-
-Then deploy per the Deployment section above.
+| Change type | Workflow |
+|-------------|----------|
+| Story / feature work | PR on feature branch |
+| Bug fixes to app code | PR on feature branch |
+| Deploy/infra fixes | Direct to main |
+| Docs / CLAUDE.md | Direct to main |
 
 ---
 
 ## Design System — Rules and Governance
 
-**Decision:** DECISION-015 in `sparkmojo-internal/platform/decisions/DECISION-015-design-system.md`
-**Visual North Star:** Ein UI (https://ui.eindev.ir/) — liquid glass aesthetic.
-**Light mode is the default** working environment. Dark mode is opt-in via `[data-theme="dark"]`.
-**Tailwind dark mode config:** Must use `darkMode: ['selector', '[data-theme="dark"]']` — NOT `class`.
+**Decision:** DECISION-015
+**Light mode is the default.** Dark mode via `[data-theme="dark"]`.
 
 ### Component Architecture
-
 ```
 src/components/
-├── ui/              ← shadcn/ui base components (themed with SM glass tokens)
-├── charts/          ← shadcn/ui chart components (install when data viz mojos begin)
-├── magicui/         ← Magic UI animation accents (selective use only)
-├── mojo-patterns/   ← Spark Mojo composite patterns (MojoHeader, StatsCardRow, etc.)
-└── mojos/           ← Individual mojo implementations (assemble from above)
+├── ui/              ← shadcn/ui base components
+├── charts/          ← shadcn/ui chart components
+├── magicui/         ← Magic UI animation accents
+├── mojo-patterns/   ← Spark Mojo composite patterns
+└── mojos/           ← Individual mojo implementations
 ```
 
 ### Token Usage — MANDATORY
+- **NEVER hardcode hex colors**
+- **NEVER use Tailwind color classes**
+- **NEVER use opacity variants for visibility**
+- **ALL new colors MUST be added as tokens first**
 
-- **NEVER hardcode hex colors** in component files. Use `var(--sm-*)` tokens from `frontend/src/styles/tokens.css`.
-- **NEVER use Tailwind color classes** (`bg-teal-600`, `text-red-500`, etc.) — use token-mapped utility classes like `bg-[var(--sm-primary)]` or `text-[var(--sm-danger)]`.
-- **NEVER use opacity variants for visibility** (`bg-primary/20`). Use dedicated track/surface tokens (`var(--sm-track-bg)`, `var(--sm-surface-secondary)`). Opacity on near-white = still near-white, invisible in light mode.
-- **ALL new colors MUST be added as tokens first**, then referenced.
-
-### Token Naming Convention
-
-Semantic role names ONLY. Never color-descriptive or brand-specific names.
-
-| Semantic Token | Role |
-|----------------|------|
-| `--sm-primary` | Primary actions, active states, avatars |
-| `--sm-danger` | Warnings, urgent states, errors |
-| `--sm-warning` | Medium priority, pending, review |
-| `--sm-success` | Confirmed, complete, verified |
-| `--sm-info` | Informational, neutral highlight |
-
-**Derived pattern:**
-- Status tokens reference semantic base: `--sm-status-ready: var(--sm-primary)`
-- Glass tints reference semantic base: `--sm-glass-primary`, `--sm-glass-danger`
-- Per-client theming overrides ONLY the 5-7 base semantic colors
-
-**Control/surface tokens** — use these for all interactive elements:
-- `--sm-control-bg` — input/select background
-- `--sm-control-border` — input/select border
-- `--sm-control-border-heavy` — checkbox, strong borders
-- `--sm-track-bg` — progress/slider track
-- `--sm-track-fill` — progress/slider fill
-- `--sm-surface-secondary` — tab list background, secondary surfaces
-- `--sm-accent-solid` — solid accent color (no opacity)
-- `--sm-accent-fg` — text on accent surfaces
-
-### Component Creation Protocol
-
-When creating a NEW UI component:
-1. Check if shadcn/ui has it: `npx shadcn@latest add <component-name>` from `frontend/`
-2. If shadcn has it → install it, apply SM token overrides, add to /library page
-3. If custom → build it from shadcn primitives, add to `components/mojo-patterns/`, add to /library page
-4. Update `frontend/src/components/COMPONENT_INVENTORY.md` with: component name, props, variants, token usage, which mojos use it
-
-### Component Usage Protocol
-
-When using a component in a mojo:
-1. Check /library page first — does this component already exist?
-2. If yes → import and use it as-is. Do NOT create a one-off variant.
-3. If you need a variant that doesn't exist → add the variant to the BASE component, update /library, THEN use it.
-4. NEVER create a local/inline version of something that exists in `components/ui/` or `components/mojo-patterns/`
-
-### /library Page Contract
-
-- `frontend/src/pages/Library.jsx` is the CANONICAL visual reference for the entire design system.
-- Every component in `components/ui/` and `components/mojo-patterns/` MUST appear in /library.
-- Every variant, size, and state MUST be demonstrated.
-- If you add a component and don't add it to /library, the story is not done. Do not mark it complete.
-
-### Design System Rules (Full List)
-
-1. All mojos MUST import from `components/ui/`, `components/charts/`, or `components/mojo-patterns/`. Never create custom implementations of shared components.
-2. All colors MUST reference design tokens (`var(--sm-primary)`), never raw hex or Tailwind color classes.
-3. All typography MUST use the token font stack: Montserrat (display), Nunito Sans (body), Inter (UI controls).
-4. All surface components MUST use liquid glass treatment from `styles/tokens.css`.
-5. New shared components require a `frontend/src/components/COMPONENT_INVENTORY.md` entry before implementation.
-6. Magic UI components are accent only — they enhance, never replace base components.
-7. React NEVER calls Frappe directly — always via `/api/modules/[capability]/[action]`. (Restated for completeness.)
-
-### Pre-Commit Checklist — Design System
-
-Before committing any frontend change, verify:
-- [ ] No hardcoded hex colors in component files (`grep -r '#[0-9a-fA-F]\{6\}' frontend/src/components/`)
-- [ ] No new Tailwind color classes (grep for `bg-teal`, `bg-red`, `text-blue`, etc.)
-- [ ] Any new component is in /library (`frontend/src/pages/Library.jsx`)
-- [ ] `frontend/src/components/COMPONENT_INVENTORY.md` is updated if components changed
-- [ ] Build passes: `cd frontend && npm run build`
-
-### Key Design System Files
-
-- `frontend/src/styles/tokens.css` — all design tokens (the single source of truth)
-- `frontend/src/pages/Library.jsx` — canonical component showcase (/library route)
-- `frontend/src/components/COMPONENT_INVENTORY.md` — component catalog with props, variants, token usage, mojo associations
-- `sparkmojo-internal/platform/decisions/DECISION-015-design-system.md` — architectural ADR
-
-### Design System Debt Tracker
-
-| Item | Status |
-|------|--------|
-| Base components in /library | ✅ 100% — 49 base + 9 mojo patterns + 1 magic ui = 59 total (STORY-011, commit 484f04e) |
-| Token compliance — StatsCard + WorkboardMojo | ✅ Clean (STORY-012, commit 647bc6e) |
-| AnimatedThemeToggler | ✅ Installed (STORY-013, commit 449c716) |
-| /library route in production | ⚠️ Production guard added in STORY-013 — STORY-HOT-001 queued to remove |
-| Token semantic rename (DS-002) | ⏳ Pending James sign-off (J-008) — `--sm-teal/coral/gold` → `--sm-primary/danger/warning` |
+### Pre-Commit Checklist
+- [ ] No hardcoded hex colors
+- [ ] No new Tailwind color classes
+- [ ] Any new component is in /library
+- [ ] COMPONENT_INVENTORY.md updated
+- [ ] Build passes
 
 ---
 
-*Last updated: March 30, 2026 — Phase 4 governance: debt tracker updated (STORY-011/012/013 complete), index.jsx protection rule clarified, COMPONENT_INVENTORY.md path corrected*
+*Last updated: March 31, 2026 — Session 15. Container names corrected (frappe-poc-backend-1). Three-site topology docs added. Setup wizard suppression rule added (Rule 18). HostRegexp/ACME rule added (Rule 19). AGENT_CONTEXT.md replaces README.md as cold-start doc.*
