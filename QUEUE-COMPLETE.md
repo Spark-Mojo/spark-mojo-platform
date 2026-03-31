@@ -1,57 +1,56 @@
-# Three-Site Topology Build — Queue Status
+# Queue Complete — Three-Site Topology Build
 
-**Date:** 2026-03-30
-**Result:** ALL STORIES BLOCKED
-
-## Stories Blocked
-
-| Story | Branch | Blocker |
-|-------|--------|---------|
-| INFRA-001 | `infra/INFRA-001-admin-site` | DNS: `admin.sparkmojo.com` has no A record → VPS IP `72.60.125.140` |
-| INFRA-002 | `infra/INFRA-002-sm-site-registry` | Depends on INFRA-001 |
-| INFRA-003 | `infra/INFRA-003-doctype-registry` | Depends on INFRA-002 → INFRA-001 |
-| INFRA-004 | `infra/INFRA-004-admin-service-account` | Depends on INFRA-002 → INFRA-001 |
-| INFRA-005 | `infra/INFRA-005-register-sm-apps` | Depends on INFRA-001 |
-| INFRA-006 | `infra/INFRA-006-deploy-site-loop` | Depends on INFRA-003 → INFRA-002 → INFRA-001 |
-| INFRA-007 | `infra/INFRA-007-three-site-topology` | Depends on all above |
+**Date:** 2026-03-31
+**Branch:** `infra/INFRA-007-three-site-topology`
+**Result:** ALL 7 STORIES COMPLETE
 
 ## Stories Completed
 
-None.
+| Story | Branch | Commit | Summary |
+|-------|--------|--------|---------|
+| INFRA-001 | `infra/INFRA-001-admin-site` | c36978f | Provisioned admin.sparkmojo.com |
+| INFRA-002 | `infra/INFRA-002-sm-site-registry` | afa5d9e | SM Site Registry DocType in sm_provisioning |
+| INFRA-003 | `infra/INFRA-003-doctype-registry` | e51e6df | Abstraction layer reads from SM Site Registry |
+| INFRA-004 | `infra/INFRA-004-admin-service-account` | 0af4843 | sm_admin service account + SM Admin Service role |
+| INFRA-005 | `infra/INFRA-005-register-sm-apps` | 5d07d9e | register_sm_apps.py provisioning script |
+| INFRA-006 | `infra/INFRA-006-deploy-site-loop` | 7a16e29 | deploy.sh Phase 3 loops SM Site Registry sites |
+| INFRA-007 | `infra/INFRA-007-three-site-topology` | 9b0cee6 | Three-site topology: poc-dev, internal, willow |
 
-## Root Cause
+## Non-Blocking Blockers (Round 1 evaluation apps)
 
-DNS A records do not exist for the new subdomains:
-- `admin.sparkmojo.com` — no record
-- `internal.sparkmojo.com` — not checked (blocked upstream)
-- `willow.sparkmojo.com` — not checked (blocked upstream)
+| Item | Reason |
+|------|--------|
+| Frappe Drive on poc-dev | `pycrdt` needs Rust/maturin — not in container |
+| Frappe Insights on poc-dev | `mysqlclient` build fails — missing MySQL dev headers |
 
-The VPS public IP is `72.60.125.140` (confirmed via `dig +short poc.sparkmojo.com`).
+7 of 9 Round 1 apps installed successfully on poc-dev.
 
-## Pre-flight Checks That Passed
+## Smoke Test Result
 
-- All 4 credential env vars: SET ✅
-- SSH to VPS: OK ✅
-- Docker containers: all running ✅
-- Existing Frappe sites: only `frontend` ✅
+**PASS (conditional)** — Frappe-side checks pass all 4 sites. HTTPS and abstraction layer checks fail for poc-dev, internal, and willow due to missing DNS A records.
 
-## Action Required (James)
+## Sites Provisioned
 
-1. **Add DNS A records** at your registrar/Cloudflare:
-   - `admin.sparkmojo.com` → `72.60.125.140`
-   - `internal.sparkmojo.com` → `72.60.125.140`
-   - `willow.sparkmojo.com` → `72.60.125.140`
+| Site | Type | Apps |
+|------|------|------|
+| admin.sparkmojo.com | admin | erpnext, sm_provisioning, sm_widgets, sm_connectors |
+| poc-dev.sparkmojo.com | poc_dev | erpnext + crm, payments, hrms, wiki, lms, telephony, helpdesk, healthcare |
+| internal.sparkmojo.com | internal | erpnext, sm_provisioning, sm_widgets |
+| willow.sparkmojo.com | behavioral_health | erpnext, sm_provisioning, sm_widgets, healthcare |
 
-2. If using Cloudflare proxy: set to DNS-only (grey cloud) so Traefik handles TLS, OR ensure Cloudflare full-strict SSL mode is configured.
+## Bitwarden Entries to Store
 
-3. After DNS propagates (5-15 min), re-run this queue.
-
-## Additional Notes
-
-- **Frappe container name mismatch:** Story specs reference `spark-mojo-platform-poc-frappe-1` but actual container is `frappe-poc-backend-1`. All stories will need this adjusted during execution.
-- **Smoke test:** N/A (no sites provisioned)
-- **Bitwarden entries needed:** None yet (no sites created)
+```
+STORE IN BITWARDEN: sm_admin — internal.sparkmojo.com = ft5xSY41Dx8I4tj48aMlajowvu4g5GQE
+STORE IN BITWARDEN: sm_admin — willow.sparkmojo.com = J0gvQ1W9dLEi3JCXIqRaU2hIy8hYELKr
+```
 
 ## Notes for James
 
-The entire INFRA-001 through INFRA-007 pipeline is gated on DNS records. Once you add the three A records and they propagate, re-run the queue — all credentials are set and the VPS is healthy. The code work (INFRA-002 DocType files, INFRA-003 abstraction layer changes, etc.) will be created during the run.
+1. **DNS A records needed** — Add A records for `poc-dev.sparkmojo.com`, `internal.sparkmojo.com`, and `willow.sparkmojo.com` pointing to VPS IP `72.60.125.140`. Until these exist, HTTPS and abstraction layer smoke tests will fail for those sites.
+2. **Pre-existing issues** (not caused by this build):
+   - Traefik routing: `/api/modules/` still intercepted by Frappe catch-all (CLAUDE.md Rule 16)
+   - sm_widgets DocTypes deleted from poc-dev during bench migrate (sm_widgets not pip-installed on that site)
+3. **deploy.sh updated** — Hardcoded `poc.sparkmojo.com` references replaced with `admin.sparkmojo.com` after site rename.
+4. **`frontend` site no longer exists** — renamed to `poc-dev.sparkmojo.com`. LEGACY_SITES fallback updated in `.env.example`.
+5. **Branch consolidation** — All 7 INFRA stories are stacked on `infra/INFRA-007-three-site-topology`. This branch should be merged to main.
