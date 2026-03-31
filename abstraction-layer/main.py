@@ -109,15 +109,19 @@ async def registry_refresh(request: Request):
 def extract_subdomain(host: str) -> str | None:
     """
     Extract subdomain from Host header.
-    e.g. 'willow.app.sparkmojo.com' → 'willow'
-         'poc.sparkmojo.com' → 'poc'
-         'localhost:5173' → None
+    New pattern: 'willow.app.sparkmojo.com' → 'willow'
+    Legacy pattern: 'app.poc.sparkmojo.com' → 'poc'
+    Admin/bare: 'poc.sparkmojo.com' → 'poc'
+    Local: 'localhost:5173' → None
     """
     # Strip port
     host = host.split(":")[0]
     parts = host.split(".")
     # Need at least 3 parts: subdomain.domain.tld
     if len(parts) >= 3 and parts[-2] == "sparkmojo" and parts[-1] == "com":
+        # Legacy pattern: app.{subdomain}.sparkmojo.com → subdomain is parts[1]
+        if len(parts) == 4 and parts[0] == "app":
+            return parts[1]
         return parts[0]
     return None
 
