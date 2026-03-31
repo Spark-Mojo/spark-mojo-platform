@@ -4,199 +4,162 @@ cli:
 event_loop:
   starting_event: "session.start"
   completion_promise: "LOOP_COMPLETE"
-  max_iterations: 150
-  max_runtime_seconds: 28800
+  max_iterations: 80
+  max_runtime_seconds: 21600
 
 core:
   guardrails:
     - "Read CLAUDE.md at /Users/jamesilsley/GitHub/spark-mojo-platform/CLAUDE.md before any work."
-    - "Governance repo: /Users/jamesilsley/GitHub/sparkmojo-internal/"
-    - "Story specs: /Users/jamesilsley/GitHub/sparkmojo-internal/platform/feature-library/stories/"
-    - "Credentials doc: /Users/jamesilsley/GitHub/sparkmojo-internal/platform/CREDENTIALS.md"
-    - "All credentials come from environment variables exported before this run. Never hardcode. Never prompt for input."
-    - "Required env vars: SM_MARIADB_ROOT_PASSWORD, SM_ADMIN_SITE_PASSWORD, SM_INTERNAL_SITE_PASSWORD, SM_WILLOW_SITE_PASSWORD."
-    - "If any required env var is empty: write BLOCKED-CREDENTIALS.md and stop."
-    - "When provisioning generates a password, print: STORE IN BITWARDEN: [entry name] = [password]"
-    - "NEVER modify files directly on the VPS — all changes go through git then deploy.sh."
-    - "NEVER add any app to apps.txt without it being pip-installed (CLAUDE.md Rule 11)."
-    - "NEVER modify Desktop.jsx, index.jsx routing structure, or frappe-client.js."
-    - "NEVER use TypeScript — all frontend files are .jsx"
-    - "NEVER hardcode hex colors — use var(--sm-*) semantic tokens"
-    - "Use absolute paths everywhere. Relative paths fail when working directory changes."
-    - "If architectural decision is ambiguous: write BLOCKED-INFRA-NNN.md and move to next story."
-    - "Three-site topology is on Hostinger (standard tier) with synthetic data only. J-003 (DO HIPAA BAA) is pending. No real ePHI loaded."
-    - "The Frappe bench site name for the current POC is 'frontend' — this will be renamed to poc-dev.sparkmojo.com in INFRA-007."
+    - "This is a RESEARCH run, not a build run. Do NOT write any React code."
+    - "Do NOT create abstraction layer endpoints."
+    - "Do NOT modify any existing Mojo files."
+    - "Do NOT touch Willow (willow.sparkmojo.com) or SM Internal (internal.sparkmojo.com) sites."
+    - "The ONLY output is: sparkmojo-internal/platform/architecture/ERPNEXT_APP_EVALUATION.md"
+    - "Source credentials before starting: SM_POCDEV_SITE_PASSWORD must be set."
+    - "Governance repo (local): /Users/jamesilsley/GitHub/sparkmojo-internal/"
+    - "Evaluation site: poc-dev.sparkmojo.com (container: frappe-poc-backend-1)"
+    - "Use absolute paths everywhere. Relative paths fail."
+    - "If a module is broken or inaccessible: write BLOCKED-MEGA-NNN.md and move to next story."
 
 hats:
   health_check:
     name: "Health Check"
-    description: "Verifies credentials are set and platform is healthy before any build work."
+    description: "Verifies credentials set, POC site accessible, governance repo writable before evaluation starts."
     triggers: ["session.start"]
     publishes: ["health.ok", "health.blocked"]
     max_activations: 1
     instructions: |
-      Run these checks in order. If any fail, write HEALTH-BLOCKED.md with exact failure and emit health.blocked.
+      Run these checks. If any fail, write HEALTH-BLOCKED.md and emit health.blocked.
 
-      1. Required env vars are set:
-         Check that SM_MARIADB_ROOT_PASSWORD, SM_ADMIN_SITE_PASSWORD, SM_INTERNAL_SITE_PASSWORD, SM_WILLOW_SITE_PASSWORD are all non-empty.
-         PASS: all four are set and non-empty
-         FAIL: write BLOCKED-CREDENTIALS.md listing which vars are missing. Emit health.blocked. Stop.
+      1. Required env var is set:
+         echo "SM_POCDEV_SITE_PASSWORD: ${SM_POCDEV_SITE_PASSWORD:+SET}"
+         PASS: prints "SM_POCDEV_SITE_PASSWORD: SET"
+         FAIL: write BLOCKED-CREDENTIALS.md, emit health.blocked, stop.
 
-      2. Repo is clean and at main HEAD:
-         cd /Users/jamesilsley/GitHub/spark-mojo-platform && git status && git log --oneline -3
-         PASS: "nothing to commit, working tree clean"
+      2. POC site is reachable:
+         curl -sI https://poc-dev.sparkmojo.com --max-time 10 | head -1
+         PASS: HTTP/2 200 or 302
 
-      3. VPS is reachable:
-         ssh sparkmojo 'echo ok'
-         PASS: prints "ok"
+      3. Frappe login works:
+         curl -s -c /tmp/frappe-eval-cookies.txt -X POST \
+           https://poc-dev.sparkmojo.com/api/method/login \
+           -d "usr=Administrator&pwd=${SM_POCDEV_SITE_PASSWORD}" | python3 -c \
+           "import sys,json; d=json.load(sys.stdin); print(d.get('message','FAIL'))"
+         PASS: prints "Logged In"
+         FAIL: wrong password or site not ready
 
-      4. Frappe containers running on VPS:
-         ssh sparkmojo 'docker ps --format "table {{.Names}}\t{{.Status}}"'
-         PASS: frappe, worker, redis, mariadb containers all Up
+      4. Governance repo is writable:
+         test -d /Users/jamesilsley/GitHub/sparkmojo-internal/platform/architecture && echo OK
+         PASS: OK
 
-      5. Current abstraction layer health:
-         curl -s https://poc.sparkmojo.com/health
-         PASS: returns any valid JSON
-
-      6. Existing pytest suite passes:
-         cd /Users/jamesilsley/GitHub/spark-mojo-platform/abstraction-layer && pytest tests/ -v --tb=short
-         PASS: 0 failures
+      5. ERPNEXT_APP_EVALUATION.md exists or create it:
+         EVAL_DOC=/Users/jamesilsley/GitHub/sparkmojo-internal/platform/architecture/ERPNEXT_APP_EVALUATION.md
+         If file does not exist, create it with the header from PROMPT.md.
+         Commit to sparkmojo-internal with message: "docs: ERPNEXT_APP_EVALUATION.md — evaluation run started"
 
       If all pass:
-        ralph emit "health.ok" "credentials set, repo clean, VPS up, containers running, health ok, pytest pass"
+        ralph emit "health.ok" "credentials set, poc-dev reachable, login works, governance repo ready"
 
   story_planner:
     name: "Story Planner"
-    description: "Reads next INFRA story from PROMPT.md, confirms dependencies, writes build plan."
-    triggers: ["health.ok", "story.committed"]
+    description: "Reads PROMPT.md queue, finds next un-evaluated module, writes research plan."
+    triggers: ["health.ok", "module.committed"]
     publishes: ["plan.ready", "queue.complete"]
     instructions: |
       Read /Users/jamesilsley/GitHub/spark-mojo-platform/PROMPT.md.
 
-      Find the first story in the queue without a COMPLETE marker at /Users/jamesilsley/GitHub/spark-mojo-platform/.
-      COMPLETE markers are files named INFRA-001-COMPLETE, INFRA-002-COMPLETE, etc.
+      Find the first module in the queue without a COMPLETE marker at
+      /Users/jamesilsley/GitHub/spark-mojo-platform/.
+      COMPLETE markers are files named: MEGA-001-COMPLETE, MEGA-002-COMPLETE, etc.
 
-      If all stories have COMPLETE markers or BLOCKED files:
-        Write QUEUE-COMPLETE.md summarising: completed, blocked, smoke test result, Bitwarden entries to store, notes for James.
+      If all 18 modules have COMPLETE or BLOCKED markers:
+        Ensure ERPNEXT_APP_EVALUATION.md summary table is complete.
+        Write MEGA-RUN-COMPLETE at repo root.
         Print LOOP_COMPLETE
-        ralph emit "queue.complete" "all stories processed"
+        ralph emit "queue.complete" "all 18 modules evaluated"
         Stop.
 
       Otherwise:
-        Read the full story spec from the path listed in PROMPT.md.
-        Check dependency: is the prerequisite COMPLETE marker present?
-        If dependency not met: write BLOCKED-INFRA-NNN.md noting unmet dependency. ralph emit "plan.ready" "INFRA-NNN: blocked on dependency". Stop.
+        Write PLAN-MEGA-NNN.md at repo root with:
+          - Module name and story ID
+          - App it belongs to (erpnext / crm / hrms / etc.)
+          - The 5 behavioral health relevance questions to answer
+          - Specific DocTypes to investigate (look up in Frappe before writing)
+          - API endpoints to test
 
-        Write PLAN-INFRA-NNN.md at repo root:
-          - Story ID and type
-          - Files to create or modify (absolute paths)
-          - Quality gates from story spec Definition of Done
-          - Env vars this story uses
-          - Dependency check result
-          - Any ambiguities
+        ralph emit "plan.ready" "MEGA-NNN: [module name] — plan written"
 
-        ralph emit "plan.ready" "INFRA-NNN: plan written, type: [type], N files"
-
-  builder:
-    name: "Builder"
-    description: "Implements the INFRA story plan exactly. Runs fast gates after each significant change."
-    triggers: ["plan.ready", "build.retry"]
-    publishes: ["build.ready", "build.blocked"]
+  researcher:
+    name: "Researcher"
+    description: "Executes the evaluation protocol for one module. Pure research — no code written."
+    triggers: ["plan.ready", "research.retry"]
+    publishes: ["research.ready", "research.blocked"]
     instructions: |
-      Read PLAN-INFRA-NNN.md from /Users/jamesilsley/GitHub/spark-mojo-platform/.
+      Read PLAN-MEGA-NNN.md from /Users/jamesilsley/GitHub/spark-mojo-platform/.
 
-      If the plan says BLOCKED: write BLOCKED-INFRA-NNN.md if not already present.
-        ralph emit "build.blocked" "INFRA-NNN: blocked per plan". Stop.
+      Execute the Per-Story Evaluation Protocol from PROMPT.md exactly:
 
-      Create branch:
-        cd /Users/jamesilsley/GitHub/spark-mojo-platform
-        git checkout -b infra/INFRA-NNN-description
+      STEP 1 — Confirm module is live on poc-dev.sparkmojo.com
+        Use Frappe REST API with session cookie from /tmp/frappe-eval-cookies.txt
+        If cookie is stale, re-login: same curl command as health_check Step 3
 
-      Build exactly what the plan says. Use env vars for all credentials:
-        - MariaDB root password: $SM_MARIADB_ROOT_PASSWORD
-        - Admin site password: $SM_ADMIN_SITE_PASSWORD
-        - Internal site password: $SM_INTERNAL_SITE_PASSWORD
-        - Willow site password: $SM_WILLOW_SITE_PASSWORD
+      STEP 2 — Enumerate key DocTypes
+        For each DocType in this module:
+          - List all fields via frappe.get_meta
+          - Identify Link fields (relationships to other DocTypes)
+          - Identify Table fields (child tables)
+          - Count existing records: frappe.db.count('[DocType]')
+        Take notes. This is the evidence base for the verdict.
 
-      For Frappe DocType stories:
-        Verify directory structure per CLAUDE.md Rule 13 BEFORE creating files.
-        frappe-apps/{app}/{app}/{module}/doctype/ — module subfolder is required.
-        Create JSON + Python controller + all __init__.py files.
-        Sync: ssh sparkmojo 'cd /home/ops/spark-mojo-platform && ./deploy.sh --phase 2'
-        Fast gate: ssh sparkmojo 'docker exec spark-mojo-platform-poc-frappe-1 bench --site frontend migrate'
-        PASS: exits 0
+      STEP 3 — Test REST API connectivity
+        For the 2-3 most important DocTypes:
+          curl -s "https://poc-dev.sparkmojo.com/api/resource/[DocType]?limit=3&fields=[\"name\",\"creation\"]" \
+            -b /tmp/frappe-eval-cookies.txt
+        Note: Does it return data? What fields? Any errors?
 
-      For Python FastAPI stories:
-        Write code and tests together.
-        Fast gate: cd /Users/jamesilsley/GitHub/spark-mojo-platform/abstraction-layer && pytest tests/ -v --tb=short
-        PASS: 0 failures
+      STEP 4 — Answer all 5 behavioral health relevance questions explicitly
+        Do not skip any question. Write a 1-3 sentence answer for each.
 
-      For Shell stories:
-        Targeted changes only — never touch phases not in the story spec.
-        Fast gate: ssh sparkmojo 'cd /home/ops/spark-mojo-platform && git pull origin main && ./deploy.sh --verify-only'
-        PASS: all Phase 7 checks pass
+      STEP 5 — Write the classification entry
+        Do NOT append to ERPNEXT_APP_EVALUATION.md yet. Write it to a temp file:
+        /tmp/MEGA-NNN-entry.md
+        Include all sections from the template in PROMPT.md.
+        Choose one verdict: USE-AS-IS / CONFIGURE-AND-SURFACE / REPLACE-WITH-BEST-OF-BREED / DEFER / EXCLUDE
+        Include specific evidence for the verdict choice.
 
-      For Infrastructure stories:
-        Follow PROVISIONING_RUNBOOK.md exactly.
-        Run pre-flight checks first. Stop if any fail.
-        Use $SM_MARIADB_ROOT_PASSWORD for bench new-site --mariadb-root-password.
-        Use site-specific password var for --admin-password.
-        When sm_admin accounts are created by scripts, print:
-          STORE IN BITWARDEN: sm_admin — [site-name] = [generated-password]
-        Register each new site in SM Site Registry on admin.sparkmojo.com after provisioning.
+      If module is broken or completely inaccessible:
+        Write BLOCKED-MEGA-NNN.md with exact error.
+        ralph emit "research.blocked" "MEGA-NNN: [module] — [reason]"
+        Stop.
 
-      When fast gates pass:
-        ralph emit "build.ready" "INFRA-NNN: implementation complete, fast gates pass"
+      Otherwise:
+        ralph emit "research.ready" "MEGA-NNN: [module] — verdict: [VERDICT] — research complete"
 
-  verifier:
-    name: "Verifier"
-    description: "Runs full gate suite from story spec Definition of Done. Only hat that marks stories complete."
-    triggers: ["build.ready"]
-    publishes: ["task.done", "build.retry"]
+  writer:
+    name: "Writer"
+    description: "Appends the classification entry to ERPNEXT_APP_EVALUATION.md and commits."
+    triggers: ["research.ready"]
+    publishes: ["module.committed"]
     instructions: |
-      Identify current story from PLAN-INFRA-NNN.md.
-      Read Definition of Done from the story spec.
-      Run EVERY check listed. Record PASS or FAIL for each.
+      Read /tmp/MEGA-NNN-entry.md (from researcher hat output).
 
-      Story-specific gate sets:
+      Append the entry to:
+        /Users/jamesilsley/GitHub/sparkmojo-internal/platform/architecture/ERPNEXT_APP_EVALUATION.md
 
-      INFRA-001 (provision admin site): 5 checks — apps installed, site config, HTTPS, login, registry entry.
+      Also update the summary table at the top of the document with this module's verdict.
 
-      INFRA-002 (SM Site Registry DocType): 5 checks — migrate exits 0, DocType exists, seed record present, JSON validation rejects bad input, module folder structure correct.
+      Commit to sparkmojo-internal:
+        cd /Users/jamesilsley/GitHub/sparkmojo-internal
+        git add platform/architecture/ERPNEXT_APP_EVALUATION.md
+        git commit -m "eval: MEGA-NNN [module name] — verdict: [VERDICT]"
+        git push origin main
 
-      INFRA-003 (abstraction layer): 5 checks — existing pytest pass, test_registry.py present with 6 tests, coverage ≥70%, health endpoint ok after deploy, registry loads from DocType.
+      Write COMPLETE marker in platform repo:
+        touch /Users/jamesilsley/GitHub/spark-mojo-platform/MEGA-NNN-COMPLETE
 
-      INFRA-004 (sm_admin service account): 4 checks — script exists, syntax valid, Role JSON exists, tests pass.
+      Write QUEUE-STATUS.md at platform repo root with:
+        - Modules completed so far (list with verdicts)
+        - Modules remaining
+        - Any BLOCKED items
 
-      INFRA-005 (register_sm_apps.py): 4 checks — script exists, syntax valid, --help works in container, tests pass.
-
-      INFRA-006 (deploy.sh): 4 checks — deploy --verify-only passes, Phase 3 runs, fallback documented, LEGACY_SITES in .env.example.
-
-      INFRA-007 (three-site topology): 6 checks — all 4 sites in bench list-sites, all 4 in SM Site Registry, smoke_test.sh exits 0, deploy --verify-only passes, frontend site renamed to poc-dev, smoke_test.sh committed.
-
-      If ALL checks pass:
-        touch /Users/jamesilsley/GitHub/spark-mojo-platform/INFRA-NNN-COMPLETE
-        ralph emit "task.done" "INFRA-NNN: all N checks pass — [brief summary]"
-
-      If ANY check fails:
-        ralph emit "build.retry" "INFRA-NNN: FAILED — [exact check name, command, error, line number]"
-
-  committer:
-    name: "Committer"
-    description: "Commits verified work to the infra branch with exact commit message from story spec."
-    triggers: ["task.done"]
-    publishes: ["story.committed"]
-    instructions: |
-      Identify current story from PLAN-INFRA-NNN.md.
-      Read the exact commit message from the story spec ("Commit message:" line).
-
-      cd /Users/jamesilsley/GitHub/spark-mojo-platform
-      git add -A
-      git commit -m "[exact commit message from story spec]"
-      git push -u origin infra/INFRA-NNN-description
-
-      For stories that require VPS deployment after commit (INFRA-002, INFRA-003, INFRA-006):
-        ssh sparkmojo 'cd /home/ops/spark-mojo-platform && git pull origin main && ./deploy.sh'
-        Wait for deploy to complete. Verify exit 0.
-
-      ralph emit "story.committed" "INFRA-NNN committed on infra/INFRA-NNN-description"
+      ralph emit "module.committed" "MEGA-NNN: [module] committed — verdict: [VERDICT]"
