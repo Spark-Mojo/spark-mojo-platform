@@ -111,7 +111,8 @@ spark-mojo-platform/
 │   ├── sm_billing/
 │   └── sm_provisioning/
 └── scripts/
-    └── smoke_test.sh                # 16-check smoke test across all 4 sites
+    ├── smoke_test.sh                # 16-check smoke test across all 4 sites
+    └── docker-cleanup.sh            # Weekly Docker disk maintenance (cron: Sunday 3am)
 ```
 
 ---
@@ -241,6 +242,7 @@ git pull origin main
 - **Alpine-based containers** need `sh -c` wrapper for glob expansion in `docker exec`.
 - **Phase 7 `<div id="root">` check is a false positive.** Grep for unique string literals instead.
 - **Ecosystem apps MUST be in the Docker image** — `bench get-app` on the VPS only installs into the backend container. Workers don't get it. Next container recreation = crash loop. All ecosystem apps go in `Dockerfile.frappe`. See DECISION-021.
+- **Docker disk fills up over time** — build cache and old images accumulate. Run `scripts/docker-cleanup.sh` weekly or after heavy build sessions. A weekly cron is set up on the VPS (Sunday 3am). If disk exceeds 80%, run with `--aggressive` flag.
 
 ---
 
@@ -462,4 +464,4 @@ src/components/
 
 ---
 
-*Last updated: March 31, 2026 — Session 15. Container names corrected (frappe-poc-backend-1). Three-site topology docs added. Setup wizard suppression rule added (Rule 18). HostRegexp/ACME rule added (Rule 19). AGENT_CONTEXT.md replaces README.md as cold-start doc.*
+*Last updated: April 2, 2026 — Session 17. docker-cleanup.sh added to scripts/. Docker disk gotcha added to Known Gotchas. Repo structure updated.*
