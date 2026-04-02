@@ -243,6 +243,8 @@ git pull origin main
 - **Phase 7 `<div id="root">` check is a false positive.** Grep for unique string literals instead.
 - **Ecosystem apps MUST be in the Docker image** — `bench get-app` on the VPS only installs into the backend container. Workers don't get it. Next container recreation = crash loop. All ecosystem apps go in `Dockerfile.frappe`. See DECISION-021.
 - **Docker disk fills up over time** — build cache and old images accumulate. Run `scripts/docker-cleanup.sh` weekly or after heavy build sessions. A weekly cron is set up on the VPS (Sunday 3am). If disk exceeds 80%, run with `--aggressive` flag.
+- **After `docker compose down/up`, restart the frontend container last** — `sudo docker restart frappe-poc-frontend-1`. Nginx caches the backend container's IP at startup. If the backend gets a new IP after recreation, nginx sends traffic to the old IP (502 Bad Gateway). A frontend restart forces DNS re-resolution.
+- **`deploy.sh --verify-only` shows 5/6 on admin — this is expected** — The abstraction layer `tasks/list` check fails on `admin.sparkmojo.com` because SM Task DocType is not installed on the admin site (admin only has erpnext + sm_provisioning). 5/6 is a passing result for the admin site.
 
 ---
 
@@ -464,4 +466,4 @@ src/components/
 
 ---
 
-*Last updated: April 2, 2026 — Session 17. docker-cleanup.sh added to scripts/. Docker disk gotcha added to Known Gotchas. Repo structure updated.*
+*Last updated: April 2, 2026 — Session 17 (final). docker-cleanup.sh added. Three new Known Gotchas: Docker disk, nginx stale-IP after container recreation, deploy.sh --verify-only 5/6 on admin expected.*
