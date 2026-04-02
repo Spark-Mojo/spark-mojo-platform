@@ -1,0 +1,83 @@
+# Dockerfile.frappe — Custom Frappe image with ecosystem apps pre-installed
+#
+# Two-track app management (DECISION-021):
+#   Track 1 — Ecosystem apps: Baked into this image via git clone + pip install.
+#             These are upstream Frappe ecosystem apps pinned to specific commits.
+#             All Frappe containers (backend, scheduler, queue-*, websocket) use
+#             this image, so every container gets the same apps.
+#   Track 2 — SM custom apps: Deployed at runtime via deploy.sh Phase 2
+#             (docker cp + pip install). NOT included in this image because they
+#             change frequently with feature work.
+#
+# Why not bench get-app?
+#   bench get-app requires a running MariaDB and Redis (it resolves sites at
+#   startup). Docker build has no services running, so we use raw git clone +
+#   pip install instead. The configurator service generates apps.txt from the
+#   apps directory at container startup.
+#
+# Transitive dependency note:
+#   Each app's pyproject.toml may specify version ranges for pip dependencies.
+#   Rebuilding this image at a later date could pull different transitive deps
+#   even though commit SHAs are pinned. If reproducibility becomes critical,
+#   consider adding a pip freeze lockfile step.
+
+FROM frappe/erpnext:v16.10.1
+
+# ── Ecosystem apps ────────────────────────────────────────────────────────────
+# Pinned to exact commit SHAs for reproducibility.
+# To update an app: change the commit SHA, rebuild the image.
+#
+# | App         | Repo                                      | Commit SHA  |
+# |-------------|-------------------------------------------|-------------|
+# | telephony   | https://github.com/frappe/telephony.git   | d4ee5b4     |
+# | payments    | https://github.com/frappe/payments.git    | 3cebd94     |
+# | crm         | https://github.com/frappe/crm.git         | b131d362    |
+# | helpdesk    | https://github.com/frappe/helpdesk.git    | 0a4de51eb   |
+# | lms         | https://github.com/frappe/lms.git         | 36c8c291    |
+# | wiki        | https://github.com/frappe/wiki.git        | c854489     |
+# | hrms        | https://github.com/frappe/hrms.git        | dd3f754e9   |
+# | healthcare  | https://github.com/earthians/marley.git   | b1c908b0    |
+#
+# CRITICAL: healthcare is earthians/marley, NOT frappe/healthcare.
+
+ENV APPS_DIR=/home/frappe/frappe-bench/apps \
+    PIP=/home/frappe/frappe-bench/env/bin/pip
+
+# Clone all ecosystem apps using partial clone (--filter=blob:none downloads
+# only the blobs needed for the checked-out commit, keeping the image smaller).
+# Each RUN is a single layer to minimize image size.
+RUN git clone --filter=blob:none https://github.com/frappe/telephony.git ${APPS_DIR}/telephony \
+    && cd ${APPS_DIR}/telephony && git checkout d4ee5b4 \
+    && git clone --filter=blob:none https://github.com/frappe/payments.git ${APPS_DIR}/payments \
+    && cd ${APPS_DIR}/payments && git checkout 3cebd94 \
+    && git clone --filter=blob:none https://github.com/frappe/crm.git ${APPS_DIR}/crm \
+    && cd ${APPS_DIR}/crm && git checkout b131d362 \
+    && git clone --filter=blob:none https://github.com/frappe/helpdesk.git ${APPS_DIR}/helpdesk \
+    && cd ${APPS_DIR}/helpdesk && git checkout 0a4de51eb \
+    && git clone --filter=blob:none https://github.com/frappe/lms.git ${APPS_DIR}/lms \
+    && cd ${APPS_DIR}/lms && git checkout 36c8c291 \
+    && git clone --filter=blob:none https://github.com/frappe/wiki.git ${APPS_DIR}/wiki \
+    && cd ${APPS_DIR}/wiki && git checkout c854489 \
+    && git clone --filter=blob:none https://github.com/frappe/hrms.git ${APPS_DIR}/hrms \
+    && cd ${APPS_DIR}/hrms && git checkout dd3f754e9 \
+    && git clone --filter=blob:none https://github.com/earthians/marley.git ${APPS_DIR}/healthcare \
+    && cd ${APPS_DIR}/healthcare && git checkout b1c908b0
+
+# Pip install all ecosystem apps into the bench virtualenv.
+# Installed one-by-one because some apps have conflicting transitive dependencies
+# (lms wants razorpay~=1.4.1 while payments wants razorpay~=2.0.0). This mirrors
+# how bench installs apps sequentially. The last install wins for conflicting deps,
+# so payments is installed after lms to get razorpay 2.x (matching production).
+RUN ${PIP} install --quiet -e ${APPS_DIR}/telephony \
+    && ${PIP} install --quiet -e ${APPS_DIR}/lms \
+    && ${PIP} install --quiet -e ${APPS_DIR}/payments \
+    && ${PIP} install --quiet -e ${APPS_DIR}/crm \
+    && ${PIP} install --quiet -e ${APPS_DIR}/helpdesk \
+    && ${PIP} install --quiet -e ${APPS_DIR}/wiki \
+    && ${PIP} install --quiet -e ${APPS_DIR}/hrms \
+    && ${PIP} install --quiet -e ${APPS_DIR}/healthcare
+
+# Verify all apps are importable
+RUN ${PIP} show telephony payments crm helpdesk lms wiki hrms healthcare \
+    | grep -E "^Name:" | sed 's/Name: /  /' \
+    && echo "All ecosystem apps verified."

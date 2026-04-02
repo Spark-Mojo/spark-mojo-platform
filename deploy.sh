@@ -145,6 +145,12 @@ phase_1() {
 # PHASE 2 — Sync ALL frappe-apps into Frappe containers
 # ══════════════════════════════════════════════════════════════════════════════
 #
+# TWO-TRACK APP MANAGEMENT (DECISION-021):
+#   This phase handles SM custom apps ONLY (sm_widgets, sm_connectors, etc.).
+#   Ecosystem apps (telephony, crm, helpdesk, lms, wiki, hrms, healthcare,
+#   payments) are baked into the Docker image via Dockerfile.frappe.
+#   Do NOT add ecosystem apps here — they belong in the image.
+#
 # Note: frappe-apps/ can also be volume-mounted into the Frappe containers
 # via compose.poc-apps.yml. When the volume mount is active, docker cp below
 # is a redundant safety sync — the mount is the canonical path.

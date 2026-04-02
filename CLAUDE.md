@@ -240,6 +240,7 @@ git pull origin main
 - **Non-installable apps in apps.txt** cause `ModuleNotFoundError` and total Frappe outage.
 - **Alpine-based containers** need `sh -c` wrapper for glob expansion in `docker exec`.
 - **Phase 7 `<div id="root">` check is a false positive.** Grep for unique string literals instead.
+- **Ecosystem apps MUST be in the Docker image** — `bench get-app` on the VPS only installs into the backend container. Workers don't get it. Next container recreation = crash loop. All ecosystem apps go in `Dockerfile.frappe`. See DECISION-021.
 
 ---
 
@@ -326,6 +327,10 @@ Never emit `LOOP_COMPLETE` without running every gate.
     Do not attempt to fix this without reading DEPLOY.md.
 18. **Setup wizard must be suppressed on every new site** — see Known Gotchas.
 19. **HostRegexp rules do NOT trigger ACME cert issuance** — see Known Gotchas.
+20. **Two-track app management (DECISION-021):**
+    - Ecosystem apps (`telephony`, `crm`, `helpdesk`, `lms`, `wiki`, `hrms`, `healthcare`/marley, `payments`) are managed EXCLUSIVELY via `Dockerfile.frappe`. NEVER run `bench get-app` on the VPS for these.
+    - SM custom apps (`sm_widgets`, `sm_connectors`, `sm_provisioning`, `sm_billing`) are managed EXCLUSIVELY via `deploy.sh` Phase 2.
+    - Adding a new ecosystem app = update `Dockerfile.frappe` + rebuild image. Adding a new SM app = add to `frappe-apps/` + run `deploy.sh`.
 
 ---
 
