@@ -5,161 +5,344 @@ event_loop:
   starting_event: "session.start"
   completion_promise: "LOOP_COMPLETE"
   max_iterations: 80
-  max_runtime_seconds: 21600
+  max_runtime_seconds: 18000
 
 core:
   guardrails:
-    - "Read CLAUDE.md at /Users/jamesilsley/GitHub/spark-mojo-platform/CLAUDE.md before any work."
-    - "This is a RESEARCH run, not a build run. Do NOT write any React code."
-    - "Do NOT create abstraction layer endpoints."
-    - "Do NOT modify any existing Mojo files."
-    - "Do NOT touch Willow (willow.sparkmojo.com) or SM Internal (internal.sparkmojo.com) sites."
-    - "The ONLY output is: sparkmojo-internal/platform/architecture/ERPNEXT_APP_EVALUATION.md"
-    - "Source credentials before starting: SM_POCDEV_SITE_PASSWORD must be set."
-    - "Governance repo (local): /Users/jamesilsley/GitHub/sparkmojo-internal/"
-    - "Evaluation site: poc-dev.sparkmojo.com (container: frappe-poc-backend-1)"
-    - "Use absolute paths everywhere. Relative paths fail."
-    - "If a module is broken or inaccessible: write BLOCKED-MEGA-NNN.md and move to next story."
+    - "This is a RESEARCH-ONLY run. Do NOT modify any code files, VPS, or deploy.sh."
+    - "Do NOT run deploy.sh, bench commands, or SSH to the VPS under any circumstances."
+    - "Do NOT modify CLAUDE.md, hats.yml, PROMPT.md, or any governance document."
+    - "Your outputs are committed to sparkmojo-internal only, never spark-mojo-platform."
+    - "Governance repo absolute path: /Users/jamesilsley/GitHub/sparkmojo-internal/"
+    - "Platform repo absolute path: /Users/jamesilsley/GitHub/spark-mojo-platform/"
+    - "If a web source is unavailable, note it and continue — do not block on it."
 
 hats:
-  health_check:
-    name: "Health Check"
-    description: "Verifies credentials set, POC site accessible, governance repo writable before evaluation starts."
+  researcher:
+    name: "Frappe Press Researcher"
+    description: "Deep research on Frappe Press, Bench CLI lifecycle management, and how both interact with the Spark Mojo architecture. Produces structured research notes."
     triggers: ["session.start"]
-    publishes: ["health.ok", "health.blocked"]
+    publishes: ["research.complete"]
     max_activations: 1
     instructions: |
-      Run these checks. If any fail, write HEALTH-BLOCKED.md and emit health.blocked.
+      You are conducting deep technical research. Read all context files listed in PROMPT.md first.
 
-      1. Required env var is set:
-         echo "SM_POCDEV_SITE_PASSWORD: ${SM_POCDEV_SITE_PASSWORD:+SET}"
-         PASS: prints "SM_POCDEV_SITE_PASSWORD: SET"
-         FAIL: write BLOCKED-CREDENTIALS.md, emit health.blocked, stop.
+      Then research the following topics thoroughly. Use web search, the Frappe Press GitHub repo
+      (https://github.com/frappe/press), the Frappe Bench docs, Frappe forum, and any available
+      technical documentation.
 
-      2. POC site is reachable:
-         curl -sI https://poc-dev.sparkmojo.com --max-time 10 | head -1
-         PASS: HTTP/2 200 or 302
+      == RESEARCH TOPICS ==
 
-      3. Frappe login works:
-         curl -s -c /tmp/frappe-eval-cookies.txt -X POST \
-           https://poc-dev.sparkmojo.com/api/method/login \
-           -d "usr=Administrator&pwd=${SM_POCDEV_SITE_PASSWORD}" | python3 -c \
-           "import sys,json; d=json.load(sys.stdin); print(d.get('message','FAIL'))"
-         PASS: prints "Logged In"
-         FAIL: wrong password or site not ready
+      TOPIC 1: Frappe Bench Native Capabilities
+      - What does bench new-site, bench install-app [site] [app], bench uninstall-app do exactly?
+      - How does DNS-based multitenancy routing work natively in Bench?
+      - What does bench do for backup, migration, and version management per site?
+      - What is the bench Python API (programmatic access vs CLI subprocess)?
+      - How does bench handle per-site app installation vs bench-level app installation?
+        Specifically: if app X is in the bench but NOT installed on a site, what is the resource impact?
+      - What bench commands are relevant to a SaaS operator provisioning new client sites?
+      - How does frappe_docker (the official Docker setup) interact with bench commands?
+        Can bench commands be run inside the Docker container exactly as in bare-metal installs?
 
-      4. Governance repo is writable:
-         test -d /Users/jamesilsley/GitHub/sparkmojo-internal/platform/architecture && echo OK
-         PASS: OK
+      TOPIC 2: Frappe Press - Full Capability Analysis
+      - What is Frappe Press exactly? Self-hosted vs Frappe Cloud - what is the distinction?
+      - What does Press do that raw Bench CLI does not?
+      - Press architecture: what are the components (Press app, Agent, Docker, Ansible)?
+      - What is a "Release Group" / "Bench Group" in Press? How does it map to our Docker setup?
+      - How does Press handle per-site app installation vs bench-wide?
+      - How does Press build Docker images? What is the build pipeline?
+      - How does Press handle site creation workflow end-to-end?
+      - Does Press have an API? Can its provisioning functions be called programmatically?
+      - What is the self-hosting complexity? What does it take to run Press on a single DO droplet?
+      - What are the known limitations or failure modes of self-hosted Press?
+      - Does Press have billing/subscription management built in? How mature is it?
+      - How does Press handle updates/upgrades across multiple client sites?
+      - What is the realistic operational overhead of running Press vs rolling your own?
 
-      5. ERPNEXT_APP_EVALUATION.md exists or create it:
-         EVAL_DOC=/Users/jamesilsley/GitHub/sparkmojo-internal/platform/architecture/ERPNEXT_APP_EVALUATION.md
-         If file does not exist, create it with the header from PROMPT.md.
-         Commit to sparkmojo-internal with message: "docs: ERPNEXT_APP_EVALUATION.md — evaluation run started"
+      TOPIC 3: Fit Analysis - Spark Mojo Specific
+      Reference the context files you read at the start for all of the following.
 
-      If all pass:
-        ralph emit "health.ok" "credentials set, poc-dev reachable, login works, governance repo ready"
+      3a. sm_provisioning overlap
+      - What does our current sm_provisioning app do? (Read the actual app directory.)
+      - Which of those functions would Press natively handle?
+      - Which functions are Spark Mojo-specific and would still need custom code?
+      - Should sm_provisioning be replaced, reduced, or kept as-is?
 
-  story_planner:
-    name: "Story Planner"
-    description: "Reads PROMPT.md queue, finds next un-evaluated module, writes research plan."
-    triggers: ["health.ok", "module.committed"]
-    publishes: ["plan.ready", "queue.complete"]
+      3b. deploy.sh overlap
+      - What does deploy.sh currently do? (Read the actual script.)
+      - Which phases would be replaced or changed by adopting Press?
+      - What would deploy.sh look like in a Press world?
+
+      3c. The abstraction layer relationship
+      - Our abstraction layer (FastAPI) is the single external-facing API surface.
+      - If Press has its own API, how does that interact with our abstraction layer?
+      - Should the abstraction layer call Press APIs for provisioning, or should Press
+        be an internal-only tool the abstraction layer does not know about?
+      - Where does client onboarding orchestration logic live in a Press world?
+
+      3d. Admin Console relationship
+      - We have a React Admin Console at admin.sparkmojo.com.
+      - Press has its own dashboard UI. Do these conflict? Overlap? Complement?
+      - Should we use Press's dashboard directly, or build our own Admin Console UI
+        that calls Press APIs under the hood?
+
+      3e. DECISION-021 interaction
+      - DECISION-021 locked a custom Frappe Docker image strategy (Dockerfile.frappe, pinned SHAs).
+      - Press builds its own Docker images via Release Groups and Deploy Candidates.
+      - Are these compatible? Does Press replace DECISION-021 or complement it?
+      - If we adopt Press, does DECISION-021 need to be revisited?
+
+      3f. Non-Frappe service provisioning
+      - Press only manages Frappe/ERPNext sites. It does NOT provision Medplum Projects,
+        Plane workspaces, or other satellite services.
+      - Our provisioning model needs to handle all of these.
+      - How does this affect the architecture? Does Press become one step in a larger
+        orchestration, or does this limit Press's value?
+
+      3g. HIPAA considerations
+      - Press is designed for SaaS operators. Does it have any HIPAA-relevant features?
+      - Are there any risks from running Press as an additional surface on a HIPAA VPS?
+
+      TOPIC 4: Alternatives and Comparison
+      - What would "Bench CLI direct from FastAPI" look like as an alternative to Press?
+      - Tradeoffs of each approach:
+        A) Full Press adoption
+        B) Bench CLI called directly from FastAPI
+        C) Current sm_provisioning approach (status quo)
+      - Is there a hybrid approach?
+
+      == OUTPUT ==
+
+      Write research notes to:
+      `/Users/jamesilsley/GitHub/spark-mojo-platform/RESEARCH-PRESS-NOTES.md`
+
+      One section per topic. Be exhaustive. Include specific command examples, API endpoints,
+      ASCII architecture diagrams where helpful, and direct references to source material.
+
+      When complete:
+      ralph emit "research.complete" "Research notes written - N topics covered"
+
+  synthesizer:
+    name: "Synthesis Writer"
+    description: "Reads research notes and produces the final architecture synthesis document for the DECISION-026 strategy session."
+    triggers: ["research.complete"]
+    publishes: ["synthesis.complete"]
+    max_activations: 1
     instructions: |
-      Read /Users/jamesilsley/GitHub/spark-mojo-platform/PROMPT.md.
+      Read the research notes at:
+      `/Users/jamesilsley/GitHub/spark-mojo-platform/RESEARCH-PRESS-NOTES.md`
 
-      Find the first module in the queue without a COMPLETE marker at
-      /Users/jamesilsley/GitHub/spark-mojo-platform/.
-      COMPLETE markers are files named: MEGA-001-COMPLETE, MEGA-002-COMPLETE, etc.
+      Also re-read:
+      - `/Users/jamesilsley/GitHub/sparkmojo-internal/platform/AGENT_CONTEXT.md`
+      - `/Users/jamesilsley/GitHub/sparkmojo-internal/JAMES_PROJECT_PLAN.md`
 
-      If all 18 modules have COMPLETE or BLOCKED markers:
-        Ensure ERPNEXT_APP_EVALUATION.md summary table is complete.
-        Write MEGA-RUN-COMPLETE at repo root.
-        Print LOOP_COMPLETE
-        ralph emit "queue.complete" "all 18 modules evaluated"
-        Stop.
+      Write the synthesis document to:
+      `/Users/jamesilsley/GitHub/sparkmojo-internal/platform/architecture/PRESS_BENCH_SYNTHESIS.md`
 
-      Otherwise:
-        Write PLAN-MEGA-NNN.md at repo root with:
-          - Module name and story ID
-          - App it belongs to (erpnext / crm / hrms / etc.)
-          - The 5 behavioral health relevance questions to answer
-          - Specific DocTypes to investigate (look up in Frappe before writing)
-          - API endpoints to test
+      == AUDIENCE ==
+      James Ilsley, solo founder, deep enterprise background, making a long-term architecture
+      decision. Thinks in systems. Wants the "why" before accepting recommendations. Be direct.
+      No fluff. Immediately usable output.
 
-        ralph emit "plan.ready" "MEGA-NNN: [module name] — plan written"
+      == REQUIRED SECTIONS ==
 
-  researcher:
-    name: "Researcher"
-    description: "Executes the evaluation protocol for one module. Pure research — no code written."
-    triggers: ["plan.ready", "research.retry"]
-    publishes: ["research.ready", "research.blocked"]
-    instructions: |
-      Read PLAN-MEGA-NNN.md from /Users/jamesilsley/GitHub/spark-mojo-platform/.
+      # Frappe Press + Bench Lifecycle Analysis
+      **Research date:** [today]
+      **Prepared for:** DECISION-026 (Client Provisioning Architecture)
 
-      Execute the Per-Story Evaluation Protocol from PROMPT.md exactly:
+      ## Executive Summary
+      5 bullets max. The things James must know before reading further.
 
-      STEP 1 — Confirm module is live on poc-dev.sparkmojo.com
-        Use Frappe REST API with session cookie from /tmp/frappe-eval-cookies.txt
-        If cookie is stale, re-login: same curl command as health_check Step 3
+      ## What Frappe Bench Actually Does For Us (Native Capabilities)
+      What we already have and are underutilizing. Specific commands.
+      Focus on: per-site app install, DNS multitenancy, programmatic access.
 
-      STEP 2 — Enumerate key DocTypes
-        For each DocType in this module:
-          - List all fields via frappe.get_meta
-          - Identify Link fields (relationships to other DocTypes)
-          - Identify Table fields (child tables)
-          - Count existing records: frappe.db.count('[DocType]')
-        Take notes. This is the evidence base for the verdict.
+      ## What Frappe Press Is
+      Precise description. Not marketing. What it does, how it works, its components,
+      and what problem it was built to solve.
 
-      STEP 3 — Test REST API connectivity
-        For the 2-3 most important DocTypes:
-          curl -s "https://poc-dev.sparkmojo.com/api/resource/[DocType]?limit=3&fields=[\"name\",\"creation\"]" \
-            -b /tmp/frappe-eval-cookies.txt
-        Note: Does it return data? What fields? Any errors?
+      ## Press Capability Map vs Spark Mojo Needs
+      A table. Rows = provisioning capabilities we need.
+      Columns: who handles it TODAY, who handles it WITH PRESS, who handles it WITH BENCH CLI DIRECT.
 
-      STEP 4 — Answer all 5 behavioral health relevance questions explicitly
-        Do not skip any question. Write a 1-3 sentence answer for each.
+      ## Impact on sm_provisioning
+      What sm_provisioning looks like under each option. What gets deleted, stays, or gets added.
 
-      STEP 5 — Write the classification entry
-        Do NOT append to ERPNEXT_APP_EVALUATION.md yet. Write it to a temp file:
-        /tmp/MEGA-NNN-entry.md
-        Include all sections from the template in PROMPT.md.
-        Choose one verdict: USE-AS-IS / CONFIGURE-AND-SURFACE / REPLACE-WITH-BEST-OF-BREED / DEFER / EXCLUDE
-        Include specific evidence for the verdict choice.
+      ## Impact on deploy.sh
+      Same analysis for deploy.sh.
 
-      If module is broken or completely inaccessible:
-        Write BLOCKED-MEGA-NNN.md with exact error.
-        ralph emit "research.blocked" "MEGA-NNN: [module] — [reason]"
-        Stop.
+      ## Impact on the Abstraction Layer
+      How Press (or Bench CLI direct) interacts with FastAPI. Where does orchestration live?
 
-      Otherwise:
-        ralph emit "research.ready" "MEGA-NNN: [module] — verdict: [VERDICT] — research complete"
+      ## Impact on Admin Console
+      Press has a dashboard. We have an Admin Console. What is the right relationship?
 
-  writer:
-    name: "Writer"
-    description: "Appends the classification entry to ERPNEXT_APP_EVALUATION.md and commits."
-    triggers: ["research.ready"]
-    publishes: ["module.committed"]
-    instructions: |
-      Read /tmp/MEGA-NNN-entry.md (from researcher hat output).
+      ## Impact on DECISION-021 (Custom Docker Image)
+      Does Press replace, complement, or conflict with our custom image strategy?
 
-      Append the entry to:
-        /Users/jamesilsley/GitHub/sparkmojo-internal/platform/architecture/ERPNEXT_APP_EVALUATION.md
+      ## The Non-Frappe Problem
+      Press only manages Frappe. We also need Medplum, future Plane, etc.
+      How does this shape the architecture regardless of option chosen?
 
-      Also update the summary table at the top of the document with this module's verdict.
+      ## Three Options - Honest Tradeoff Analysis
+      Option A: Full Press Adoption
+      Option B: Bench CLI Direct from FastAPI (no Press)
+      Option C: Status Quo (sm_provisioning as-is)
+      For each: what you get, what you give up, implementation effort, operational risk.
+
+      ## Recommendation
+      One option. Clear rationale. No hedging.
+      What changes immediately, what changes over time, what stays the same.
+
+      ## What This Means for DECISION-026
+      Specific inputs to the provisioning architecture decision.
+      What is now locked vs what needs a follow-on session.
+
+      ## Open Questions for James
+      Maximum 5. Each: the question, why it matters, suggested path to resolve.
+
+      == AFTER WRITING ==
 
       Commit to sparkmojo-internal:
-        cd /Users/jamesilsley/GitHub/sparkmojo-internal
-        git add platform/architecture/ERPNEXT_APP_EVALUATION.md
-        git commit -m "eval: MEGA-NNN [module name] — verdict: [VERDICT]"
-        git push origin main
+      ```
+      cd /Users/jamesilsley/GitHub/sparkmojo-internal
+      git add platform/architecture/PRESS_BENCH_SYNTHESIS.md
+      git commit -m "research: Frappe Press + Bench lifecycle analysis for DECISION-026"
+      git push origin main
+      ```
 
-      Write COMPLETE marker in platform repo:
-        touch /Users/jamesilsley/GitHub/spark-mojo-platform/MEGA-NNN-COMPLETE
+      Then: ralph emit "synthesis.complete" "PRESS_BENCH_SYNTHESIS.md committed to sparkmojo-internal"
 
-      Write QUEUE-STATUS.md at platform repo root with:
-        - Modules completed so far (list with verdicts)
-        - Modules remaining
-        - Any BLOCKED items
+  diagram_maker:
+    name: "Architecture Diagram Maker"
+    description: "Produces two HTML architecture diagrams: current-state client onboarding flow and proposed best-option architecture. Visual decision support for James."
+    triggers: ["synthesis.complete"]
+    publishes: ["diagrams.complete"]
+    max_activations: 1
+    instructions: |
+      Read the synthesis document you just committed:
+      `/Users/jamesilsley/GitHub/sparkmojo-internal/platform/architecture/PRESS_BENCH_SYNTHESIS.md`
 
-      ralph emit "module.committed" "MEGA-NNN: [module] committed — verdict: [VERDICT]"
+      Also read:
+      - `/Users/jamesilsley/GitHub/sparkmojo-internal/platform/AGENT_CONTEXT.md`
+      - `/Users/jamesilsley/GitHub/sparkmojo-internal/platform/decisions/DECISION-021-frappe-container-image-strategy.md`
+      - `/Users/jamesilsley/GitHub/sparkmojo-internal/platform/decisions/DECISION-004-multi-tenancy.md`
+      - `/Users/jamesilsley/GitHub/spark-mojo-platform/scripts/deploy.sh` (read actual content)
+
+      Produce TWO HTML documents.
+
+      == DOCUMENT 1: Current State ==
+      File: `/Users/jamesilsley/GitHub/sparkmojo-internal/platform/architecture/diagrams/CLIENT_ONBOARDING_CURRENT.html`
+
+      This document must contain:
+
+      SECTION A — Step-by-step client onboarding flow (TODAY)
+      Show every manual and automated step required to onboard a new client today.
+      Use a numbered vertical timeline / swimlane format. Clearly mark:
+        - Steps that are MANUAL (James does it)
+        - Steps that are AUTOMATED (deploy.sh / scripts do it)
+        - Steps that are MISSING / NOT YET BUILT
+      Include actual commands where relevant (bench new-site, deploy.sh phases, etc).
+      Be honest about gaps — if a step is currently manual that should be automated, call it out.
+
+      SECTION B — Client site architecture diagram (TODAY)
+      SVG diagram showing what a single client's installation consists of.
+      Must show all layers:
+        - VPS / infrastructure layer (Hostinger, Docker, Traefik)
+        - Frappe bench and containers (backend, frontend, db, scheduler, websocket)
+        - Apps installed on the client site (erpnext, marley, sm_widgets, sm_provisioning, etc)
+        - Abstraction layer (FastAPI, where it runs, how it connects)
+        - React frontend (where it's served, how it reaches the abstraction layer)
+        - External services (none currently wired, but show planned slots)
+        - Data flows between all layers with labeled arrows
+      Use color coding:
+        - Blue (#4299e1): infrastructure / containers
+        - Orange (#ed8936): application layer / Frappe apps
+        - Purple (#9f7aea): abstraction layer / API
+        - Green (#48bb78): frontend / React
+        - Grey (#a0aec0): not yet built / planned
+
+      == DOCUMENT 2: Proposed Best Option ==
+      File: `/Users/jamesilsley/GitHub/sparkmojo-internal/platform/architecture/diagrams/CLIENT_ONBOARDING_PROPOSED.html`
+
+      Base this document on whichever option the synthesis recommends as best.
+      Clearly label at the top which option this represents (A, B, or C) and a one-sentence summary.
+
+      SECTION A — Step-by-step client onboarding flow (PROPOSED)
+      Same format as Document 1 Section A, but showing the proposed future state.
+      Use a side-by-side or before/after callout where steps change significantly.
+      Mark steps that are NEW, CHANGED, REMOVED, or SAME vs current state.
+      Emphasize automation improvements — show which manual steps become automated.
+
+      SECTION B — Client site architecture diagram (PROPOSED)
+      Same SVG format as Document 1 Section B, but showing the proposed architecture.
+      Highlight what changes vs current state (use a dashed border or "NEW" label on changed components).
+      Show new components (Press, Medplum, etc) with their correct placement in the stack.
+      Show the non-Frappe service provisioning pattern (Medplum Project, future satellite services).
+      Show the SM Site Registry as the authoritative mapping layer.
+
+      == HTML QUALITY REQUIREMENTS ==
+      - Self-contained HTML files (no external dependencies except system fonts)
+      - Clean, professional styling. Dark header bar with title. White card sections.
+      - SVG diagrams must be readable at 1200px wide
+      - Include a legend for color coding in each diagram
+      - Include a "Last updated" footer with today's date and "Prepared for DECISION-026"
+      - Both files must open correctly in a browser with no errors
+
+      == AFTER WRITING BOTH FILES ==
+
+      Commit both to sparkmojo-internal:
+      ```
+      cd /Users/jamesilsley/GitHub/sparkmojo-internal
+      git add platform/architecture/diagrams/CLIENT_ONBOARDING_CURRENT.html
+      git add platform/architecture/diagrams/CLIENT_ONBOARDING_PROPOSED.html
+      git commit -m "docs: client onboarding architecture diagrams (current + proposed) for DECISION-026"
+      git push origin main
+      ```
+
+      Then: ralph emit "diagrams.complete" "Both architecture diagrams committed to sparkmojo-internal/platform/architecture/diagrams/"
+
+  finalizer:
+    name: "Run Finalizer"
+    description: "Verifies all outputs are committed, cleans up interim files, and ends the run cleanly."
+    triggers: ["diagrams.complete"]
+    publishes: []
+    max_activations: 1
+    instructions: |
+      Verify all three output files exist in sparkmojo-internal:
+      ```
+      ls /Users/jamesilsley/GitHub/sparkmojo-internal/platform/architecture/PRESS_BENCH_SYNTHESIS.md
+      ls /Users/jamesilsley/GitHub/sparkmojo-internal/platform/architecture/diagrams/CLIENT_ONBOARDING_CURRENT.html
+      ls /Users/jamesilsley/GitHub/sparkmojo-internal/platform/architecture/diagrams/CLIENT_ONBOARDING_PROPOSED.html
+      ```
+
+      Then clean up interim research notes from the platform repo:
+      ```
+      cd /Users/jamesilsley/GitHub/spark-mojo-platform
+      rm -f RESEARCH-PRESS-NOTES.md
+      git add -A
+      git commit -m "chore: remove interim research notes (synthesis committed to internal repo)"
+      git push origin main
+      ```
+
+      Print the following summary then print LOOP_COMPLETE:
+
+      ```
+      RESEARCH RUN COMPLETE — Session 18
+      =====================================
+      Outputs committed to sparkmojo-internal:
+
+      1. platform/architecture/PRESS_BENCH_SYNTHESIS.md
+         Full analysis: Bench capabilities, Press capabilities, fit analysis,
+         sm_provisioning impact, deploy.sh impact, abstraction layer impact,
+         three-option tradeoff, recommendation, DECISION-026 inputs
+
+      2. platform/architecture/diagrams/CLIENT_ONBOARDING_CURRENT.html
+         Current state: step-by-step onboarding flow + client site architecture diagram
+
+      3. platform/architecture/diagrams/CLIENT_ONBOARDING_PROPOSED.html
+         Proposed state: onboarding flow + architecture diagram for recommended option
+
+      Ready for: DECISION-026 strategy session with Claude Chat
+      Next step: Open Claude Chat and say "Research run complete, ready for DECISION-026 session"
+      ```
