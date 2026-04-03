@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(for branch:*)",
+      "Bash(do echo:*)",
+      "Bash(git log:*)",
+      "Bash(done)",
+      "Bash(gh auth:*)",
+      "Bash(ssh:*)"
+    ]
+  }
+}
