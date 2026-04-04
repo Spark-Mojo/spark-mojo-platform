@@ -71,6 +71,12 @@ services:
       - "traefik.http.routers.api-modules.tls.certresolver=mytlschallenge"
       - "traefik.http.routers.api-modules.priority=100"
       - "traefik.http.routers.api-modules.service=api-backend"
+      # Admin router — provisioning API (/api/admin/) on all app subdomains + legacy
+      - "traefik.http.routers.api-admin.rule=(Host(`poc.sparkmojo.com`) || Host(`poc-dev.app.sparkmojo.com`) || Host(`internal.app.sparkmojo.com`) || Host(`willow.app.sparkmojo.com`) || Host(`admin.app.sparkmojo.com`) || Host(`app.poc.sparkmojo.com`)) && PathPrefix(`/api/admin/`)"
+      - "traefik.http.routers.api-admin.entrypoints=websecure"
+      - "traefik.http.routers.api-admin.tls.certresolver=mytlschallenge"
+      - "traefik.http.routers.api-admin.priority=200"
+      - "traefik.http.routers.api-admin.service=api-backend"
       # Legacy api subdomain
       - "traefik.http.routers.api-poc.rule=Host(`api.poc.sparkmojo.com`)"
       - "traefik.http.routers.api-poc.entrypoints=websecure"
