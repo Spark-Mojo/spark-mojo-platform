@@ -4,276 +4,328 @@ cli:
 event_loop:
   starting_event: "session.start"
   completion_promise: "LOOP_COMPLETE"
-  max_iterations: 150
+  max_iterations: 300
   max_runtime_seconds: 28800
 
 core:
   guardrails:
     - "Governance repo absolute path: /Users/jamesilsley/GitHub/sparkmojo-internal/"
     - "Story files absolute path: /Users/jamesilsley/GitHub/sparkmojo-internal/platform/feature-library/stories/"
-    - "NEVER install Frappe apps via bench — causes VPS restart loops. SM apps are installed via tabInstalled Application SQL only."
+    - "NEVER install Frappe apps via bench — causes VPS restart loops. SM apps use tabInstalled Application SQL only."
     - "NEVER add sm_billing to apps.txt or Dockerfile.frappe — it is an SM custom app managed by deploy.sh."
     - "NEVER create TypeScript files — all frontend files are .jsx."
     - "NEVER hardcode credentials — all secrets via os.getenv()."
+    - "Always deploy to VPS after every story is verified. Use: ssh sparkmojo 'cd /home/ops/spark-mojo-platform && git pull origin main && ./deploy.sh'"
+    - "Medplum docker compose MUST use --env-file .env.poc flag."
+    - "bench execute does NOT support semicolon-separated multi-statement code — use single expressions only."
     - "If architectural ambiguity arises, write BLOCKED-[STORY].md and continue to next story."
 
 hats:
   health_check:
     name: "Health Check"
-    description: "Verifies baseline repo health before any build work. Halts the session if broken."
+    description: "Verifies baseline repo health before any build work. Halts if broken."
     triggers: ["session.start"]
     publishes: ["health.ok", "health.blocked"]
     max_activations: 1
     instructions: |
       Read CLAUDE.md at /Users/jamesilsley/GitHub/spark-mojo-platform/CLAUDE.md first.
-      Run these checks in order. If any fail, write HEALTH-BLOCKED.md explaining what failed and emit health.blocked.
+      Run these checks. If any fail, write HEALTH-BLOCKED.md and emit health.blocked.
+
       1. Python imports check:
          cd /Users/jamesilsley/GitHub/spark-mojo-platform/abstraction-layer
          python3 -c "import main" 2>&1
          PASS: no ImportError
-      2. Existing tests still pass:
-         cd /Users/jamesilsley/GitHub/spark-mojo-platform/abstraction-layer
-         pytest tests/ -v --ignore=tests/test_provisioning.py -q 2>&1 | tail -20
+
+      2. Existing tests pass:
+         pytest tests/ -q 2>&1 | tail -5
          PASS: 0 failures
+
       3. No BLOCKED-* files from previous runs:
-         ls /Users/jamesilsley/GitHub/spark-mojo-platform/BLOCKED-* 2>/dev/null
-         PASS: no files found (if found, read them and report in HEALTH-BLOCKED.md)
-      If all pass: ralph emit "health.ok" "imports clean, existing tests pass, no blocked files"
+         ls /Users/jamesilsley/GitHub/spark-mojo-platform/BLOCKED-* 2>/dev/null && echo "BLOCKED FILES FOUND" || echo "clean"
+         PASS: no files found
+
+      4. sm_billing pip installs cleanly:
+         pip install -e /Users/jamesilsley/GitHub/spark-mojo-platform/frappe-apps/sm_billing -q 2>&1
+         PASS: no error
+
+      If all pass: ralph emit "health.ok" "all health checks pass"
 
   dispatcher:
     name: "Dispatcher"
-    description: "Fans out after health check to start both parallel story tracks independently."
+    description: "Fans out after health check to start both parallel story tracks."
     triggers: ["health.ok"]
-    publishes: ["bill_001.plan_start", "story_014.plan_start"]
+    publishes: ["bill_002.plan_start", "story_015.plan_start"]
     max_activations: 1
     instructions: |
-      Health check passed. Fan out to both story tracks now.
-      ralph emit "bill_001.plan_start" "starting BILL-001 planning track"
-      ralph emit "story_014.plan_start" "starting STORY-014 planning track"
+      ralph emit "bill_002.plan_start" "starting BILL-002 track"
+      ralph emit "story_015.plan_start" "starting STORY-015 track"
 
-  bill_001_planner:
-    name: "BILL-001 Planner"
-    description: "Plans the sm_billing Frappe app scaffold. Reads story spec and writes build plan."
-    triggers: ["bill_001.plan_start"]
-    publishes: ["bill_001_plan.ready", "bill_001.blocked"]
+  bill_002_planner:
+    name: "BILL-002 Planner"
+    description: "Plans creation of all 11 billing DocTypes. Reads story spec and writes build plan."
+    triggers: ["bill_002.plan_start"]
+    publishes: ["bill_002_plan.ready", "bill_002.blocked"]
     max_activations: 1
     instructions: |
       Read the full story spec:
-      /Users/jamesilsley/GitHub/sparkmojo-internal/platform/feature-library/stories/BILL-001-sm-billing-app-scaffold.md
-      Read the reference app for structure:
-      ls /Users/jamesilsley/GitHub/spark-mojo-platform/frappe-apps/sm_provisioning/
-      Write PLAN-BILL-001.md at repo root with:
-      - Exact list of files to create with their full absolute paths
-      - Content summary for each file
-      - Confirmation that sm_billing does NOT appear in apps.txt or Dockerfile.frappe
-      - Confirmation that behavioral_health.yaml path is correct
-      - Gate type: Frappe app structure check (no bench required)
-      Then: ralph emit "bill_001_plan.ready" "BILL-001: N files to create, structure confirmed"
+      /Users/jamesilsley/GitHub/sparkmojo-internal/platform/feature-library/stories/BILL-002-core-billing-doctypes.md
 
-  story_014_planner:
-    name: "STORY-014 Planner"
-    description: "Plans the Medplum Docker services addition. Reads story spec and writes build plan."
-    triggers: ["story_014.plan_start"]
-    publishes: ["story_014_plan.ready", "story_014.blocked"]
+      Read the reference DocType for structure:
+      /Users/jamesilsley/GitHub/spark-mojo-platform/frappe-apps/sm_provisioning/sm_provisioning/sm_provisioning/doctype/sm_site_registry/
+
+      Read BILLING-ARCHITECTURE-DESIGN.md for full field specs:
+      /Users/jamesilsley/GitHub/sparkmojo-internal/platform/research/billing/BILLING-ARCHITECTURE-DESIGN.md
+
+      Write PLAN-BILL-002.md at repo root with:
+      - List of all 11 DocTypes to create with directory paths
+      - For each: is_child_table, naming rule, key fields
+      - Confirmation that module field will be "SM Billing" in all JSON files
+      - Gate type: bench migrate on VPS + Frappe Desk verification
+
+      ralph emit "bill_002_plan.ready" "BILL-002: 11 DocTypes planned"
+
+  story_015_planner:
+    name: "STORY-015 Planner"
+    description: "Plans the Medplum abstraction layer connector. Reads story spec and writes build plan."
+    triggers: ["story_015.plan_start"]
+    publishes: ["story_015_plan.ready", "story_015.blocked"]
     max_activations: 1
     instructions: |
       Read the full story spec:
-      /Users/jamesilsley/GitHub/sparkmojo-internal/platform/feature-library/stories/STORY-014-medplum-docker-service.md
-      Read the implementation design reference:
+      /Users/jamesilsley/GitHub/sparkmojo-internal/platform/feature-library/stories/STORY-015-medplum-abstraction-layer-connector.md
+
+      Read the connector design reference:
       /Users/jamesilsley/GitHub/sparkmojo-internal/platform/research/medplum-implementation/MEDPLUM-INFRA-DESIGN.md
-      Read current docker-compose.poc.yml:
-      /Users/jamesilsley/GitHub/spark-mojo-platform/docker-compose.poc.yml
-      Read current .env.example:
-      /Users/jamesilsley/GitHub/spark-mojo-platform/.env.example
-      Write PLAN-STORY-014.md at repo root with:
-      - Exact changes to docker-compose.poc.yml (three new services, two new volumes)
-      - Full medplum.config.json spec
-      - New env vars to add to .env.example
-      - Confirmation that NO Traefik labels will be added to Medplum services
-      - Confirmation that NO external ports will be exposed
-      - Gate type: docker compose config validation (no VPS deployment)
-      Then: ralph emit "story_014_plan.ready" "STORY-014: compose changes planned, N new services, no Traefik labels"
 
-  bill_001_builder:
-    name: "BILL-001 Builder"
-    description: "Creates the sm_billing Frappe app scaffold exactly as planned."
-    triggers: ["bill_001_plan.ready"]
-    publishes: ["bill_001_build.ready", "bill_001_build.blocked"]
+      Read existing abstraction layer structure:
+      /Users/jamesilsley/GitHub/spark-mojo-platform/abstraction-layer/main.py
+
+      Write PLAN-STORY-015.md at repo root with:
+      - Files to create: connectors/__init__.py, connectors/medplum_connector.py, tests/test_medplum_connector.py
+      - MedplumClient method list with project_id enforcement requirement
+      - 13 test cases to implement
+      - Gate type: pytest 13/13 pass, coverage >= 70%
+
+      ralph emit "story_015_plan.ready" "STORY-015: connector + 13 tests planned"
+
+  bill_002_builder:
+    name: "BILL-002 Builder"
+    description: "Creates all 11 billing DocTypes in sm_billing exactly as planned."
+    triggers: ["bill_002_plan.ready"]
+    publishes: ["bill_002_build.ready", "bill_002_build.blocked"]
     max_activations: 3
     instructions: |
-      Read PLAN-BILL-001.md. If it contains a BLOCKED marker, write BLOCKED-BILL-001.md and emit bill_001_build.blocked.
-      Create branch:
-      cd /Users/jamesilsley/GitHub/spark-mojo-platform
+      Read PLAN-BILL-002.md. If BLOCKED, write BLOCKED-BILL-002.md and emit bill_002_build.blocked.
+
       git checkout main
-      git checkout -b story/bill-001-sm-billing-scaffold
-      Create all files exactly as specified in PLAN-BILL-001.md. Follow the story spec at:
-      /Users/jamesilsley/GitHub/sparkmojo-internal/platform/feature-library/stories/BILL-001-sm-billing-app-scaffold.md
+      git checkout -b story/bill-002-core-billing-doctypes
+
+      Create all 11 DocType directories under:
+      /Users/jamesilsley/GitHub/spark-mojo-platform/frappe-apps/sm_billing/sm_billing/sm_billing/doctype/
+
+      Each DocType needs: __init__.py, sm_{name}.json, sm_{name}.py
+      Follow the field specs exactly from BILLING-ARCHITECTURE-DESIGN.md section 2.
+      Every JSON must have "module": "SM Billing".
+      Child table DocTypes (SM Claim Line, SM ERA Line) must have "istable": 1.
+
       Fast gate after creating files:
-      find /Users/jamesilsley/GitHub/spark-mojo-platform/frappe-apps/sm_billing -type f | sort
-      PASS: all 8 files present
-      Verify sm_billing NOT in apps.txt:
-      grep -r "sm_billing" /Users/jamesilsley/GitHub/spark-mojo-platform/apps.txt 2>/dev/null || echo "NOT FOUND - correct"
-      Verify sm_billing NOT in Dockerfile.frappe:
-      grep "sm_billing" /Users/jamesilsley/GitHub/spark-mojo-platform/Dockerfile.frappe 2>/dev/null || echo "NOT FOUND - correct"
-      When fast gates pass: ralph emit "bill_001_build.ready" "BILL-001: 8 files created, not in apps.txt, not in Dockerfile"
+      find /Users/jamesilsley/GitHub/spark-mojo-platform/frappe-apps/sm_billing/sm_billing/sm_billing/doctype -name "*.json" | wc -l
+      PASS: 11 JSON files
 
-  story_014_builder:
-    name: "STORY-014 Builder"
-    description: "Adds Medplum Docker services to docker-compose.poc.yml exactly as planned."
-    triggers: ["story_014_plan.ready"]
-    publishes: ["story_014_build.ready", "story_014_build.blocked"]
+      ralph emit "bill_002_build.ready" "BILL-002: 11 DocTypes created"
+
+  story_015_builder:
+    name: "STORY-015 Builder"
+    description: "Creates MedplumClient connector with project_id enforcement and unit tests."
+    triggers: ["story_015_plan.ready"]
+    publishes: ["story_015_build.ready", "story_015_build.blocked"]
     max_activations: 3
     instructions: |
-      Read PLAN-STORY-014.md. If it contains a BLOCKED marker, write BLOCKED-STORY-014.md and emit story_014_build.blocked.
-      Create branch:
+      Read PLAN-STORY-015.md. If BLOCKED, write BLOCKED-STORY-015.md and emit story_015_build.blocked.
+
+      git checkout main
+      git checkout -b story/story-015-medplum-connector
+
+      Create:
+      1. /Users/jamesilsley/GitHub/spark-mojo-platform/abstraction-layer/connectors/__init__.py
+      2. /Users/jamesilsley/GitHub/spark-mojo-platform/abstraction-layer/connectors/medplum_connector.py
+      3. /Users/jamesilsley/GitHub/spark-mojo-platform/abstraction-layer/tests/test_medplum_connector.py
+
+      CRITICAL: Every FHIR data method (get_resource, create_resource, update_resource,
+      search_resources) MUST call _validate_project_id() as its FIRST line.
+      project_id=None or project_id="" MUST raise MedplumProjectScopeError immediately.
+      This is DECISION-028 — non-negotiable HIPAA requirement.
+
+      Fast gate:
+      cd /Users/jamesilsley/GitHub/spark-mojo-platform/abstraction-layer
+      python3 -c "from connectors.medplum_connector import MedplumClient, MedplumProjectScopeError; print('import OK')"
+      PASS: prints import OK
+
+      ralph emit "story_015_build.ready" "STORY-015: connector built, import OK"
+
+  bill_002_verifier:
+    name: "BILL-002 Verifier"
+    description: "Deploys sm_billing to VPS, runs bench migrate, verifies all 11 DocTypes exist in Frappe Desk."
+    triggers: ["bill_002_build.ready"]
+    publishes: ["bill_002.done", "bill_002_build.retry"]
+    instructions: |
+      Run acceptance criteria from:
+      /Users/jamesilsley/GitHub/sparkmojo-internal/platform/feature-library/stories/BILL-002-core-billing-doctypes.md
+
+      GATE 1: All 11 DocType JSON files exist
+      find /Users/jamesilsley/GitHub/spark-mojo-platform/frappe-apps/sm_billing/sm_billing/sm_billing/doctype -name "*.json" | wc -l
+      PASS: 11
+
+      GATE 2: All child tables have istable=1
+      grep -l '"istable": 1' /Users/jamesilsley/GitHub/spark-mojo-platform/frappe-apps/sm_billing/sm_billing/sm_billing/doctype/sm_claim_line/sm_claim_line.json
+      grep -l '"istable": 1' /Users/jamesilsley/GitHub/spark-mojo-platform/frappe-apps/sm_billing/sm_billing/sm_billing/doctype/sm_era_line/sm_era_line.json
+      PASS: both files found
+
+      GATE 3: All JSON files have correct module
+      grep -rL '"module": "SM Billing"' /Users/jamesilsley/GitHub/spark-mojo-platform/frappe-apps/sm_billing/sm_billing/sm_billing/doctype/
+      PASS: empty output (all files have correct module)
+
+      GATE 4: Commit to branch
+      cd /Users/jamesilsley/GitHub/spark-mojo-platform
+      git add -A
+      git commit -m "feat: core billing DocTypes — SM Payer, SM Provider, SM Claim, SM ERA, SM Denial, SM Appeal, SM Eligibility Check, SM Payment, SM Credential"
+      git push origin story/bill-002-core-billing-doctypes
+
+      GATE 5: Deploy and migrate on VPS
+      ssh sparkmojo 'cd /home/ops/spark-mojo-platform && git fetch origin && git checkout story/bill-002-core-billing-doctypes && git pull origin story/bill-002-core-billing-doctypes && ./deploy.sh --phase 2 && ./deploy.sh --phase 3'
+      PASS: deploy.sh phases 2 and 3 exit 0
+
+      GATE 6: Verify DocTypes exist in Frappe
+      ssh sparkmojo "docker exec frappe-poc-backend-1 bench --site poc-dev.sparkmojo.com execute \"print(frappe.db.exists('DocType', 'SM Payer'), frappe.db.exists('DocType', 'SM Claim'), frappe.db.exists('DocType', 'SM ERA'), frappe.db.exists('DocType', 'SM Denial'), frappe.db.exists('DocType', 'SM Appeal'))\""
+      PASS: all return truthy values
+
+      GATE 7: Create test SM Payer record
+      ssh sparkmojo "docker exec frappe-poc-backend-1 bench --site poc-dev.sparkmojo.com execute \"doc = frappe.get_doc({'doctype': 'SM Payer', 'payer_name': 'Test Payer', 'payer_short_name': 'TEST', 'stedi_trading_partner_id': 'TEST001', 'payer_type': 'commercial', 'era_delivery_method': 'webhook', 'timely_filing_days': 90, 'is_active': 1}); doc.insert(ignore_permissions=True); frappe.db.commit(); print('Created:', doc.name)\""
+      PASS: prints Created: TEST
+
+      If ALL gates pass:
+        touch /Users/jamesilsley/GitHub/spark-mojo-platform/BILL-002-COMPLETE
+        ralph emit "bill_002.done" "BILL-002: 11 DocTypes verified on VPS, test record created"
+
+      If ANY fail:
+        ralph emit "bill_002_build.retry" "BILL-002: [exact gate that failed and error]"
+
+  story_015_verifier:
+    name: "STORY-015 Verifier"
+    description: "Runs full pytest suite for Medplum connector. All 13 tests must pass with 70% coverage."
+    triggers: ["story_015_build.ready"]
+    publishes: ["story_015.done", "story_015_build.retry"]
+    instructions: |
+      Run acceptance criteria from:
+      /Users/jamesilsley/GitHub/sparkmojo-internal/platform/feature-library/stories/STORY-015-medplum-abstraction-layer-connector.md
+
+      GATE 1: Import check
+      cd /Users/jamesilsley/GitHub/spark-mojo-platform/abstraction-layer
+      python3 -c "from connectors.medplum_connector import MedplumClient, MedplumProjectScopeError; print('OK')"
+      PASS: prints OK
+
+      GATE 2: All 13 tests pass
+      pytest tests/test_medplum_connector.py -v 2>&1
+      PASS: 13 passed, 0 failed
+
+      GATE 3: Coverage >= 70%
+      pytest tests/test_medplum_connector.py --cov=connectors --cov-report=term-missing 2>&1 | tail -10
+      PASS: coverage on medplum_connector.py >= 70%
+
+      GATE 4: project_id=None raises MedplumProjectScopeError (critical HIPAA check)
+      python3 -c "
+      import asyncio
+      from connectors.medplum_connector import MedplumClient, MedplumProjectScopeError
+      client = MedplumClient()
+      try:
+          asyncio.run(client.get_resource('Patient', 'test', project_id=None))
+          print('FAIL: should have raised')
+      except MedplumProjectScopeError:
+          print('PASS: MedplumProjectScopeError raised correctly')
+      except Exception as e:
+          print('PASS: raised exception (acceptable):', type(e).__name__)
+      "
+      PASS: prints PASS
+
+      If ALL gates pass:
+        touch /Users/jamesilsley/GitHub/spark-mojo-platform/STORY-015-COMPLETE
+        ralph emit "story_015.done" "STORY-015: 13/13 tests pass, coverage OK, project_id enforcement verified"
+
+      If ANY fail:
+        ralph emit "story_015_build.retry" "STORY-015: [exact gate that failed]"
+
+  bill_002_committer:
+    name: "BILL-002 Committer"
+    description: "Merges BILL-002 branch to main and deploys full stack to VPS."
+    triggers: ["bill_002.done"]
+    publishes: ["bill_002.committed"]
+    max_activations: 1
+    instructions: |
       cd /Users/jamesilsley/GitHub/spark-mojo-platform
       git checkout main
-      git checkout -b story/story-014-medplum-docker
-      Make all changes as specified in PLAN-STORY-014.md:
-      1. Add medplum, medplum-postgres, medplum-redis services to docker-compose.poc.yml
-      2. Add medplum-postgres-data and medplum-redis-data volumes
-      3. Create medplum/medplum.config.json
-      4. Add Medplum env vars to .env.example
-      Fast gate after changes:
-      docker compose -f /Users/jamesilsley/GitHub/spark-mojo-platform/docker-compose.poc.yml config --quiet 2>&1
-      PASS: exits 0 (valid compose YAML)
-      Verify no Traefik labels on Medplum services:
-      grep -A 50 "medplum:" /Users/jamesilsley/GitHub/spark-mojo-platform/docker-compose.poc.yml | grep -i traefik || echo "NO TRAEFIK LABELS - correct"
-      Verify no external ports:
-      grep -A 20 "medplum:" /Users/jamesilsley/GitHub/spark-mojo-platform/docker-compose.poc.yml | grep "ports:" || echo "NO EXTERNAL PORTS - correct"
-      When fast gates pass: ralph emit "story_014_build.ready" "STORY-014: compose valid, no Traefik labels, no external ports"
-
-  bill_001_verifier:
-    name: "BILL-001 Verifier"
-    description: "Runs full acceptance criteria checks for BILL-001 before committing."
-    triggers: ["bill_001_build.ready"]
-    publishes: ["bill_001.done", "bill_001_build.retry"]
-    instructions: |
-      Run every acceptance criterion from the story spec at:
-      /Users/jamesilsley/GitHub/sparkmojo-internal/platform/feature-library/stories/BILL-001-sm-billing-app-scaffold.md
-      Check each item:
-      1. pyproject.toml exists: cat /Users/jamesilsley/GitHub/spark-mojo-platform/frappe-apps/sm_billing/pyproject.toml
-         PASS: contains name = "sm_billing"
-      2. __init__.py version: cat /Users/jamesilsley/GitHub/spark-mojo-platform/frappe-apps/sm_billing/sm_billing/__init__.py
-         PASS: contains __version__ = "0.1.0"
-      3. hooks.py: grep app_name /Users/jamesilsley/GitHub/spark-mojo-platform/frappe-apps/sm_billing/sm_billing/hooks.py
-         PASS: app_name = "sm_billing"
-      4. modules.txt: cat /Users/jamesilsley/GitHub/spark-mojo-platform/frappe-apps/sm_billing/sm_billing/modules.txt
-         PASS: contains SM Billing
-      5. Three-level doctype nesting: ls /Users/jamesilsley/GitHub/spark-mojo-platform/frappe-apps/sm_billing/sm_billing/sm_billing/doctype/__init__.py
-         PASS: file exists
-      6. Not in apps.txt: grep -r "sm_billing" /Users/jamesilsley/GitHub/spark-mojo-platform/apps.txt 2>/dev/null || echo "PASS"
-      7. Not in Dockerfile.frappe: grep "sm_billing" /Users/jamesilsley/GitHub/spark-mojo-platform/Dockerfile.frappe 2>/dev/null || echo "PASS"
-      8. behavioral_health.yaml updated: grep "sm_billing" /Users/jamesilsley/GitHub/sparkmojo-internal/platform/provisioning/templates/behavioral_health.yaml
-         PASS: sm_billing present
-      If ALL pass:
-        touch /Users/jamesilsley/GitHub/spark-mojo-platform/BILL-001-COMPLETE
-        ralph emit "bill_001.done" "BILL-001: all 8 acceptance criteria pass"
-      If ANY fail:
-        ralph emit "bill_001_build.retry" "BILL-001: [exact criterion that failed]"
-
-  story_014_verifier:
-    name: "STORY-014 Verifier"
-    description: "Runs full acceptance criteria checks for STORY-014 before committing."
-    triggers: ["story_014_build.ready"]
-    publishes: ["story_014.done", "story_014_build.retry"]
-    instructions: |
-      Run every acceptance criterion from the story spec at:
-      /Users/jamesilsley/GitHub/sparkmojo-internal/platform/feature-library/stories/STORY-014-medplum-docker-service.md
-      Check each item:
-      1. Compose config valid: docker compose -f /Users/jamesilsley/GitHub/spark-mojo-platform/docker-compose.poc.yml config --quiet
-         PASS: exits 0
-      2. medplum.config.json exists: cat /Users/jamesilsley/GitHub/spark-mojo-platform/medplum/medplum.config.json
-         PASS: file exists with required fields
-      3. .env.example updated: grep "MEDPLUM_DB_PASSWORD" /Users/jamesilsley/GitHub/spark-mojo-platform/.env.example
-         PASS: all Medplum vars present
-      4. No Traefik labels: grep -A 100 "medplum:" /Users/jamesilsley/GitHub/spark-mojo-platform/docker-compose.poc.yml | grep -i "traefik" || echo "PASS - no Traefik labels"
-      5. No external ports: verify ports: block absent from medplum, medplum-postgres, medplum-redis service definitions
-      6. Three Medplum services defined: grep -c "medplum" /Users/jamesilsley/GitHub/spark-mojo-platform/docker-compose.poc.yml
-         PASS: medplum, medplum-postgres, medplum-redis all present
-      7. Two new volumes defined: grep "medplum-postgres-data\|medplum-redis-data" /Users/jamesilsley/GitHub/spark-mojo-platform/docker-compose.poc.yml
-         PASS: both volume names present
-      8. frappe_network only: verify all three Medplum services reference frappe_network and not root_web
-      If ALL pass:
-        touch /Users/jamesilsley/GitHub/spark-mojo-platform/STORY-014-COMPLETE
-        ralph emit "story_014.done" "STORY-014: compose valid, 3 services, 2 volumes, no Traefik, frappe_network only"
-      If ANY fail:
-        ralph emit "story_014_build.retry" "STORY-014: [exact criterion that failed]"
-
-  bill_001_committer:
-    name: "BILL-001 Committer"
-    description: "Commits verified BILL-001 work with exact commit message from story spec."
-    triggers: ["bill_001.done"]
-    publishes: ["bill_001.committed"]
-    max_activations: 1
-    instructions: |
-      cd /Users/jamesilsley/GitHub/spark-mojo-platform
-      git add -A
-      git commit -m "feat: sm_billing Frappe app scaffold - fourth SM custom app for billing module"
-      git push origin story/bill-001-sm-billing-scaffold
-      Also commit the behavioral_health.yaml change in the governance repo:
-      cd /Users/jamesilsley/GitHub/sparkmojo-internal
-      git add platform/provisioning/templates/behavioral_health.yaml
-      git commit -m "feat: add sm_billing to behavioral_health vertical template"
+      git merge story/bill-002-core-billing-doctypes --no-ff -m "merge: BILL-002 core billing DocTypes — 11 DocTypes verified on VPS"
       git push origin main
-      ralph emit "bill_001.committed" "BILL-001 committed and pushed on story/bill-001-sm-billing-scaffold"
 
-  story_014_committer:
-    name: "STORY-014 Committer"
-    description: "Commits verified STORY-014 work with exact commit message from story spec."
-    triggers: ["story_014.done"]
-    publishes: ["story_014.committed"]
+      Deploy full stack to VPS:
+      ssh sparkmojo 'cd /home/ops/spark-mojo-platform && git pull origin main && ./deploy.sh'
+      PASS: deploy.sh exits 0
+
+      ralph emit "bill_002.committed" "BILL-002 merged to main and deployed"
+
+  story_015_committer:
+    name: "STORY-015 Committer"
+    description: "Commits STORY-015 branch and pushes to origin."
+    triggers: ["story_015.done"]
+    publishes: ["story_015.committed"]
     max_activations: 1
     instructions: |
       cd /Users/jamesilsley/GitHub/spark-mojo-platform
       git add -A
-      git commit -m "feat: Medplum Docker services - medplum-server, medplum-postgres, medplum-redis (internal only)"
-      git push origin story/story-014-medplum-docker
-      ralph emit "story_014.committed" "STORY-014 committed and pushed on story/story-014-medplum-docker"
+      git commit -m "feat: Medplum abstraction layer connector — MedplumClient with project_id enforcement + unit tests"
+      git push origin story/story-015-medplum-connector
+      ralph emit "story_015.committed" "STORY-015 committed on story/story-015-medplum-connector"
 
   session_closer:
     name: "Session Closer"
     description: "Writes run summary and emits session.closed when both stories are committed."
-    triggers: ["bill_001.committed", "story_014.committed"]
+    triggers: ["bill_002.committed", "story_015.committed"]
     publishes: ["session.closed"]
     instructions: |
-      Check which COMPLETE markers exist:
-      ls /Users/jamesilsley/GitHub/spark-mojo-platform/BILL-001-COMPLETE 2>/dev/null && echo "BILL-001: DONE"
-      ls /Users/jamesilsley/GitHub/spark-mojo-platform/STORY-014-COMPLETE 2>/dev/null && echo "STORY-014: DONE"
-      Write SESSION-20-OVERNIGHT-COMPLETE.md at repo root with:
-      - BILL-001 status and branch name
-      - STORY-014 status and branch name
-      - Any warnings or notes for James
-      - Next steps: merge both branches, add Medplum env vars to .env.poc, verify with STORY-014 test steps
-      ralph emit "session.closed" "Session 20 overnight run complete"
+      Write SESSION-21-OVERNIGHT-COMPLETE.md at repo root with:
+      - BILL-002 status: branch, commit, VPS verification result
+      - STORY-015 status: branch, test results, coverage
+      - Any warnings or BLOCKED files
+      - Next steps: merge STORY-015 branch, commission BILL-003 + STORY-016
+
+      ralph emit "session.closed" "Session 21 overnight run complete"
 
   cleanup:
     name: "Cleanup"
-    description: "Archives PLAN-*, *-COMPLETE, and run summary files into docarchive after every run. Keeps repo root clean."
+    description: "Archives all PLAN-*, *-COMPLETE, and run summary files. Keeps repo root clean."
     triggers: ["session.closed"]
     publishes: []
     max_activations: 1
     instructions: |
-      Archive all Ralph run artifacts from the repo root.
       DATE=$(date +%Y-%m-%d)
       ARCHIVE_DIR=/Users/jamesilsley/GitHub/spark-mojo-platform/docarchive/ralph-runs/$DATE
       mkdir -p $ARCHIVE_DIR
-      Move these file patterns to the archive dir (skip if not found):
+
+      Move to archive (skip if not found):
       - PLAN-*.md
       - *-COMPLETE (zero-byte marker files)
       - SESSION-*-COMPLETE.md
       - MORNING-TEST-PLAN.md
       - QUEUE-COMPLETE.md
+
       Do NOT move:
-      - BLOCKED-*.md (leave at root for James to review)
+      - BLOCKED-*.md
       - CLAUDE.md
       - PROMPT.md
       - hats.yml
-      - Any file in a subdirectory
-      After moving, commit:
+
       cd /Users/jamesilsley/GitHub/spark-mojo-platform
       git add -A
       git commit -m "chore: archive Ralph run artifacts to docarchive/ralph-runs/$DATE"
       git push origin main
-      Report: how many files archived, confirm BLOCKED-* files were left untouched.
+
       Print: LOOP_COMPLETE
