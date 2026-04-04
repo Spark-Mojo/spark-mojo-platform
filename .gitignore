@@ -57,3 +57,6 @@ skills/ralph/SKILL.md
 
 # Git worktrees
 .worktrees/
+
+# Medplum config contains db/redis passwords — never commit
+medplum/medplum.config.json
