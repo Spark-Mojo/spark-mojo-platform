@@ -1,0 +1,477 @@
+cli:
+  backend: "claude"
+
+event_loop:
+  starting_event: "session.start"
+  completion_promise: "LOOP_COMPLETE"
+  max_iterations: 120
+  max_runtime_seconds: 28800
+
+core:
+  guardrails:
+    - "RESEARCH-ONLY. Do NOT modify code files, VPS, or deploy.sh."
+    - "Do NOT modify CLAUDE.md, hats.yml, PROMPT.md, or governance docs."
+    - "All outputs go to sparkmojo-internal only."
+    - "Governance repo: /Users/jamesilsley/GitHub/sparkmojo-internal/"
+    - "Platform repo: /Users/jamesilsley/GitHub/spark-mojo-platform/"
+    - "If a web source is unavailable, note it and continue."
+    - "Be exhaustive. Scope is intentionally large. Do not self-limit."
+    - "Sizing tables must use generic tiers (Solo/Small Group/Medium/Large) not named clients."
+
+hats:
+  context_reader:
+    name: "Context Reader"
+    description: "Reads all context files before research begins."
+    triggers: ["session.start"]
+    publishes: ["context.loaded"]
+    max_activations: 1
+    instructions: |
+      Read every file listed in BILLING-RESEARCH-PROMPT.md under Context Files.
+      Summarize what you found in each. Then: ralph emit "context.loaded" "Context loaded"
+
+  workflow_researcher:
+    name: "Billing Workflow Researcher"
+    description: "Maps the complete end-to-end insurance billing workflow and researches Stedi API, credentialing automation, and payment processing."
+    triggers: ["context.loaded"]
+    publishes: ["workflow.researched"]
+    max_activations: 1
+    instructions: |
+      Research the complete behavioral health insurance billing workflow.
+      Use web search extensively. Focus on practitioner and biller documentation.
+
+      TOPIC 1: The Full Billing Lifecycle
+      - Every step from session end to payment received, with responsible party and timeframes
+      - EDI transaction types: 837P, 277, 835, 270/271, 276/277
+      - Most common failure points and denial reasons
+      - Typical denial rate for behavioral health (national average)
+      - Typical days-to-payment in-network vs out-of-network
+      - ERA vs paper EOB: what percentage of payers still send paper?
+      - Two value propositions mapped separately:
+        (a) Replacing a billing company — cost savings model
+        (b) Replacing in-house manual billing — staff repurposing model
+        For each: what does the practice gain beyond cost savings?
+
+      TOPIC 2: Credentialing Deep Dive
+      - What is provider credentialing? What data is involved?
+      - CAQH: role, API capabilities, what it can automate today
+      - Stedi's credentialing capabilities if any
+      - Other credentialing automation platforms: Medallion, Modio, Symplr, Council of Insurance Agents
+      - What is genuinely automatable vs requires human action?
+      - Credentialing timeline and bottlenecks
+      - Business case for Spark Mojo offering credentialing automation
+      - Recommended approach: integrate existing platform vs build custom
+
+      TOPIC 3: Stedi API Deep Dive
+      - Full API surface: 837P submission, 835 webhook, 270/271 eligibility, 276/277 status
+      - Exact API shape for 837P: request schema, required fields, response schema
+      - Webhook model for 835 ERA delivery
+      - Pricing at 3,000 claims/month and at 100,000 claims/month
+      - Payer coverage: total count, major behavioral health payers confirmed
+        (BCBS, Aetna, Cigna, United, Magellan/Carelon/Beacon, Optum)
+      - Sandbox/test environment availability
+      - Error codes and rejection handling
+
+      TOPIC 4: Payment Processing Deep Dive
+      - Current payment methods in behavioral health practices
+      - Credit card processing fee benchmarks for therapy practices
+      - ACH processing cost vs credit card — annual savings at 3,000 sessions/month
+      - Processors with BAAs: Stripe, Helcim, Ivy Pay, PaySimple, others
+      - Ivy Pay analysis: behavioral-health-specific, worth integrating?
+      - Case for integrated payment processing vs Stripe referral
+      - ACH migration playbook: patient communication, conversion rates, timeline
+      - Generic sizing table: annual payment processing savings by practice size
+        (Solo/Small Group/Medium/Large) for ACH vs CC
+
+      TOPIC 5: Generic Practice Sizing Model
+      Build a complete reference model James can use in any prospect conversation.
+      Four tiers: Solo (1-2 providers), Small Group (3-10), Medium (11-25), Large (25+)
+      For each tier produce:
+      - Typical claims/month range
+      - Typical monthly collections range
+      - Billing company cost at 6% and 8%
+      - Spark Mojo Starter/Growth/Autopilot tier fit
+      - Annual savings vs billing company
+      - Annual savings from ACH migration (vs credit card)
+      - Total combined savings potential
+      - Staff hours repurposed if in-house billing (hours/week)
+      This table is the universal reference chart — not Willow-specific, not Artemis-specific.
+
+      Write all findings to:
+      /Users/jamesilsley/GitHub/sparkmojo-internal/platform/research/billing/BILLING-WORKFLOW-RESEARCH.md
+
+      Create the directory first if it does not exist:
+      mkdir -p /Users/jamesilsley/GitHub/sparkmojo-internal/platform/research/billing/
+
+      Then: ralph emit "workflow.researched" "Workflow research complete"
+
+  ai_tier_researcher:
+    name: "AI Billing Tier Researcher"
+    description: "Designs the full multi-tier AI model for billing using AWS Bedrock and produces real cost projections."
+    triggers: ["workflow.researched"]
+    publishes: ["ai_tier.researched"]
+    max_activations: 1
+    instructions: |
+      Research and design a comprehensive multi-tier AI model for billing automation.
+
+      CONTEXT: AWS Bedrock is the platform. BAA covers all models. Prior design
+      was two-tier. James wants a full spectrum — use the Bedrock catalog intelligently.
+      Multi-tier means: right model for each job, not just cheap vs expensive.
+
+      TOPIC 1: AWS Bedrock Model Catalog (current as of today)
+      - All available models: Claude family, Titan, Llama, Mistral, Cohere, Nova, others
+      - For each relevant model: input/output token cost, context window, speed, best use
+      - Price per 1M tokens: cheapest, mid-tier, Claude Sonnet, Claude Opus
+
+      TOPIC 2: Billing AI Use Cases — Full Spectrum
+      For each use case define: what the AI does, input, output, volume at 3,000 sessions/month,
+      latency requirement, error cost, recommended Bedrock model and why.
+
+      Evaluate all of these plus any others research reveals:
+      - Pre-session eligibility risk prediction
+      - ICD-10 diagnosis code validation against payer rules
+      - CPT procedure code selection assistance
+      - Claim completeness check before submission
+      - Modifier validation (25, 59, GT, 95, etc.)
+      - Denial reason classification (parse 835 denial codes to plain English + category)
+      - Denial root cause pattern detection across claim history
+      - Denial appeal letter generation (full letter, not summary)
+      - Prior authorization requirement detection
+      - Prior authorization letter generation
+      - Patient responsibility estimation
+      - Payment posting anomaly detection
+      - Underpayment detection (paid vs contracted rate)
+      - Credentialing document extraction and validation
+
+      TOPIC 3: Full Cost Model at Four Scales
+      Solo, Small Group, Medium, Large (use the sizing tiers from workflow research)
+      For each scale:
+      - Total AI cost per month across all tiers
+      - AI cost per claim
+      - AI cost as % of billing savings delivered
+      - ROI vs human biller cost
+
+      TOPIC 4: Prompt Engineering Examples
+      - Example system prompt for denial appeal letter generation (Claude on Bedrock)
+      - JSON schema for denial classification output
+      - JSON schema for claim completeness check output
+
+      Write to:
+      /Users/jamesilsley/GitHub/sparkmojo-internal/platform/research/billing/BILLING-AI-TIER-RESEARCH.md
+
+      Then: ralph emit "ai_tier.researched" "AI tier research complete"
+
+  architecture_designer:
+    name: "Billing Architecture Designer"
+    description: "Designs the full billing module: DocTypes, API, n8n workflows, sm_billing app structure."
+    triggers: ["ai_tier.researched"]
+    publishes: ["architecture.designed"]
+    max_activations: 1
+    instructions: |
+      Read all prior research:
+      - /Users/jamesilsley/GitHub/sparkmojo-internal/platform/research/billing/BILLING-WORKFLOW-RESEARCH.md
+      - /Users/jamesilsley/GitHub/sparkmojo-internal/platform/research/billing/BILLING-AI-TIER-RESEARCH.md
+      Also re-read DECISION-011, DECISION-020, DECISION-003, AGENT_CONTEXT.
+
+      Write to:
+      /Users/jamesilsley/GitHub/sparkmojo-internal/platform/research/billing/BILLING-ARCHITECTURE-DESIGN.md
+
+      Required sections:
+
+      ## System Context
+      ASCII diagram: Medplum -> Frappe -> Abstraction Layer -> n8n -> Stedi -> Payers
+      + Bedrock AI tier + patient payment processor
+
+      ## Frappe DocType Design
+      Every DocType needed. For each: name (SM prefix), purpose, key fields with
+      fieldtype and constraints, relationships, which app (sm_billing).
+      Minimum: SM Claim, SM Claim Line, SM ERA, SM ERA Line, SM Denial, SM Appeal,
+      SM Eligibility Check, SM Payment, SM Payer, SM Provider
+
+      ## Abstraction Layer API Design
+      Every billing endpoint: method, path, request schema, response schema,
+      backends touched, sync vs async.
+      Minimum: claims/submit, claims/{id}/status, eligibility/check, era/{id},
+      appeals/generate, ar/summary, payments/record
+
+      ## n8n Workflow Design
+      Every n8n workflow: name, trigger, steps, error handling, AI tier invoked
+
+      ## Stedi Integration Map
+      Each Stedi API call: when called, input, output, how stored in Frappe
+
+      ## AI Integration Points
+      Each AI use case mapped to its exact location in architecture
+
+      ## Credentialing Module Design
+      What is automatable, what DocTypes, what API, what external integrations,
+      Phase 1 vs deferred
+
+      ## Payment Processing Recommendation
+      Stack recommendation with annual savings number using generic sizing tiers
+
+      ## sm_billing App Structure
+      File and folder structure for the fourth SM custom app
+
+      Then: ralph emit "architecture.designed" "Architecture design complete"
+
+  decision_writer:
+    name: "DECISION-027 Writer"
+    description: "Produces the formal DECISION-027 draft document."
+    triggers: ["architecture.designed"]
+    publishes: ["decision.written"]
+    max_activations: 1
+    instructions: |
+      Read all research and design outputs. Read DECISION-026 as the format reference.
+
+      Write to:
+      /Users/jamesilsley/GitHub/sparkmojo-internal/platform/decisions/DECISION-027-billing-architecture.md
+
+      Lock these items (mark as PROPOSED — James ratifies in next Claude Chat session):
+      1. sm_billing as the fourth SM custom app
+      2. DocType set
+      3. Stedi integration pattern
+      4. Multi-tier AI model (models, use cases, cost basis)
+      5. Payment processing stack recommendation
+      6. Credentialing: what is automated Phase 1 vs deferred
+      7. Abstraction layer API surface
+      8. n8n workflow pattern for claim lifecycle
+      9. Build sequence (which stories must come first)
+
+      End with a section: "Questions for James" — maximum 3 questions that
+      cannot be resolved by research alone. These are the only inputs needed
+      before this decision locks.
+
+      Then: ralph emit "decision.written" "DECISION-027 draft written"
+
+  story_writer:
+    name: "Billing Story Spec Writer"
+    description: "Writes BILL-001 through BILL-004 story specs ready for Ralph build runs."
+    triggers: ["decision.written"]
+    publishes: ["stories.written"]
+    max_activations: 1
+    instructions: |
+      Read the architecture design, DECISION-027 draft, STORY_TEMPLATE.md, and
+      PROV-001 story spec (use as the quality bar — match this level of specificity).
+
+      Write four story specs:
+      /Users/jamesilsley/GitHub/sparkmojo-internal/platform/feature-library/stories/BILL-001-sm-billing-app-scaffold.md
+      /Users/jamesilsley/GitHub/sparkmojo-internal/platform/feature-library/stories/BILL-002-core-billing-doctypes.md
+      /Users/jamesilsley/GitHub/sparkmojo-internal/platform/feature-library/stories/BILL-003-stedi-claim-submission.md
+      /Users/jamesilsley/GitHub/sparkmojo-internal/platform/feature-library/stories/BILL-004-era-835-processing.md
+
+      BILL-001: sm_billing Frappe app scaffold
+      - frappe-apps/sm_billing/ directory and app structure
+      - hooks.py, setup.py, __init__.py registration
+      - No DocTypes yet — just the correctly registered app shell
+      - Acceptance: bench install-app sm_billing succeeds on dev site
+
+      BILL-002: Core billing DocTypes
+      - All DocTypes from architecture design
+      - Correct field definitions, relationships, constraints
+      - bench migrate runs clean, zero errors
+      - No API endpoints yet
+
+      BILL-003: Stedi claim submission
+      - POST /api/modules/billing/claims/submit
+      - 837P claim construction from SM Claim DocType
+      - Stedi API call with full error handling
+      - SM Claim status updated on submission
+      - Webhook receiver for 277 acknowledgment
+      - Stedi sandbox mode when STEDI_SANDBOX=true
+
+      BILL-004: 835 ERA processing
+      - Stedi webhook receiver for 835 ERA
+      - Parse ERA into SM ERA and SM ERA Line records
+      - Auto-post matched payments to SM Payment
+      - Flag unmatched ERA lines for manual review (SM Task created)
+      - Denial detection: create SM Denial for denied lines
+
+      Follow STORY_TEMPLATE.md format exactly. Match PROV-001 specificity.
+      Exact field names, exact API shapes, exact binary acceptance criteria.
+
+      Then: ralph emit "stories.written" "BILL-001 through BILL-004 written"
+
+  synthesis_writer:
+    name: "Billing Synthesis Writer"
+    description: "Produces BILLING-SYNTHESIS.md — the executive document James reads first."
+    triggers: ["stories.written"]
+    publishes: ["synthesis.complete"]
+    max_activations: 1
+    instructions: |
+      Read all outputs from this run.
+
+      Write to:
+      /Users/jamesilsley/GitHub/sparkmojo-internal/platform/research/billing/BILLING-SYNTHESIS.md
+
+      Audience: James. Direct. No fluff. This is the first document he reads.
+
+      Required sections:
+
+      ## What You Need to Know (5 bullets max)
+      The most important findings. What changed from prior assumptions.
+
+      ## The Billing Workflow (Plain English)
+      Session ends to money in bank. One page max. Where Spark Mojo replaces the human.
+      Two columns: replacing billing company vs repurposing in-house staff — different story, same platform.
+
+      ## Practice Sizing Reference
+      The generic prospect reference table from workflow research.
+      Four tiers: Solo / Small Group / Medium / Large.
+      Columns: claims/month, billing company cost, Spark Mojo tier, savings, ACH upside.
+      This is the table James pulls up in every sales conversation.
+
+      ## The AI Tier Model
+      Simple table: tier name, Bedrock model, use cases, cost per claim.
+      Total monthly AI cost at Small Group and Large scale.
+
+      ## Payment Processing Recommendation
+      One recommendation. Annual savings number by practice size.
+
+      ## Credentialing: What Is Actually Automatable
+      Honest answer. What percentage automatable today. Business case for building it.
+
+      ## What DECISION-027 Locks
+      Items clear from research, ready to lock.
+
+      ## Questions for James (3 max)
+      Only items that cannot be resolved by research. These are the inputs needed
+      for the DECISION-027 ratification session.
+
+      ## Stories Ready for Ralph
+      BILL-001 through BILL-004. Dependency order. What must be true before each runs.
+
+      Then: ralph emit "synthesis.complete" "Billing synthesis complete"
+
+  ppt_writer:
+    name: "Executive Summary PPT Writer"
+    description: "Produces the internal review PowerPoint deck matching the SparkMojo_Research_Review visual standard."
+    triggers: ["synthesis.complete"]
+    publishes: ["ppt.complete"]
+    max_activations: 1
+    instructions: |
+      Read the pptx skill first:
+      /mnt/skills/public/pptx/SKILL.md
+
+      Then read:
+      - /Users/jamesilsley/GitHub/sparkmojo-internal/platform/research/billing/BILLING-SYNTHESIS.md
+      - /Users/jamesilsley/GitHub/sparkmojo-internal/platform/decisions/DECISION-027-billing-architecture.md
+      - /Users/jamesilsley/GitHub/sparkmojo-internal/platform/research/billing/BILLING-AI-TIER-RESEARCH.md
+
+      Produce an internal review PowerPoint matching the SparkMojo_Research_Review
+      visual standard: teal/navy palette, dark section divider slides, white content
+      slides, footer with "SPARK MOJO INTERNAL | [RUN NAME] | APRIL 2026" and
+      slide number on every content slide.
+
+      == SLIDE STRUCTURE ==
+
+      Slide 1 — Title (dark background)
+      "INTERNAL REVIEW DECK / Spark Mojo Platform / Billing Architecture Research"
+      Subtitle: "DECISION-027 Research Run  |  April 2026  |  Prepared for: James Ilsley"
+
+      Slide 2 — What Was Researched
+      Two-column layout. Left: research areas covered. Right: key output counts.
+
+      Slide 3 — Key Numbers at a Glance
+      Large stat callout cards: savings range for Large practice, AI cost per claim,
+      number of billing steps automated, number of story specs ready.
+
+      Slide 4 — Section divider: "The Billing Workflow"
+
+      Slide 5 — The 13 Steps: Before and After
+      Table: all steps, automation rating, how it works. Generic, not client-specific.
+
+      Slide 6 — Practice Sizing Reference (THE KEY SLIDE)
+      Four tiers: Solo / Small Group / Medium / Large.
+      Columns: claims/month, billing company cost, SM tier fit, annual savings, ACH upside.
+      Notes: "Use this table in every prospect conversation — not client-specific."
+
+      Slide 7 — Section divider: "AI Tier Model"
+
+      Slide 8 — Multi-Tier AI Model
+      Table: Tier name | Bedrock model | Use cases | Cost per claim
+      Footer stat: "Total AI cost at Large practice scale: $X/month vs $Y billing company"
+
+      Slide 9 — Section divider: "Credentialing and Payments"
+
+      Slide 10 — Credentialing: What Is Actually Automatable
+      Two-column: Automatable now vs Requires human. Business case for building it.
+
+      Slide 11 — Payment Processing Recommendation
+      Large stat: annual savings from ACH migration at Medium practice scale.
+      Table: processor comparison. One clear recommendation with rationale.
+
+      Slide 12 — Section divider: "Decisions and Open Questions"
+
+      Slide 13 — What DECISION-027 Locks
+      Table: Decision item | Status (LOCKED / PROPOSED) | Notes
+
+      Slide 14 — Questions for James
+      Maximum 3 questions. For each: question (bold), why it matters, source MD file.
+
+      Slide 15 — Stories Ready for Ralph
+      Table: Story ID | One-line description | Depends on | Size | Status
+      BILL-001 through BILL-004.
+
+      Slide 16 — Next Steps (dark background)
+      Three bullets: tonight, next Claude Chat session, next Ralph run after that.
+
+      == FILE LOCATION ==
+      /Users/jamesilsley/GitHub/sparkmojo-internal/platform/research/billing/BILLING-EXEC-SUMMARY.pptx
+
+      == QA REQUIREMENTS ==
+      Follow the full QA process from SKILL.md:
+      1. Convert to images
+      2. Use subagent visual inspection with the exact prompt from SKILL.md
+      3. Fix all issues found
+      4. Re-verify until a full pass finds no new issues
+      Do not skip QA. Do not declare success without at least one fix-and-verify cycle.
+
+      Commit:
+      cd /Users/jamesilsley/GitHub/sparkmojo-internal
+      git add platform/research/billing/BILLING-EXEC-SUMMARY.pptx
+      git commit -m "docs: billing research executive summary PPT"
+      git push origin main
+
+      Then: ralph emit "ppt.complete" "Billing exec summary PPT committed"
+
+  committer:
+    name: "Run Committer"
+    description: "Commits all remaining outputs and ends the run."
+    triggers: ["ppt.complete"]
+    publishes: []
+    max_activations: 1
+    instructions: |
+      Verify all output files exist:
+      ls /Users/jamesilsley/GitHub/sparkmojo-internal/platform/research/billing/
+      ls /Users/jamesilsley/GitHub/sparkmojo-internal/platform/decisions/DECISION-027-billing-architecture.md
+      ls /Users/jamesilsley/GitHub/sparkmojo-internal/platform/feature-library/stories/BILL-001-sm-billing-app-scaffold.md
+      ls /Users/jamesilsley/GitHub/sparkmojo-internal/platform/feature-library/stories/BILL-002-core-billing-doctypes.md
+      ls /Users/jamesilsley/GitHub/sparkmojo-internal/platform/feature-library/stories/BILL-003-stedi-claim-submission.md
+      ls /Users/jamesilsley/GitHub/sparkmojo-internal/platform/feature-library/stories/BILL-004-era-835-processing.md
+
+      Commit everything not yet committed:
+      cd /Users/jamesilsley/GitHub/sparkmojo-internal
+      git add platform/research/billing/
+      git add platform/decisions/DECISION-027-billing-architecture.md
+      git add platform/feature-library/stories/BILL-001-sm-billing-app-scaffold.md
+      git add platform/feature-library/stories/BILL-002-core-billing-doctypes.md
+      git add platform/feature-library/stories/BILL-003-stedi-claim-submission.md
+      git add platform/feature-library/stories/BILL-004-era-835-processing.md
+      git commit -m "research: billing architecture — DECISION-027 draft, AI tier model, credentialing, payment processing, BILL-001 through BILL-004 story specs, exec summary PPT"
+      git push origin main
+
+      Print run summary then output LOOP_COMPLETE:
+
+      BILLING RESEARCH RUN COMPLETE
+      ==============================
+      Committed to sparkmojo-internal:
+      - BILLING-WORKFLOW-RESEARCH.md
+      - BILLING-AI-TIER-RESEARCH.md
+      - BILLING-ARCHITECTURE-DESIGN.md
+      - BILLING-SYNTHESIS.md
+      - BILLING-EXEC-SUMMARY.pptx
+      - DECISION-027-billing-architecture.md (PROPOSED)
+      - BILL-001 through BILL-004 story specs
+
+      Read first: BILLING-SYNTHESIS.md then BILLING-EXEC-SUMMARY.pptx
+      Next step: Claude Chat session to ratify DECISION-027
