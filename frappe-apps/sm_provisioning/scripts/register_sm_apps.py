@@ -144,5 +144,5 @@ if __name__ == '__main__':
                         help='Comma-separated app names (default: sm_widgets,sm_provisioning)')
     args = parser.parse_args()
 
-    apps = args.apps.split(',') if args.args else None
+    apps = args.apps.split(',') if args.apps else None
     register_sm_apps(args.site, apps)
