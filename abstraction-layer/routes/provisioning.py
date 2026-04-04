@@ -330,7 +330,8 @@ async def step_08_create_medplum_project(site_subdomain: str, warnings: list[str
         warnings.append(
             "medplum_project_stub: MEDPLUM_BASE_URL not set. "
             f"Using stub project ID: {stub_id}. "
-            "Configure MEDPLUM_BASE_URL after STORY-014 ships."
+            "Real project creation requires STORY-015 (Medplum connector). "
+            "Merge and verify STORY-015 before provisioning live clients."
         )
         return stub_id
 

@@ -273,7 +273,7 @@ phase_3() {
   # Fallback: if admin site not reachable or returned empty/error, use LEGACY_SITES
   if [ -z "$SITES" ] || echo "$SITES" | grep -qi "error\|traceback\|exception"; then
     echo "[Phase 3] Admin site not reachable — using LEGACY_SITES fallback: ${LEGACY_SITES:-frontend}"
-    SITES="${LEGACY_SITES:-frontend}"
+    SITES="${LEGACY_SITES:-poc-dev.sparkmojo.com admin.sparkmojo.com internal.sparkmojo.com willow.sparkmojo.com}"
   else
     echo "[Phase 3] Sites from SM Site Registry: $SITES"
   fi
