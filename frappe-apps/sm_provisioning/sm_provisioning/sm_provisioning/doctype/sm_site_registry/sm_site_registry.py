@@ -14,6 +14,13 @@ class SMSiteRegistry(Document):
                 except (json.JSONDecodeError, ValueError) as e:
                     frappe.throw(f"{field} must be valid JSON: {e}")
 
+        # Validate installed_apps is valid JSON if set
+        if self.installed_apps:
+            try:
+                json.loads(self.installed_apps)
+            except (json.JSONDecodeError, ValueError) as e:
+                frappe.throw(f"installed_apps must be valid JSON: {e}")
+
         # Enforce hipaa flag matches server_tier
         if self.server_tier == 'hipaa':
             self.hipaa = 1
@@ -34,4 +41,11 @@ class SMSiteRegistry(Document):
             "capability_routing": json.loads(self.capability_routing_json or '{}'),
             "feature_flags": json.loads(self.feature_flags_json or '{}'),
             "template": self.template or "",
+            "bench_name": self.bench_name or "",
+            "bench_host": self.bench_host or "",
+            "medplum_project_id": self.medplum_project_id or "",
+            "n8n_workspace_ref": self.n8n_workspace_ref or "",
+            "installed_apps": json.loads(self.installed_apps or '[]'),
+            "timezone": self.timezone or "",
+            "provisioning_status": self.provisioning_status or "",
         }

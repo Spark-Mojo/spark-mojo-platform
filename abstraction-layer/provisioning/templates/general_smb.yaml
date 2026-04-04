@@ -1,0 +1,23 @@
+---
+# Vertical template: General SMB
+# Used by PROV-001 provisioning API to determine app list and bench tier
+
+bench_tier: standard-smb
+
+apps:
+  core:
+    - frappe
+    - erpnext
+  default_on:
+    - crm
+    - helpdesk
+    - sm_widgets
+    - sm_connectors
+  optional:
+    - hrms
+    - lms
+    - wiki
+
+settings:
+  hipaa_required: false
+  default_server_tier: standard
