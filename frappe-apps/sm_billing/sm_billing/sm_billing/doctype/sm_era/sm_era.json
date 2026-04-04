@@ -1,0 +1,132 @@
+{
+  "actions": [],
+  "autoname": "ERA-.YYYY.MM.-.####",
+  "creation": "2026-04-04 00:00:00.000000",
+  "doctype": "DocType",
+  "engine": "InnoDB",
+  "field_order": [
+    "stedi_transaction_id",
+    "payer",
+    "era_date",
+    "check_eft_number",
+    "total_paid_amount",
+    "total_claims",
+    "matched_claims",
+    "unmatched_claims",
+    "processing_status",
+    "received_at",
+    "processed_at",
+    "raw_json",
+    "era_lines"
+  ],
+  "fields": [
+    {
+      "fieldname": "stedi_transaction_id",
+      "fieldtype": "Data",
+      "label": "Stedi Transaction ID",
+      "reqd": 1,
+      "in_list_view": 1,
+      "length": 128
+    },
+    {
+      "fieldname": "payer",
+      "fieldtype": "Link",
+      "label": "Payer",
+      "options": "SM Payer",
+      "reqd": 1,
+      "in_list_view": 1
+    },
+    {
+      "fieldname": "era_date",
+      "fieldtype": "Date",
+      "label": "ERA Date",
+      "reqd": 1,
+      "in_list_view": 1
+    },
+    {
+      "fieldname": "check_eft_number",
+      "fieldtype": "Data",
+      "label": "Check/EFT Number",
+      "length": 64
+    },
+    {
+      "fieldname": "total_paid_amount",
+      "fieldtype": "Currency",
+      "label": "Total Paid Amount",
+      "reqd": 1,
+      "in_list_view": 1
+    },
+    {
+      "fieldname": "total_claims",
+      "fieldtype": "Int",
+      "label": "Total Claims"
+    },
+    {
+      "fieldname": "matched_claims",
+      "fieldtype": "Int",
+      "label": "Matched Claims"
+    },
+    {
+      "fieldname": "unmatched_claims",
+      "fieldtype": "Int",
+      "label": "Unmatched Claims"
+    },
+    {
+      "fieldname": "processing_status",
+      "fieldtype": "Select",
+      "label": "Processing Status",
+      "options": "received\nprocessing\nposted\npartial_posted\nerror",
+      "reqd": 1,
+      "default": "received",
+      "in_list_view": 1
+    },
+    {
+      "fieldname": "received_at",
+      "fieldtype": "Datetime",
+      "label": "Received At",
+      "reqd": 1
+    },
+    {
+      "fieldname": "processed_at",
+      "fieldtype": "Datetime",
+      "label": "Processed At"
+    },
+    {
+      "fieldname": "raw_json",
+      "fieldtype": "JSON",
+      "label": "Raw JSON"
+    },
+    {
+      "fieldname": "era_lines",
+      "fieldtype": "Table",
+      "label": "ERA Lines",
+      "options": "SM ERA Line"
+    }
+  ],
+  "index_web_pages_for_search": 0,
+  "is_submittable": 0,
+  "links": [],
+  "modified": "2026-04-04 00:00:00.000000",
+  "modified_by": "Administrator",
+  "module": "SM Billing",
+  "name": "SM ERA",
+  "naming_rule": "Expression",
+  "owner": "Administrator",
+  "permissions": [
+    {
+      "create": 1,
+      "delete": 1,
+      "email": 1,
+      "export": 1,
+      "print": 1,
+      "read": 1,
+      "report": 1,
+      "role": "System Manager",
+      "share": 1,
+      "write": 1
+    }
+  ],
+  "sort_field": "creation",
+  "sort_order": "DESC",
+  "track_changes": 0
+}

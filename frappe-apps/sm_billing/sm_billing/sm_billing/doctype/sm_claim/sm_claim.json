@@ -1,0 +1,218 @@
+{
+  "actions": [],
+  "autoname": "CLM-.YYYY.MM.-.####",
+  "creation": "2026-04-04 00:00:00.000000",
+  "doctype": "DocType",
+  "engine": "InnoDB",
+  "field_order": [
+    "patient_name",
+    "patient_member_id",
+    "patient_dob",
+    "payer",
+    "provider",
+    "billing_provider",
+    "date_of_service",
+    "place_of_service",
+    "claim_charge_amount",
+    "canonical_state",
+    "stedi_claim_id",
+    "patient_control_number",
+    "submission_date",
+    "acknowledgment_date",
+    "adjudication_date",
+    "paid_amount",
+    "patient_responsibility",
+    "adjustment_amount",
+    "prior_auth_number",
+    "medplum_encounter_id",
+    "crm_contact_id",
+    "ai_completeness_score",
+    "ai_risk_level",
+    "notes",
+    "claim_lines"
+  ],
+  "fields": [
+    {
+      "fieldname": "patient_name",
+      "fieldtype": "Data",
+      "label": "Patient Name",
+      "reqd": 1,
+      "in_list_view": 1,
+      "length": 256
+    },
+    {
+      "fieldname": "patient_member_id",
+      "fieldtype": "Data",
+      "label": "Patient Member ID",
+      "reqd": 1,
+      "length": 64
+    },
+    {
+      "fieldname": "patient_dob",
+      "fieldtype": "Date",
+      "label": "Patient DOB",
+      "reqd": 1
+    },
+    {
+      "fieldname": "payer",
+      "fieldtype": "Link",
+      "label": "Payer",
+      "options": "SM Payer",
+      "reqd": 1,
+      "in_list_view": 1
+    },
+    {
+      "fieldname": "provider",
+      "fieldtype": "Link",
+      "label": "Provider",
+      "options": "SM Provider",
+      "reqd": 1,
+      "in_list_view": 1
+    },
+    {
+      "fieldname": "billing_provider",
+      "fieldtype": "Link",
+      "label": "Billing Provider",
+      "options": "SM Provider"
+    },
+    {
+      "fieldname": "date_of_service",
+      "fieldtype": "Date",
+      "label": "Date of Service",
+      "reqd": 1,
+      "in_list_view": 1
+    },
+    {
+      "fieldname": "place_of_service",
+      "fieldtype": "Select",
+      "label": "Place of Service",
+      "options": "11\n02\n10",
+      "reqd": 1
+    },
+    {
+      "fieldname": "claim_charge_amount",
+      "fieldtype": "Currency",
+      "label": "Charge Amount",
+      "reqd": 1
+    },
+    {
+      "fieldname": "canonical_state",
+      "fieldtype": "Select",
+      "label": "Status",
+      "options": "draft\nvalidated\nsubmitted\naccepted\nadjudicating\npaid\npartial_paid\ndenied\nappealed\nappeal_won\nappeal_lost\nvoided",
+      "reqd": 1,
+      "default": "draft",
+      "in_list_view": 1
+    },
+    {
+      "fieldname": "stedi_claim_id",
+      "fieldtype": "Data",
+      "label": "Stedi Claim ID",
+      "length": 128
+    },
+    {
+      "fieldname": "patient_control_number",
+      "fieldtype": "Data",
+      "label": "Patient Control Number",
+      "reqd": 1,
+      "unique": 1,
+      "length": 64
+    },
+    {
+      "fieldname": "submission_date",
+      "fieldtype": "Date",
+      "label": "Submission Date"
+    },
+    {
+      "fieldname": "acknowledgment_date",
+      "fieldtype": "Date",
+      "label": "Acknowledgment Date"
+    },
+    {
+      "fieldname": "adjudication_date",
+      "fieldtype": "Date",
+      "label": "Adjudication Date"
+    },
+    {
+      "fieldname": "paid_amount",
+      "fieldtype": "Currency",
+      "label": "Paid Amount"
+    },
+    {
+      "fieldname": "patient_responsibility",
+      "fieldtype": "Currency",
+      "label": "Patient Responsibility"
+    },
+    {
+      "fieldname": "adjustment_amount",
+      "fieldtype": "Currency",
+      "label": "Adjustment Amount"
+    },
+    {
+      "fieldname": "prior_auth_number",
+      "fieldtype": "Data",
+      "label": "Prior Auth Number",
+      "length": 64
+    },
+    {
+      "fieldname": "medplum_encounter_id",
+      "fieldtype": "Data",
+      "label": "Medplum Encounter ID",
+      "length": 128
+    },
+    {
+      "fieldname": "crm_contact_id",
+      "fieldtype": "Data",
+      "label": "CRM Contact ID",
+      "length": 128
+    },
+    {
+      "fieldname": "ai_completeness_score",
+      "fieldtype": "Float",
+      "label": "AI Completeness Score"
+    },
+    {
+      "fieldname": "ai_risk_level",
+      "fieldtype": "Select",
+      "label": "AI Risk Level",
+      "options": "\nlow\nmedium\nhigh"
+    },
+    {
+      "fieldname": "notes",
+      "fieldtype": "Text",
+      "label": "Notes"
+    },
+    {
+      "fieldname": "claim_lines",
+      "fieldtype": "Table",
+      "label": "Claim Lines",
+      "options": "SM Claim Line"
+    }
+  ],
+  "index_web_pages_for_search": 0,
+  "is_submittable": 0,
+  "links": [],
+  "modified": "2026-04-04 00:00:00.000000",
+  "modified_by": "Administrator",
+  "module": "SM Billing",
+  "name": "SM Claim",
+  "naming_rule": "Expression",
+  "owner": "Administrator",
+  "permissions": [
+    {
+      "create": 1,
+      "delete": 1,
+      "email": 1,
+      "export": 1,
+      "print": 1,
+      "read": 1,
+      "report": 1,
+      "role": "System Manager",
+      "share": 1,
+      "write": 1
+    }
+  ],
+  "sort_field": "creation",
+  "sort_order": "DESC",
+  "track_changes": 0
+}

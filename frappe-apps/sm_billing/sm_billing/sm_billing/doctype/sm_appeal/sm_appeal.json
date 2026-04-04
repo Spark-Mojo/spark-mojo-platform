@@ -1,0 +1,125 @@
+{
+  "actions": [],
+  "autoname": "APL-.YYYY.MM.-.####",
+  "creation": "2026-04-04 00:00:00.000000",
+  "doctype": "DocType",
+  "engine": "InnoDB",
+  "field_order": [
+    "denial",
+    "claim",
+    "appeal_level",
+    "appeal_date",
+    "appeal_method",
+    "ai_generated_letter",
+    "final_letter",
+    "supporting_documents",
+    "canonical_state",
+    "outcome_date",
+    "recovered_amount",
+    "payer_response"
+  ],
+  "fields": [
+    {
+      "fieldname": "denial",
+      "fieldtype": "Link",
+      "label": "Denial",
+      "options": "SM Denial",
+      "reqd": 1,
+      "in_list_view": 1
+    },
+    {
+      "fieldname": "claim",
+      "fieldtype": "Link",
+      "label": "Claim",
+      "options": "SM Claim",
+      "reqd": 1,
+      "in_list_view": 1
+    },
+    {
+      "fieldname": "appeal_level",
+      "fieldtype": "Select",
+      "label": "Appeal Level",
+      "options": "first_level\nsecond_level\nexternal_review",
+      "reqd": 1,
+      "in_list_view": 1
+    },
+    {
+      "fieldname": "appeal_date",
+      "fieldtype": "Date",
+      "label": "Appeal Date",
+      "reqd": 1
+    },
+    {
+      "fieldname": "appeal_method",
+      "fieldtype": "Select",
+      "label": "Appeal Method",
+      "options": "fax\nportal\nmail\nelectronic",
+      "reqd": 1
+    },
+    {
+      "fieldname": "ai_generated_letter",
+      "fieldtype": "Text Editor",
+      "label": "AI Generated Letter"
+    },
+    {
+      "fieldname": "final_letter",
+      "fieldtype": "Text Editor",
+      "label": "Final Letter"
+    },
+    {
+      "fieldname": "supporting_documents",
+      "fieldtype": "Attach",
+      "label": "Supporting Documents"
+    },
+    {
+      "fieldname": "canonical_state",
+      "fieldtype": "Select",
+      "label": "Status",
+      "options": "draft\nsubmitted\nunder_review\nwon\nlost\nno_response",
+      "reqd": 1,
+      "default": "draft",
+      "in_list_view": 1
+    },
+    {
+      "fieldname": "outcome_date",
+      "fieldtype": "Date",
+      "label": "Outcome Date"
+    },
+    {
+      "fieldname": "recovered_amount",
+      "fieldtype": "Currency",
+      "label": "Recovered Amount"
+    },
+    {
+      "fieldname": "payer_response",
+      "fieldtype": "Text",
+      "label": "Payer Response"
+    }
+  ],
+  "index_web_pages_for_search": 0,
+  "is_submittable": 0,
+  "links": [],
+  "modified": "2026-04-04 00:00:00.000000",
+  "modified_by": "Administrator",
+  "module": "SM Billing",
+  "name": "SM Appeal",
+  "naming_rule": "Expression",
+  "owner": "Administrator",
+  "permissions": [
+    {
+      "create": 1,
+      "delete": 1,
+      "email": 1,
+      "export": 1,
+      "print": 1,
+      "read": 1,
+      "report": 1,
+      "role": "System Manager",
+      "share": 1,
+      "write": 1
+    }
+  ],
+  "sort_field": "creation",
+  "sort_order": "DESC",
+  "track_changes": 0
+}

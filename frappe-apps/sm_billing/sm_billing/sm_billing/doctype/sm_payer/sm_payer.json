@@ -1,0 +1,133 @@
+{
+  "actions": [],
+  "autoname": "field:payer_short_name",
+  "creation": "2026-04-04 00:00:00.000000",
+  "doctype": "DocType",
+  "engine": "InnoDB",
+  "field_order": [
+    "payer_name",
+    "payer_short_name",
+    "stedi_trading_partner_id",
+    "payer_type",
+    "is_behavioral_health_carveout",
+    "carveout_parent_payer",
+    "era_delivery_method",
+    "supports_realtime_eligibility",
+    "typical_payment_days",
+    "appeal_window_days",
+    "timely_filing_days",
+    "notes",
+    "is_active"
+  ],
+  "fields": [
+    {
+      "fieldname": "payer_name",
+      "fieldtype": "Data",
+      "label": "Payer Name",
+      "reqd": 1,
+      "in_list_view": 1
+    },
+    {
+      "fieldname": "payer_short_name",
+      "fieldtype": "Data",
+      "label": "Payer Short Name",
+      "reqd": 1,
+      "unique": 1,
+      "in_list_view": 1,
+      "length": 64
+    },
+    {
+      "fieldname": "stedi_trading_partner_id",
+      "fieldtype": "Data",
+      "label": "Stedi Trading Partner ID",
+      "reqd": 1,
+      "length": 64
+    },
+    {
+      "fieldname": "payer_type",
+      "fieldtype": "Select",
+      "label": "Payer Type",
+      "options": "commercial\nmedicare\nmedicaid\nmanaged_medicaid\ntricare",
+      "reqd": 1,
+      "in_list_view": 1
+    },
+    {
+      "fieldname": "is_behavioral_health_carveout",
+      "fieldtype": "Check",
+      "label": "Behavioral Health Carveout"
+    },
+    {
+      "fieldname": "carveout_parent_payer",
+      "fieldtype": "Link",
+      "label": "Carveout Parent Payer",
+      "options": "SM Payer"
+    },
+    {
+      "fieldname": "era_delivery_method",
+      "fieldtype": "Select",
+      "label": "ERA Delivery Method",
+      "options": "webhook\nsftp\nportal",
+      "reqd": 1
+    },
+    {
+      "fieldname": "supports_realtime_eligibility",
+      "fieldtype": "Check",
+      "label": "Supports Realtime Eligibility",
+      "default": "1"
+    },
+    {
+      "fieldname": "typical_payment_days",
+      "fieldtype": "Int",
+      "label": "Typical Payment Days"
+    },
+    {
+      "fieldname": "appeal_window_days",
+      "fieldtype": "Int",
+      "label": "Appeal Window Days"
+    },
+    {
+      "fieldname": "timely_filing_days",
+      "fieldtype": "Int",
+      "label": "Timely Filing Days",
+      "reqd": 1
+    },
+    {
+      "fieldname": "notes",
+      "fieldtype": "Text",
+      "label": "Notes"
+    },
+    {
+      "fieldname": "is_active",
+      "fieldtype": "Check",
+      "label": "Active",
+      "reqd": 1,
+      "default": "1"
+    }
+  ],
+  "index_web_pages_for_search": 0,
+  "is_submittable": 0,
+  "links": [],
+  "modified": "2026-04-04 00:00:00.000000",
+  "modified_by": "Administrator",
+  "module": "SM Billing",
+  "name": "SM Payer",
+  "naming_rule": "By fieldname",
+  "owner": "Administrator",
+  "permissions": [
+    {
+      "create": 1,
+      "delete": 1,
+      "email": 1,
+      "export": 1,
+      "print": 1,
+      "read": 1,
+      "report": 1,
+      "role": "System Manager",
+      "share": 1,
+      "write": 1
+    }
+  ],
+  "sort_field": "creation",
+  "sort_order": "DESC",
+  "track_changes": 0
+}
