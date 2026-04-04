@@ -1,0 +1,21 @@
+---
+# Vertical template: Behavioral Health
+# Used by PROV-001 provisioning API to determine app list and bench tier
+
+bench_tier: hipaa-health
+
+apps:
+  core:
+    - frappe
+    - erpnext
+  default_on:
+    - healthcare
+    - sm_widgets
+    - sm_connectors
+  optional:
+    - helpdesk
+    - hrms
+
+settings:
+  hipaa_required: true
+  default_server_tier: hipaa

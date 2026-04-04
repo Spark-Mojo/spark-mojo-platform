@@ -20,7 +20,7 @@ echo ""
 echo "RUN 1 — Billing + Medplum Research (unified, traditional mode)"
 echo "Started: $(date)"
 cd "$REPO"
-ralph run --config RESEARCH-HATS.yml 2>&1 | tee --line-buffered "$LOG_DIR/run1-research-$TIMESTAMP.log"
+ralph run --config RESEARCH-HATS.yml
 echo "RUN 1 COMPLETE: $(date)"
 
 echo ""

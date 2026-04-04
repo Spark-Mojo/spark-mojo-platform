@@ -11,14 +11,22 @@
     "server_tier",
     "site_type",
     "display_name",
+    "timezone",
     "hipaa",
     "is_active",
+    "bench_name",
+    "bench_host",
+    "medplum_project_id",
+    "n8n_workspace_ref",
+    "installed_apps",
     "connectors_json",
     "capability_routing_json",
     "feature_flags_json",
     "template",
     "provisioned_date",
-    "provisioned_by"
+    "provisioned_by",
+    "provisioning_timestamp",
+    "provisioning_status"
   ],
   "fields": [
     {
@@ -54,14 +62,21 @@
       "fieldname": "site_type",
       "fieldtype": "Select",
       "label": "Site Type",
-      "options": "behavioral_health\ninternal\nadmin\ndev",
+      "options": "behavioral_health\ngeneral_smb\ninternal\nadmin\ndev",
       "reqd": 1,
       "in_list_view": 1
     },
     {
       "fieldname": "display_name",
       "fieldtype": "Data",
-      "label": "Display Name"
+      "label": "Display Name",
+      "length": 256
+    },
+    {
+      "fieldname": "timezone",
+      "fieldtype": "Data",
+      "label": "Timezone",
+      "length": 64
     },
     {
       "fieldname": "hipaa",
@@ -74,6 +89,35 @@
       "fieldtype": "Check",
       "label": "Active",
       "default": "1"
+    },
+    {
+      "fieldname": "bench_name",
+      "fieldtype": "Data",
+      "label": "Bench Name",
+      "length": 64
+    },
+    {
+      "fieldname": "bench_host",
+      "fieldtype": "Data",
+      "label": "Bench Host",
+      "length": 256
+    },
+    {
+      "fieldname": "medplum_project_id",
+      "fieldtype": "Data",
+      "label": "Medplum Project ID",
+      "length": 128
+    },
+    {
+      "fieldname": "n8n_workspace_ref",
+      "fieldtype": "Data",
+      "label": "n8n Workspace Reference",
+      "length": 256
+    },
+    {
+      "fieldname": "installed_apps",
+      "fieldtype": "Text",
+      "label": "Installed Apps"
     },
     {
       "fieldname": "connectors_json",
@@ -104,12 +148,23 @@
       "fieldname": "provisioned_by",
       "fieldtype": "Data",
       "label": "Provisioned By"
+    },
+    {
+      "fieldname": "provisioning_timestamp",
+      "fieldtype": "Datetime",
+      "label": "Provisioned At"
+    },
+    {
+      "fieldname": "provisioning_status",
+      "fieldtype": "Select",
+      "label": "Provisioning Status",
+      "options": "\ncomplete\npartial\nfailed"
     }
   ],
   "index_web_pages_for_search": 0,
   "is_submittable": 0,
   "links": [],
-  "modified": "2026-03-31 00:00:00.000000",
+  "modified": "2026-04-04 00:00:00.000000",
   "modified_by": "Administrator",
   "module": "SM Provisioning",
   "name": "SM Site Registry",
