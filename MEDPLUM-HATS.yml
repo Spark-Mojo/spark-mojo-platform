@@ -1,0 +1,307 @@
+cli:
+  backend: "claude"
+
+event_loop:
+  starting_event: "session.start"
+  completion_promise: "LOOP_COMPLETE"
+  max_iterations: 100
+  max_runtime_seconds: 25200
+
+core:
+  guardrails:
+    - "RESEARCH AND DESIGN ONLY. Do NOT modify docker-compose.poc.yml or any production files."
+    - "Do NOT SSH to VPS or run any deployment commands."
+    - "Do NOT modify CLAUDE.md, hats.yml, PROMPT.md, or governance docs."
+    - "All outputs go to sparkmojo-internal only."
+    - "Governance repo: /Users/jamesilsley/GitHub/sparkmojo-internal/"
+    - "Platform repo: /Users/jamesilsley/GitHub/spark-mojo-platform/"
+    - "Medplum is INTERNAL ONLY. Never design a public subdomain for Medplum."
+    - "Every Medplum API call design must include projectId scoping — no exceptions."
+
+hats:
+  context_reader:
+    name: "Context Reader"
+    description: "Reads all context files before design work begins."
+    triggers: ["session.start"]
+    publishes: ["context.loaded"]
+    max_activations: 1
+    instructions: |
+      Read every file listed in MEDPLUM-PROMPT.md under Context Files in order.
+      Summarize what you found in each, especially docker-compose.poc.yml structure.
+      Then: ralph emit "context.loaded" "Context loaded"
+
+  infrastructure_designer:
+    name: "Medplum Infrastructure Designer"
+    description: "Designs the complete Medplum Docker Compose service definition and infrastructure integration."
+    triggers: ["context.loaded"]
+    publishes: ["infra.designed"]
+    max_activations: 1
+    instructions: |
+      Design the complete Medplum self-hosted infrastructure for Spark Mojo.
+      Use web search to get current Medplum Docker Compose documentation and
+      the official medplum-docker repo if it exists.
+
+      TOPIC 1: Medplum Docker Service Design
+      - Complete docker-compose service definition for Medplum server
+        (medplum-server, PostgreSQL 16, Redis 7)
+      - How it integrates with the existing docker-compose.poc.yml
+        (shared network? separate compose file? same file?)
+      - Port mapping: Medplum listens on :8103 internally, never exposed externally
+      - Volume definitions for PostgreSQL data and Medplum binary storage
+      - Environment variables required: database URL, Redis URL, base URL, storage config
+      - Memory requirements: how much RAM does Medplum + PG + Redis need?
+        Is the current VPS size sufficient alongside the existing stack?
+      - Health check definitions for each service
+
+      TOPIC 2: Medplum Configuration
+      - medplum.config.json: what goes in it, every required field
+      - HIPAA-relevant config: audit logging, encryption at rest, backup settings
+      - Multi-project config: how to enable/configure Project isolation mode
+      - Binary/file storage: DO Spaces S3-compatible config (known S3 fork issue from prior research)
+        What is the exact 2-line fork required? Where does it go?
+      - SMTP config for magic link auth and notifications
+      - Base URL config for self-hosted headless mode
+
+      TOPIC 3: Medplum Initial Setup
+      - How to initialize a fresh Medplum instance (first-run setup)
+      - How to create the first admin/super-admin account programmatically
+      - How to create a Project via Medplum REST API (shape of the POST /admin/projects call)
+      - How to create a ClientApplication for the abstraction layer's service account
+      - What the OAuth2 client credentials flow looks like for service-to-service auth
+
+      TOPIC 4: Abstraction Layer Integration Design
+      Design the medplum_connector.py module for the abstraction layer.
+      - Module location: abstraction-layer/connectors/medplum_connector.py
+      - MedplumClient class: initialization, auth (client credentials OAuth2), token refresh
+      - Core methods: get_resource, create_resource, update_resource, search_resources
+      - Project scoping enforcement: every method requires project_id parameter
+        No method may call Medplum without project_id — raise MedplumProjectScopeError if missing
+      - Error handling: Medplum API errors mapped to abstraction layer error types
+      - Connection pooling / session reuse
+
+      TOPIC 5: FHIR Resource Map for Behavioral Health
+      For each clinical workflow, map the FHIR resources involved:
+      - Patient intake: Patient, RelatedPerson, Coverage, Organization (payer)
+      - Scheduling: Schedule, Slot, Appointment
+      - Clinical documentation: Encounter, DocumentReference (session notes)
+        Note format mapping: DAP/SOAP/BIRP -> DocumentReference content structure
+      - Assessment tools: Questionnaire, QuestionnaireResponse (PHQ-9, GAD-7, PCL-5)
+      - Diagnosis: Condition (ICD-10 codes)
+      - Billing: Claim, ClaimResponse, Coverage, ExplanationOfBenefit
+      For each resource: key fields, required fields, how they relate to Frappe DocTypes
+
+      Write all findings to:
+      /Users/jamesilsley/GitHub/sparkmojo-internal/platform/research/medplum-implementation/MEDPLUM-INFRA-DESIGN.md
+
+      Create directory first:
+      mkdir -p /Users/jamesilsley/GitHub/sparkmojo-internal/platform/research/medplum-implementation/
+
+      Then: ralph emit "infra.designed" "Infrastructure design complete"
+
+  story_writer:
+    name: "Medplum Story Spec Writer"
+    description: "Writes STORY-014, STORY-015, and STORY-016 fully specified and ready for Ralph to build."
+    triggers: ["infra.designed"]
+    publishes: ["stories.written"]
+    max_activations: 1
+    instructions: |
+      Read:
+      - /Users/jamesilsley/GitHub/sparkmojo-internal/platform/research/medplum-implementation/MEDPLUM-INFRA-DESIGN.md
+      - /Users/jamesilsley/GitHub/sparkmojo-internal/platform/decisions/DECISION-020-medplum-fhir-clinical-layer.md
+      - /Users/jamesilsley/GitHub/sparkmojo-internal/platform/decisions/DECISION-028-medplum-multi-tenancy.md
+      - /Users/jamesilsley/GitHub/sparkmojo-internal/platform/STORY_TEMPLATE.md
+      - /Users/jamesilsley/GitHub/sparkmojo-internal/platform/feature-library/stories/PROV-001-provisioning-api.md
+        (use as quality bar — match this level of specificity)
+
+      Check the existing story files for STORY-014/015/016 if they exist:
+      /Users/jamesilsley/GitHub/sparkmojo-internal/platform/feature-library/stories/
+
+      If they exist, read them and produce updated versions that are fully specified
+      and Ralph-ready. If they do not exist, create them from scratch.
+
+      STORY-014: Medplum Docker service — add to docker-compose
+      - Add medplum-server, medplum-postgres, medplum-redis services to docker-compose.poc.yml
+      - medplum.config.json written to repo
+      - DO Spaces S3 storage fork applied
+      - Medplum responds at http://medplum:8103 internally
+      - Acceptance: curl http://localhost:8103/healthcheck returns 200 from inside network
+      - No public subdomain. Internal only.
+      - DO NOT deploy to production VPS in this story — dev/test only
+
+      STORY-015: Medplum abstraction layer connector
+      - Create abstraction-layer/connectors/medplum_connector.py
+      - MedplumClient class with OAuth2 client credentials auth
+      - Full CRUD methods with mandatory project_id parameter
+      - MedplumProjectScopeError raised if project_id missing
+      - Unit tests for each method (mock Medplum responses)
+      - Acceptance: import MedplumClient succeeds, all unit tests pass
+
+      STORY-016: Medplum project provisioning integration
+      - Update PROV-001's Medplum stub step to call real Medplum API
+      - POST /admin/projects creates real Medplum Project
+      - project_id stored in SM Site Registry
+      - Requires STORY-014 and STORY-015 complete
+      - Acceptance: provisioning API creates a real Medplum Project and
+        GET /api/admin/sites/{site} returns a non-stub medplum_project_id
+
+      Write to:
+      /Users/jamesilsley/GitHub/sparkmojo-internal/platform/feature-library/stories/STORY-014-medplum-docker-service.md
+      /Users/jamesilsley/GitHub/sparkmojo-internal/platform/feature-library/stories/STORY-015-medplum-abstraction-layer-connector.md
+      /Users/jamesilsley/GitHub/sparkmojo-internal/platform/feature-library/stories/STORY-016-medplum-project-provisioning.md
+
+      Follow STORY_TEMPLATE.md format exactly.
+
+      Then: ralph emit "stories.written" "STORY-014/015/016 written"
+
+  synthesis_writer:
+    name: "Medplum Synthesis Writer"
+    description: "Produces MEDPLUM-IMPL-SYNTHESIS.md — the executive document James reads first."
+    triggers: ["stories.written"]
+    publishes: ["synthesis.complete"]
+    max_activations: 1
+    instructions: |
+      Read all outputs from this run.
+
+      Write to:
+      /Users/jamesilsley/GitHub/sparkmojo-internal/platform/research/medplum-implementation/MEDPLUM-IMPL-SYNTHESIS.md
+
+      Required sections:
+
+      ## What You Need to Know (5 bullets max)
+      Most important findings. What is simpler or harder than expected.
+
+      ## Docker Integration (Plain English)
+      How Medplum fits into the existing stack. What changes in docker-compose.
+      RAM impact. Any risks.
+
+      ## The Abstraction Layer Connector
+      How medplum_connector.py works. The project_id enforcement rule explained.
+      Why this design is correct for HIPAA.
+
+      ## FHIR Resource Map Summary
+      Table: clinical workflow | FHIR resources | key fields | Frappe relationship
+      This is the reference for every future clinical story.
+
+      ## Stories Ready for Ralph
+      STORY-014, 015, 016 in dependency order. What must be true before each runs.
+      Time estimate for each (S/M/L).
+
+      ## Blockers
+      Only items that must be resolved before STORY-014 can run.
+      (D2 droplet upgrade, DO BAA status, anything new found in research)
+
+      Then: ralph emit "synthesis.complete" "Medplum synthesis complete"
+
+  ppt_writer:
+    name: "Executive Summary PPT Writer"
+    description: "Produces the internal review PowerPoint for the Medplum implementation run."
+    triggers: ["synthesis.complete"]
+    publishes: ["ppt.complete"]
+    max_activations: 1
+    instructions: |
+      Read the pptx skill first:
+      /mnt/skills/public/pptx/SKILL.md
+
+      Then read:
+      - /Users/jamesilsley/GitHub/sparkmojo-internal/platform/research/medplum-implementation/MEDPLUM-IMPL-SYNTHESIS.md
+      - /Users/jamesilsley/GitHub/sparkmojo-internal/platform/research/medplum-implementation/MEDPLUM-INFRA-DESIGN.md
+
+      Produce an internal review PowerPoint matching the SparkMojo_Research_Review
+      visual standard: teal/navy palette, dark section divider slides, white content
+      slides, SPARK MOJO INTERNAL footer with slide number on every content slide.
+
+      == SLIDE STRUCTURE ==
+
+      Slide 1 — Title (dark)
+      "INTERNAL REVIEW DECK / Spark Mojo Platform / Medplum Implementation Design"
+      Subtitle: "STORY-014/015/016 Design Run  |  April 2026  |  Prepared for: James Ilsley"
+
+      Slide 2 — What Was Designed
+      What this run produced. Output counts. What is now ready to build.
+
+      Slide 3 — Key Numbers
+      Large stat cards: RAM required, services added to Docker stack,
+      story specs ready, estimated Ralph nights to complete.
+
+      Slide 4 — Section divider: "Infrastructure"
+
+      Slide 5 — Docker Stack: Before and After
+      Two-column. Left: current services. Right: with Medplum added.
+      Highlight what is new. Note what is internal-only (never public).
+
+      Slide 6 — Medplum Configuration Highlights
+      Key config decisions: storage, auth, project isolation, HIPAA flags.
+      What James needs to confirm before STORY-014 runs.
+
+      Slide 7 — Section divider: "Integration Architecture"
+
+      Slide 8 — Abstraction Layer Connector Design
+      ASCII diagram: React -> Abstraction Layer -> medplum_connector.py -> Medplum Server
+      Highlight: projectId enforcement rule. Why it matters for HIPAA.
+
+      Slide 9 — FHIR Resource Map
+      Table: clinical workflow | FHIR resources | Frappe relationship
+      This is the reference slide for every future clinical story.
+
+      Slide 10 — Section divider: "Stories and Next Steps"
+
+      Slide 11 — Stories Ready for Ralph
+      Table: Story ID | Description | Depends on | Size | Status
+      STORY-014, 015, 016.
+
+      Slide 12 — Blockers and Prerequisites
+      What must be true before STORY-014 can run.
+      James action items with estimated time each.
+
+      Slide 13 — Next Steps (dark)
+      Tonight / Next Claude Chat / Next Ralph run.
+
+      == FILE LOCATION ==
+      /Users/jamesilsley/GitHub/sparkmojo-internal/platform/research/medplum-implementation/MEDPLUM-IMPL-EXEC-SUMMARY.pptx
+
+      == QA ==
+      Follow full QA process from SKILL.md. Visual inspection with subagent.
+      Fix all issues. Re-verify. Do not skip.
+
+      Commit:
+      cd /Users/jamesilsley/GitHub/sparkmojo-internal
+      git add platform/research/medplum-implementation/MEDPLUM-IMPL-EXEC-SUMMARY.pptx
+      git commit -m "docs: Medplum implementation exec summary PPT"
+      git push origin main
+
+      Then: ralph emit "ppt.complete" "Medplum exec summary PPT committed"
+
+  committer:
+    name: "Run Committer"
+    description: "Commits all remaining outputs and ends the run."
+    triggers: ["ppt.complete"]
+    publishes: []
+    max_activations: 1
+    instructions: |
+      Verify all output files exist:
+      ls /Users/jamesilsley/GitHub/sparkmojo-internal/platform/research/medplum-implementation/
+      ls /Users/jamesilsley/GitHub/sparkmojo-internal/platform/feature-library/stories/STORY-014-medplum-docker-service.md
+      ls /Users/jamesilsley/GitHub/sparkmojo-internal/platform/feature-library/stories/STORY-015-medplum-abstraction-layer-connector.md
+      ls /Users/jamesilsley/GitHub/sparkmojo-internal/platform/feature-library/stories/STORY-016-medplum-project-provisioning.md
+
+      Commit everything not yet committed:
+      cd /Users/jamesilsley/GitHub/sparkmojo-internal
+      git add platform/research/medplum-implementation/
+      git add platform/feature-library/stories/STORY-014-medplum-docker-service.md
+      git add platform/feature-library/stories/STORY-015-medplum-abstraction-layer-connector.md
+      git add platform/feature-library/stories/STORY-016-medplum-project-provisioning.md
+      git commit -m "research: Medplum implementation design — infra, connector, STORY-014/015/016, exec summary PPT"
+      git push origin main
+
+      Print run summary then output LOOP_COMPLETE:
+
+      MEDPLUM IMPLEMENTATION RUN COMPLETE
+      =====================================
+      Committed to sparkmojo-internal:
+      - MEDPLUM-INFRA-DESIGN.md
+      - MEDPLUM-IMPL-SYNTHESIS.md
+      - MEDPLUM-IMPL-EXEC-SUMMARY.pptx
+      - STORY-014/015/016 story specs
+
+      Read first: MEDPLUM-IMPL-SYNTHESIS.md then MEDPLUM-IMPL-EXEC-SUMMARY.pptx
+      Next step: Claude Chat session to confirm prereqs and kick off STORY-014
