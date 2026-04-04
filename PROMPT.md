@@ -1,28 +1,27 @@
-# Research Run — Frappe Press + Bench Lifecycle Analysis
+# Build Run — PROV-001: Provisioning API
 
 ## Purpose
+Build the provisioning API in the abstraction layer. Code build run.
+No research. No VPS changes. Branch only.
 
-This is a pure research and synthesis run. No code changes. No VPS access.
-No git branching. One output: a synthesis document committed to sparkmojo-internal.
+## Story
+Read before writing anything:
+`/Users/jamesilsley/GitHub/sparkmojo-internal/platform/feature-library/stories/PROV-001-provisioning-api.md`
 
-## Research Question
+## Context Files — Read in This Order
+1. `/Users/jamesilsley/GitHub/spark-mojo-platform/CLAUDE.md`
+2. `/Users/jamesilsley/GitHub/sparkmojo-internal/platform/AGENT_CONTEXT.md`
+3. `/Users/jamesilsley/GitHub/sparkmojo-internal/platform/feature-library/stories/PROV-001-provisioning-api.md`
+4. `/Users/jamesilsley/GitHub/sparkmojo-internal/platform/decisions/DECISION-026-client-provisioning-architecture.md`
+5. `/Users/jamesilsley/GitHub/sparkmojo-internal/platform/decisions/DECISION-024-bench-topology.md`
+6. `/Users/jamesilsley/GitHub/sparkmojo-internal/platform/decisions/DECISION-028-medplum-multi-tenancy.md`
+7. `/Users/jamesilsley/GitHub/sparkmojo-internal/platform/architecture/PROVISIONING_RUNBOOK.md`
+8. `/Users/jamesilsley/GitHub/spark-mojo-platform/abstraction-layer/routes/onboarding.py`
+9. `/Users/jamesilsley/GitHub/spark-mojo-platform/abstraction-layer/main.py`
+10. `/Users/jamesilsley/GitHub/spark-mojo-platform/frappe-apps/sm_provisioning/sm_provisioning/doctype/sm_site_registry/`
 
-Should Spark Mojo adopt Frappe Press (self-hosted) as the site lifecycle management
-layer, and how does Frappe Bench's native multi-site capabilities change our
-sm_provisioning architecture and client onboarding automation design?
-
-## Context
-
-Read these files before starting any research:
-
-- `/Users/jamesilsley/GitHub/sparkmojo-internal/platform/AGENT_CONTEXT.md`
-- `/Users/jamesilsley/GitHub/sparkmojo-internal/platform/decisions/DECISION-021-frappe-container-image-strategy.md`
-- `/Users/jamesilsley/GitHub/sparkmojo-internal/platform/decisions/DECISION-004-multi-tenancy.md`
-- `/Users/jamesilsley/GitHub/sparkmojo-internal/JAMES_PROJECT_PLAN.md`
-- `/Users/jamesilsley/GitHub/spark-mojo-platform/frappe-apps/sm_provisioning/` (directory scan)
-- `/Users/jamesilsley/GitHub/spark-mojo-platform/scripts/` (review deploy.sh logic)
-- `/Users/jamesilsley/GitHub/sparkmojo-internal/platform/architecture/PROVISIONING_RUNBOOK.md`
+## Branch
+All work on: `queue/session-19-prov-001`
 
 ## Completion
-
-When all documents are committed: output LOOP_COMPLETE.
+Write MORNING-TEST-PLAN.md to repo root. Then output LOOP_COMPLETE.
