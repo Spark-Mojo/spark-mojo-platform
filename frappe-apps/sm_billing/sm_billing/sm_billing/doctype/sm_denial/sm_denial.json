@@ -1,0 +1,158 @@
+{
+  "actions": [],
+  "autoname": "DEN-.YYYY.MM.-.####",
+  "creation": "2026-04-04 00:00:00.000000",
+  "doctype": "DocType",
+  "engine": "InnoDB",
+  "field_order": [
+    "claim",
+    "era",
+    "denial_date",
+    "carc_codes",
+    "rarc_codes",
+    "denied_amount",
+    "ai_category",
+    "ai_subcategory",
+    "ai_plain_english",
+    "ai_root_cause",
+    "ai_appealable",
+    "ai_appeal_priority",
+    "ai_confidence",
+    "canonical_state",
+    "appeal_deadline",
+    "assigned_to",
+    "notes"
+  ],
+  "fields": [
+    {
+      "fieldname": "claim",
+      "fieldtype": "Link",
+      "label": "Claim",
+      "options": "SM Claim",
+      "reqd": 1,
+      "in_list_view": 1
+    },
+    {
+      "fieldname": "era",
+      "fieldtype": "Link",
+      "label": "ERA",
+      "options": "SM ERA"
+    },
+    {
+      "fieldname": "denial_date",
+      "fieldtype": "Date",
+      "label": "Denial Date",
+      "reqd": 1,
+      "in_list_view": 1
+    },
+    {
+      "fieldname": "carc_codes",
+      "fieldtype": "Data",
+      "label": "CARC Codes",
+      "reqd": 1,
+      "length": 100
+    },
+    {
+      "fieldname": "rarc_codes",
+      "fieldtype": "Data",
+      "label": "RARC Codes",
+      "length": 100
+    },
+    {
+      "fieldname": "denied_amount",
+      "fieldtype": "Currency",
+      "label": "Denied Amount",
+      "reqd": 1,
+      "in_list_view": 1
+    },
+    {
+      "fieldname": "ai_category",
+      "fieldtype": "Select",
+      "label": "AI Category",
+      "options": "\neligibility\nauthorization\nmedical_necessity\ncoding_error\nmodifier_error\ntimely_filing\nduplicate\ncoordination_of_benefits\ncredentialing\nother"
+    },
+    {
+      "fieldname": "ai_subcategory",
+      "fieldtype": "Data",
+      "label": "AI Subcategory",
+      "length": 128
+    },
+    {
+      "fieldname": "ai_plain_english",
+      "fieldtype": "Text",
+      "label": "AI Plain English"
+    },
+    {
+      "fieldname": "ai_root_cause",
+      "fieldtype": "Text",
+      "label": "AI Root Cause"
+    },
+    {
+      "fieldname": "ai_appealable",
+      "fieldtype": "Check",
+      "label": "AI Appealable"
+    },
+    {
+      "fieldname": "ai_appeal_priority",
+      "fieldtype": "Select",
+      "label": "AI Appeal Priority",
+      "options": "\nhigh\nmedium\nlow\ndo_not_appeal"
+    },
+    {
+      "fieldname": "ai_confidence",
+      "fieldtype": "Float",
+      "label": "AI Confidence"
+    },
+    {
+      "fieldname": "canonical_state",
+      "fieldtype": "Select",
+      "label": "Status",
+      "options": "new\nreviewing\nappeal_in_progress\nappeal_submitted\nappeal_won\nappeal_lost\nwritten_off",
+      "reqd": 1,
+      "default": "new",
+      "in_list_view": 1
+    },
+    {
+      "fieldname": "appeal_deadline",
+      "fieldtype": "Date",
+      "label": "Appeal Deadline"
+    },
+    {
+      "fieldname": "assigned_to",
+      "fieldtype": "Data",
+      "label": "Assigned To",
+      "length": 256
+    },
+    {
+      "fieldname": "notes",
+      "fieldtype": "Text",
+      "label": "Notes"
+    }
+  ],
+  "index_web_pages_for_search": 0,
+  "is_submittable": 0,
+  "links": [],
+  "modified": "2026-04-04 00:00:00.000000",
+  "modified_by": "Administrator",
+  "module": "SM Billing",
+  "name": "SM Denial",
+  "naming_rule": "Expression",
+  "owner": "Administrator",
+  "permissions": [
+    {
+      "create": 1,
+      "delete": 1,
+      "email": 1,
+      "export": 1,
+      "print": 1,
+      "read": 1,
+      "report": 1,
+      "role": "System Manager",
+      "share": 1,
+      "write": 1
+    }
+  ],
+  "sort_field": "creation",
+  "sort_order": "DESC",
+  "track_changes": 0
+}

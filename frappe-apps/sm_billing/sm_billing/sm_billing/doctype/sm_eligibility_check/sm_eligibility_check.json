@@ -1,0 +1,166 @@
+{
+  "actions": [],
+  "autoname": "ELIG-.YYYY.MM.DD.-.####",
+  "creation": "2026-04-04 00:00:00.000000",
+  "doctype": "DocType",
+  "engine": "InnoDB",
+  "field_order": [
+    "patient_name",
+    "patient_member_id",
+    "payer",
+    "check_date",
+    "check_type",
+    "coverage_active",
+    "plan_name",
+    "copay_amount",
+    "coinsurance_pct",
+    "deductible_total",
+    "deductible_remaining",
+    "oop_max_total",
+    "oop_max_remaining",
+    "in_network",
+    "prior_auth_required",
+    "visit_limit",
+    "visits_used",
+    "raw_response_json",
+    "crm_contact_id"
+  ],
+  "fields": [
+    {
+      "fieldname": "patient_name",
+      "fieldtype": "Data",
+      "label": "Patient Name",
+      "reqd": 1,
+      "in_list_view": 1,
+      "length": 256
+    },
+    {
+      "fieldname": "patient_member_id",
+      "fieldtype": "Data",
+      "label": "Patient Member ID",
+      "reqd": 1,
+      "length": 64
+    },
+    {
+      "fieldname": "payer",
+      "fieldtype": "Link",
+      "label": "Payer",
+      "options": "SM Payer",
+      "reqd": 1,
+      "in_list_view": 1
+    },
+    {
+      "fieldname": "check_date",
+      "fieldtype": "Date",
+      "label": "Check Date",
+      "reqd": 1,
+      "in_list_view": 1
+    },
+    {
+      "fieldname": "check_type",
+      "fieldtype": "Select",
+      "label": "Check Type",
+      "options": "realtime\nbatch",
+      "reqd": 1,
+      "in_list_view": 1
+    },
+    {
+      "fieldname": "coverage_active",
+      "fieldtype": "Check",
+      "label": "Coverage Active"
+    },
+    {
+      "fieldname": "plan_name",
+      "fieldtype": "Data",
+      "label": "Plan Name",
+      "length": 256
+    },
+    {
+      "fieldname": "copay_amount",
+      "fieldtype": "Currency",
+      "label": "Copay Amount"
+    },
+    {
+      "fieldname": "coinsurance_pct",
+      "fieldtype": "Percent",
+      "label": "Coinsurance %"
+    },
+    {
+      "fieldname": "deductible_total",
+      "fieldtype": "Currency",
+      "label": "Deductible Total"
+    },
+    {
+      "fieldname": "deductible_remaining",
+      "fieldtype": "Currency",
+      "label": "Deductible Remaining"
+    },
+    {
+      "fieldname": "oop_max_total",
+      "fieldtype": "Currency",
+      "label": "OOP Max Total"
+    },
+    {
+      "fieldname": "oop_max_remaining",
+      "fieldtype": "Currency",
+      "label": "OOP Max Remaining"
+    },
+    {
+      "fieldname": "in_network",
+      "fieldtype": "Check",
+      "label": "In Network"
+    },
+    {
+      "fieldname": "prior_auth_required",
+      "fieldtype": "Check",
+      "label": "Prior Auth Required"
+    },
+    {
+      "fieldname": "visit_limit",
+      "fieldtype": "Int",
+      "label": "Visit Limit"
+    },
+    {
+      "fieldname": "visits_used",
+      "fieldtype": "Int",
+      "label": "Visits Used"
+    },
+    {
+      "fieldname": "raw_response_json",
+      "fieldtype": "JSON",
+      "label": "Raw Response JSON"
+    },
+    {
+      "fieldname": "crm_contact_id",
+      "fieldtype": "Data",
+      "label": "CRM Contact ID",
+      "length": 128
+    }
+  ],
+  "index_web_pages_for_search": 0,
+  "is_submittable": 0,
+  "links": [],
+  "modified": "2026-04-04 00:00:00.000000",
+  "modified_by": "Administrator",
+  "module": "SM Billing",
+  "name": "SM Eligibility Check",
+  "naming_rule": "Expression",
+  "owner": "Administrator",
+  "permissions": [
+    {
+      "create": 1,
+      "delete": 1,
+      "email": 1,
+      "export": 1,
+      "print": 1,
+      "read": 1,
+      "report": 1,
+      "role": "System Manager",
+      "share": 1,
+      "write": 1
+    }
+  ],
+  "sort_field": "creation",
+  "sort_order": "DESC",
+  "track_changes": 0
+}
