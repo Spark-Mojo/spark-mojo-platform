@@ -55,7 +55,7 @@ def _mock_docker_exec_success(cmd, timeout=120):
         result.stdout = "testsite.sparkmojo.com\npoc-dev.sparkmojo.com\n"
     elif "list-apps" in cmd:
         result.stdout = "frappe\nerpnext\nhealthcare\nsm_widgets\n"
-    elif "get-site-config" in cmd:
+    elif "show-config" in cmd or "get-site-config" in cmd:
         result.stdout = '{"encryption_key": "abc123", "host_name": "https://testsite.app.sparkmojo.com"}'
     elif "setup_complete" in cmd:
         result.stdout = "1"
