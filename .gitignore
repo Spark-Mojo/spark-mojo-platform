@@ -1,15 +1,52 @@
+# Dependencies
 node_modules/
 dist/
+
+# Environment
 .env
+.env.poc
+.env.local
+.env.*.local
+
+# macOS
 .DS_Store
-*.log
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+Icon
+
+# Google Drive sync temp files (all patterns)
+.tmp.driveupload/
+.tmp.drivedownload/
+*.gdoc
+*.gsheet
+*.gslides
+*.gform
+*.gdraw
+*.gmap
+*.gsite
+desktop.ini
+
+# Python
 __pycache__/
 *.pyc
+*.pyo
+*.pyd
 .venv/
-.env.poc
+*.egg-info/
+
+# Logs
+*.log
+logs/
+
+# Ralph / Skills (local only)
 scripts/ralph.sh
 skills/prd/SKILL.md
 skills/ralph/SKILL.md
-.tmp.driveupload/
-.tmp.driveupload/
-.tmp.driveupload/
+
+# Editor
+.vscode/
+.idea/
+*.swp
+*.swo
