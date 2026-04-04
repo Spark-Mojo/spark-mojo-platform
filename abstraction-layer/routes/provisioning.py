@@ -493,7 +493,7 @@ def step_13_hipaa_verification(
     passed = True
 
     # Check 1: Encryption key exists
-    result = _docker_exec(f"bench --site {site_name} get-site-config")
+    result = _docker_exec(f"bench --site {site_name} show-config")
     if "encryption_key" not in result.stdout:
         steps_failed.append("hipaa_check_encryption_key: encryption key not found in site config")
         passed = False
@@ -551,7 +551,7 @@ def step_14_smoke_test(
         failures.append("smoke_test_4: setup_complete not set to 1")
 
     # Test 5: Site config has host_name
-    result = _docker_exec(f"bench --site {site_name} get-site-config")
+    result = _docker_exec(f"bench --site {site_name} show-config")
     expected_host = f"https://{site_subdomain}.app.sparkmojo.com"
     if expected_host not in result.stdout:
         failures.append(f"smoke_test_5: host_name not set to {expected_host}")
