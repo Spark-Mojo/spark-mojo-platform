@@ -12,6 +12,7 @@ apps:
     - healthcare
     - sm_widgets
     - sm_connectors
+    - sm_billing
   optional:
     - helpdesk
     - hrms

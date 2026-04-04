@@ -1,0 +1,6 @@
+[project]
+name = "sm_billing"
+version = "0.1.0"
+description = "Spark Mojo Billing Module — insurance claims, ERA processing, payment management"
+requires-python = ">=3.10"
+dependencies = ["frappe"]
