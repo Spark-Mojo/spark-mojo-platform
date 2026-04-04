@@ -1,0 +1,49 @@
+cli:
+  backend: "claude"
+
+event_loop:
+  starting_event: "session.start"
+  completion_promise: "LOOP_COMPLETE"
+  max_iterations: 150
+  max_runtime_seconds: 28800
+
+core:
+  guardrails:
+    - "RESEARCH AND DESIGN ONLY. Do NOT modify code files, docker-compose.poc.yml, or deploy.sh."
+    - "Do NOT SSH to VPS or run any deployment commands."
+    - "All outputs committed to sparkmojo-internal only — never spark-mojo-platform."
+    - "A task is NOT complete until its output file appears in git log on sparkmojo-internal main."
+    - "Do not move to the next task until the current task is committed."
+    - "Do not output LOOP_COMPLETE until the COMPLETION CHECK in RESEARCH-PROMPT.md passes."
+    - "Medplum is INTERNAL ONLY. Never design a public subdomain for Medplum."
+    - "Every Medplum API call design must include projectId — no exceptions (DECISION-028)."
+    - "Sizing tables must use generic tiers only: Solo / Small Group / Medium / Large."
+    - "Three valid site_type values: behavioral_health, general_smb, spark_mojo_internal."
+    - "Governance repo: /Users/jamesilsley/GitHub/sparkmojo-internal/"
+    - "Platform repo: /Users/jamesilsley/GitHub/spark-mojo-platform/"
+
+hats:
+  worker:
+    name: "Research and Story Worker"
+    description: "Works through RESEARCH-PROMPT.md task list sequentially. Each task must be committed to sparkmojo-internal before moving to the next. Does not stop until all 16 tasks pass the COMPLETION CHECK."
+    triggers: ["session.start"]
+    publishes: []
+    max_activations: 150
+    instructions: |
+      Read RESEARCH-PROMPT.md at:
+      /Users/jamesilsley/GitHub/spark-mojo-platform/RESEARCH-PROMPT.md
+
+      Work through tasks in order. Before starting any task:
+      1. Check if the output file already exists and is committed:
+           cd /Users/jamesilsley/GitHub/sparkmojo-internal && git log --oneline -30
+         Look for the output filename in the log.
+      2. If already committed: skip to the next task.
+      3. If not committed: do the work, commit it, then move to the next task.
+
+      Never move to the next task without committing the current one first.
+
+      When you reach the COMPLETION CHECK section:
+        Run: cd /Users/jamesilsley/GitHub/sparkmojo-internal && git log --oneline -30
+        Verify every file listed in the COMPLETION CHECK appears in git log.
+        If any are missing: go back and complete them.
+        Only when all 16 files are confirmed: output LOOP_COMPLETE
