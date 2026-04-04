@@ -1,22 +1,23 @@
 # Session 20 Overnight Run — Complete
 
-**Date:** 2026-04-04
-
-## BILL-001 — sm_billing Frappe app scaffold
+## STORY-014: Medplum Docker Services
 - **Status:** COMPLETE
+- **Branch:** `story/story-014-medplum-docker`
+- **Commit:** `a88dcdf` — feat: Medplum Docker services - medplum-server, medplum-postgres, medplum-redis (internal only)
+
+## BILL-001: SM Billing App Scaffold
+- **Status:** PARTIAL — committed but COMPLETE marker not written
 - **Branch:** `story/bill-001-sm-billing-scaffold`
 - **Commit:** `6a984de` — feat: sm_billing Frappe app scaffold - fourth SM custom app for billing module
-
-## STORY-014 — Medplum Docker services
-- **Status:** NOT COMPLETED
-- **Branch:** `story/story-014-medplum-docker` (exists but no story-specific commits)
-- **Note:** STORY-014 was not picked up during the overnight run. The branch exists at the same base as main with no Medplum work applied.
+- **Warning:** The BILL-001-COMPLETE marker file was never created, suggesting the story's verification/gate checks may not have fully run. The scaffold code is on the branch and pushed to origin. James should review before merging.
 
 ## Warnings
-- STORY-014 needs to be built in a future session — no work was done on it overnight.
+- BILL-001 missing COMPLETE marker — verify the scaffold passes all Definition of Done gates before merging
+- Neither story was deployed to VPS (per run rules)
 
 ## Next Steps
-1. **Merge BILL-001:** `story/bill-001-sm-billing-scaffold` → `main` (ready for PR/merge)
-2. **Build STORY-014:** Medplum Docker services still need implementation in a future session
-3. **After STORY-014 is built:** Add Medplum env vars to `.env.poc`, verify with STORY-014 test steps
-4. **Deploy:** Run `deploy.sh` after merging BILL-001 to get sm_billing onto the VPS
+1. Review and merge `story/bill-001-sm-billing-scaffold` into main (after verifying gates)
+2. Review and merge `story/story-014-medplum-docker` into main
+3. Add Medplum env vars to `.env.poc` on VPS (`MEDPLUM_SUPER_ADMIN_PASSWORD`, `MEDPLUM_DATABASE_PASSWORD`, `MEDPLUM_REDIS_PASSWORD`)
+4. Verify with STORY-014 test steps after deploy
+5. Run `deploy.sh` after merging both branches
