@@ -1,0 +1,21 @@
+{
+  "port": 8103,
+  "baseUrl": "http://medplum:8103",
+  "issuer": "http://medplum:8103",
+  "jwksUrl": "http://medplum:8103/.well-known/jwks.json",
+  "authorizeUrl": "http://medplum:8103/oauth2/authorize",
+  "tokenUrl": "http://medplum:8103/oauth2/token",
+  "userInfoUrl": "http://medplum:8103/oauth2/userinfo",
+  "appBaseUrl": "http://medplum:8103",
+  "binaryStorage": "file:./binary/",
+  "maxJsonSize": "16mb",
+  "supportEmail": "dev@sparkmojo.com",
+  "registerEnabled": false,
+  "googleClientId": "",
+  "recaptchaSiteKey": "",
+  "logLevel": "info",
+  "auditEventLogEnabled": true,
+  "auditEventInDatabase": true,
+  "heartbeatMilliseconds": 10000,
+  "heartbeatEnabled": true
+}
