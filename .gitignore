@@ -15,6 +15,7 @@ dist/
 .Spotlight-V100
 .Trashes
 Icon
+Icon
 
 # Google Drive sync temp files (all patterns)
 .tmp.driveupload/
