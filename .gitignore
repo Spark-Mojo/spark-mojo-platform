@@ -50,3 +50,9 @@ skills/ralph/SKILL.md
 .idea/
 *.swp
 *.swo
+
+# Ralph runtime state
+.ralph/
+
+# Git worktrees
+.worktrees/
