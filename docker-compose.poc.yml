@@ -84,6 +84,8 @@ services:
       - "traefik.http.routers.api-poc.service=api-backend"
       - "traefik.http.services.api-backend.loadbalancer.server.port=8001"
       - "traefik.docker.network=root_web"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
     restart: unless-stopped
 
   # ── Medplum FHIR Server ─────────────────────────────────────
