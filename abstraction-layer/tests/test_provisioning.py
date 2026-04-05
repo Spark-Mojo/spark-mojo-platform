@@ -590,32 +590,58 @@ class TestMedplumAndN8n:
 
     @pytest.mark.anyio
     async def test_medplum_stub_mode(self):
+        """When MedplumClient is not configured, returns stub ID."""
         from routes.provisioning import step_08_create_medplum_project
-        with patch("routes.provisioning.MEDPLUM_BASE_URL", ""):
+        mock_client = MagicMock()
+        mock_client.is_configured = False
+        with patch("routes.provisioning.medplum_client", mock_client):
             warnings = []
-            result = await step_08_create_medplum_project("testsite", warnings)
+            steps_completed = []
+            steps_failed = []
+            result = await step_08_create_medplum_project(
+                "testsite", warnings, steps_completed, steps_failed
+            )
             assert result.startswith("stub-")
             assert any("medplum_project_stub" in w for w in warnings)
+            assert "create_medplum_project" not in steps_completed
 
     @pytest.mark.anyio
     async def test_medplum_real_call(self):
+        """When MedplumClient is configured, calls create_project and returns real ID."""
         from routes.provisioning import step_08_create_medplum_project
-
-        mock_resp = MagicMock()
-        mock_resp.status_code = 200
-        mock_resp.json.return_value = {"project": {"id": "proj-12345"}}
-
-        with patch("routes.provisioning.MEDPLUM_BASE_URL", "http://medplum:8103"), \
-             patch("httpx.AsyncClient") as MockClient:
-            instance = AsyncMock()
-            instance.post.return_value = mock_resp
-            instance.__aenter__ = AsyncMock(return_value=instance)
-            instance.__aexit__ = AsyncMock(return_value=False)
-            MockClient.return_value = instance
-
+        mock_client = MagicMock()
+        mock_client.is_configured = True
+        mock_client.create_project = AsyncMock(return_value={"id": "real-uuid-12345"})
+        with patch("routes.provisioning.medplum_client", mock_client):
             warnings = []
-            result = await step_08_create_medplum_project("testsite", warnings)
-            assert result == "proj-12345"
+            steps_completed = []
+            steps_failed = []
+            result = await step_08_create_medplum_project(
+                "testsite", warnings, steps_completed, steps_failed
+            )
+            assert result == "real-uuid-12345"
+            assert not result.startswith("stub-")
+            assert "create_medplum_project" in steps_completed
+            mock_client.create_project.assert_called_once_with("testsite")
+
+    @pytest.mark.anyio
+    async def test_medplum_configured_but_fails(self):
+        """When MedplumClient is configured but create_project fails, falls back to stub."""
+        from routes.provisioning import step_08_create_medplum_project
+        mock_client = MagicMock()
+        mock_client.is_configured = True
+        mock_client.create_project = AsyncMock(side_effect=Exception("Connection refused"))
+        with patch("routes.provisioning.medplum_client", mock_client):
+            warnings = []
+            steps_completed = []
+            steps_failed = []
+            result = await step_08_create_medplum_project(
+                "testsite", warnings, steps_completed, steps_failed
+            )
+            assert result.startswith("stub-")
+            assert "create_medplum_project" not in steps_completed
+            assert any("create_medplum_project" in f for f in steps_failed)
+            assert any("medplum_project_creation_failed" in w for w in warnings)
 
     @pytest.mark.anyio
     async def test_n8n_not_configured(self):
