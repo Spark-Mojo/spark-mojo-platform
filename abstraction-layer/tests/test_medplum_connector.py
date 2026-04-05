@@ -187,3 +187,36 @@ async def test_create_project(client):
     result = await client.create_project("Willow Center")
 
     assert result == project
+
+
+# ── admin client application creation ─────────────────────────────────
+
+
+@pytest.mark.asyncio
+@respx.mock
+async def test_create_client_application_success(client):
+    respx.post(TOKEN_URL).mock(return_value=httpx.Response(200, json=TOKEN_RESPONSE))
+    app_response = {"id": "app-uuid-123", "secret": "secret-value-xyz", "clientId": "app-uuid-123"}
+    route = respx.post(f"{FAKE_BASE}/admin/projects/proj-abc/client").mock(
+        return_value=httpx.Response(201, json=app_response)
+    )
+
+    result = await client.create_client_application("proj-abc", "test-app")
+
+    assert result == app_response
+    assert result["id"] == "app-uuid-123"
+    assert result["secret"] == "secret-value-xyz"
+    # Admin endpoint should NOT have X-Medplum-Project header
+    assert "X-Medplum-Project" not in route.calls.last.request.headers
+
+
+@pytest.mark.asyncio
+@respx.mock
+async def test_create_client_application_failure(client):
+    respx.post(TOKEN_URL).mock(return_value=httpx.Response(200, json=TOKEN_RESPONSE))
+    respx.post(f"{FAKE_BASE}/admin/projects/proj-abc/client").mock(
+        return_value=httpx.Response(500, json={"error": "Internal Server Error"})
+    )
+
+    with pytest.raises(httpx.HTTPStatusError):
+        await client.create_client_application("proj-abc", "test-app")

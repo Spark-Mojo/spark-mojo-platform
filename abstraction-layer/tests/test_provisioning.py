@@ -689,6 +689,78 @@ class TestMedplumAndN8n:
             assert result is None
             assert any("n8n_workspace_failed" in w for w in warnings)
 
+    @pytest.mark.anyio
+    async def test_client_app_creation_success(self):
+        """Step 8b: ClientApplication created successfully."""
+        from routes.provisioning import step_08b_create_client_application
+        mock_client = MagicMock()
+        mock_client.is_configured = True
+        mock_client.create_client_application = AsyncMock(
+            return_value={"id": "app-uuid", "secret": "secret-value", "clientId": "app-uuid"}
+        )
+        with patch("routes.provisioning.medplum_client", mock_client):
+            warnings = []
+            steps_completed = []
+            steps_failed = []
+            result = await step_08b_create_client_application(
+                "real-project-id", "testsite", warnings, steps_completed, steps_failed
+            )
+            assert result == "app-uuid"
+            assert "create_client_application" in steps_completed
+            assert len(steps_failed) == 0
+            mock_client.create_client_application.assert_called_once_with(
+                "real-project-id", "testsite-abstraction-layer"
+            )
+
+    @pytest.mark.anyio
+    async def test_client_app_creation_failure(self):
+        """Step 8b: ClientApplication creation fails, provisioning continues."""
+        from routes.provisioning import step_08b_create_client_application
+        mock_client = MagicMock()
+        mock_client.is_configured = True
+        mock_client.create_client_application = AsyncMock(side_effect=Exception("API error"))
+        with patch("routes.provisioning.medplum_client", mock_client):
+            warnings = []
+            steps_completed = []
+            steps_failed = []
+            result = await step_08b_create_client_application(
+                "real-project-id", "testsite", warnings, steps_completed, steps_failed
+            )
+            assert result is None
+            assert "create_client_application" not in steps_completed
+            assert any("create_client_application" in f for f in steps_failed)
+            assert any("medplum_client_app_failed" in w for w in warnings)
+
+    @pytest.mark.anyio
+    async def test_client_app_skipped_stub_project(self):
+        """Step 8b: Skipped when project is a stub."""
+        from routes.provisioning import step_08b_create_client_application
+        warnings = []
+        steps_completed = []
+        steps_failed = []
+        result = await step_08b_create_client_application(
+            "stub-abc12345", "testsite", warnings, steps_completed, steps_failed
+        )
+        assert result is None
+        assert any("medplum_client_app_skipped" in w for w in warnings)
+        assert len(steps_completed) == 0
+        assert len(steps_failed) == 0
+
+    @pytest.mark.anyio
+    async def test_client_app_skipped_not_configured(self):
+        """Step 8b: Skipped when Medplum is not configured."""
+        from routes.provisioning import step_08b_create_client_application
+        mock_client = MagicMock()
+        mock_client.is_configured = False
+        with patch("routes.provisioning.medplum_client", mock_client):
+            warnings = []
+            steps_completed = []
+            steps_failed = []
+            result = await step_08b_create_client_application(
+                "real-project-id", "testsite", warnings, steps_completed, steps_failed
+            )
+            assert result is None
+
 
 class TestSiteRegistration:
     """Test step_10_register_site."""
@@ -741,6 +813,7 @@ class TestCreateSiteEndpoint:
     @patch("routes.provisioning.step_11_log_traefik")
     @patch("routes.provisioning.step_10_register_site", new_callable=AsyncMock)
     @patch("routes.provisioning.step_09_seed_n8n", new_callable=AsyncMock)
+    @patch("routes.provisioning.step_08b_create_client_application", new_callable=AsyncMock)
     @patch("routes.provisioning.step_08_create_medplum_project", new_callable=AsyncMock)
     @patch("routes.provisioning.step_07_configure_site")
     @patch("routes.provisioning.step_06_install_vertical_apps")
@@ -750,11 +823,12 @@ class TestCreateSiteEndpoint:
     @patch("routes.provisioning.step_02_select_bench", new_callable=AsyncMock)
     def test_full_provision_success(
         self, mock_bench, mock_create, mock_erp, mock_sm, mock_vert,
-        mock_config, mock_medplum, mock_n8n, mock_registry,
+        mock_config, mock_medplum, mock_client_app, mock_n8n, mock_registry,
         mock_traefik, mock_migrate, mock_hipaa, mock_smoke, client,
     ):
         mock_bench.return_value = {"bench_name": "hipaa-health-01", "bench_host": "72.60.125.140"}
         mock_medplum.return_value = "stub-12345678"
+        mock_client_app.return_value = None
         mock_n8n.return_value = None
         mock_hipaa.return_value = True
         mock_smoke.return_value = (True, [])
@@ -774,6 +848,7 @@ class TestCreateSiteEndpoint:
     @patch("routes.provisioning.step_11_log_traefik")
     @patch("routes.provisioning.step_10_register_site", new_callable=AsyncMock)
     @patch("routes.provisioning.step_09_seed_n8n", new_callable=AsyncMock)
+    @patch("routes.provisioning.step_08b_create_client_application", new_callable=AsyncMock)
     @patch("routes.provisioning.step_08_create_medplum_project", new_callable=AsyncMock)
     @patch("routes.provisioning.step_07_configure_site")
     @patch("routes.provisioning.step_06_install_vertical_apps")
@@ -783,12 +858,13 @@ class TestCreateSiteEndpoint:
     @patch("routes.provisioning.step_02_select_bench", new_callable=AsyncMock)
     def test_provision_with_step_failures(
         self, mock_bench, mock_create, mock_erp, mock_sm, mock_vert,
-        mock_config, mock_medplum, mock_n8n, mock_registry,
+        mock_config, mock_medplum, mock_client_app, mock_n8n, mock_registry,
         mock_traefik, mock_migrate, mock_hipaa, mock_smoke, client,
     ):
         mock_bench.return_value = {"bench_name": "hipaa-health-01", "bench_host": "72.60.125.140"}
         mock_erp.side_effect = RuntimeError("erpnext install failed")
         mock_medplum.return_value = "stub-12345678"
+        mock_client_app.return_value = None
         mock_n8n.return_value = None
         mock_hipaa.return_value = True
         mock_smoke.return_value = (True, [])
