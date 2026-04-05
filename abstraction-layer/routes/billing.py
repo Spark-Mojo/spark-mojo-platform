@@ -5,9 +5,10 @@ Handles SM Claim submission to Stedi clearinghouse (DECISION-027, DECISION-011).
 All data flows through Frappe REST API via token auth.
 """
 
+import json
 import logging
 import os
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Optional
 
 import httpx
@@ -69,6 +70,64 @@ class ClaimStatusResponse(BaseModel):
     patient_responsibility: Optional[float] = None
     denial: Optional[dict] = None
     timeline: list[dict] = []
+
+
+class ERALineDetail(BaseModel):
+    claim: Optional[str] = None
+    patient_control_number: str
+    cpt_code: Optional[str] = None
+    charged_amount: float = 0
+    paid_amount: float = 0
+    adjustment_amount: float = 0
+    patient_responsibility: float = 0
+    carc_codes: Optional[str] = None
+    rarc_codes: Optional[str] = None
+    is_denied: int = 0
+    match_status: str = "unmatched"
+
+
+class ERADetailResponse(BaseModel):
+    name: str
+    stedi_transaction_id: str
+    payer: Optional[str] = None
+    era_date: Optional[str] = None
+    check_eft_number: Optional[str] = None
+    total_paid_amount: float = 0
+    total_claims: int = 0
+    matched_claims: int = 0
+    unmatched_claims: int = 0
+    processing_status: str = ""
+    received_at: Optional[str] = None
+    processed_at: Optional[str] = None
+    era_lines: list[ERALineDetail] = []
+
+
+class DenialListItem(BaseModel):
+    name: str
+    claim: Optional[str] = None
+    denial_date: Optional[str] = None
+    carc_codes: Optional[str] = None
+    denied_amount: float = 0
+    canonical_state: str = ""
+
+
+class DenialListResponse(BaseModel):
+    data: list[DenialListItem] = []
+    total: int = 0
+
+
+class DenialDetailResponse(BaseModel):
+    name: str
+    claim: Optional[str] = None
+    era: Optional[str] = None
+    denial_date: Optional[str] = None
+    carc_codes: Optional[str] = None
+    rarc_codes: Optional[str] = None
+    denied_amount: float = 0
+    canonical_state: str = ""
+    appeal_deadline: Optional[str] = None
+    assigned_to: Optional[str] = None
+    notes: Optional[str] = None
 
 
 # ---------------------------------------------------------------------------
@@ -165,6 +224,27 @@ async def _update_frappe_doc(doctype: str, name: str, data: dict) -> dict:
         resp = await client.put(f"/api/resource/{doctype}/{name}", json=data, timeout=15)
         resp.raise_for_status()
         return resp.json().get("data", {})
+
+
+async def _create_frappe_doc(doctype: str, data: dict) -> dict:
+    """Create a new doc in Frappe."""
+    async with httpx.AsyncClient(base_url=FRAPPE_URL, headers=_frappe_headers()) as client:
+        resp = await client.post(f"/api/resource/{doctype}", json=data, timeout=15)
+        resp.raise_for_status()
+        return resp.json().get("data", {})
+
+
+async def _list_frappe_docs(doctype: str, filters: str = "", fields: str = "", limit: int = 20, offset: int = 0) -> list:
+    """List docs from Frappe with filters."""
+    params = {"limit_page_length": limit, "limit_start": offset}
+    if filters:
+        params["filters"] = filters
+    if fields:
+        params["fields"] = fields
+    async with httpx.AsyncClient(base_url=FRAPPE_URL, headers=_frappe_headers()) as client:
+        resp = await client.get(f"/api/resource/{doctype}", params=params, timeout=15)
+        resp.raise_for_status()
+        return resp.json().get("data", [])
 
 
 # ---------------------------------------------------------------------------
@@ -329,6 +409,84 @@ async def claim_status(claim_name: str):
     )
 
 
+@router.get("/era/{era_name}", response_model=ERADetailResponse)
+async def get_era(era_name: str):
+    """Get full ERA detail with child lines."""
+    era = await _read_frappe_doc("SM ERA", era_name)
+    lines = era.get("era_lines", [])
+    return ERADetailResponse(
+        name=era.get("name", era_name),
+        stedi_transaction_id=era.get("stedi_transaction_id", ""),
+        payer=era.get("payer"),
+        era_date=era.get("era_date"),
+        check_eft_number=era.get("check_eft_number"),
+        total_paid_amount=float(era.get("total_paid_amount") or 0),
+        total_claims=int(era.get("total_claims") or 0),
+        matched_claims=int(era.get("matched_claims") or 0),
+        unmatched_claims=int(era.get("unmatched_claims") or 0),
+        processing_status=era.get("processing_status", ""),
+        received_at=era.get("received_at"),
+        processed_at=era.get("processed_at"),
+        era_lines=[ERALineDetail(**{k: l.get(k, d) for k, d in [
+            ("claim", None), ("patient_control_number", ""),
+            ("cpt_code", None), ("charged_amount", 0),
+            ("paid_amount", 0), ("adjustment_amount", 0),
+            ("patient_responsibility", 0), ("carc_codes", None),
+            ("rarc_codes", None), ("is_denied", 0), ("match_status", "unmatched"),
+        ]}) for l in lines],
+    )
+
+
+@router.get("/denials", response_model=DenialListResponse)
+async def list_denials(
+    status: Optional[str] = None,
+    payer: Optional[str] = None,
+    date_from: Optional[str] = None,
+    date_to: Optional[str] = None,
+    limit: int = 20,
+    offset: int = 0,
+):
+    """List SM Denial records with optional filters."""
+    filters = []
+    if status:
+        filters.append(["canonical_state", "=", status])
+    if payer:
+        filters.append(["claim.payer", "=", payer])
+    if date_from:
+        filters.append(["denial_date", ">=", date_from])
+    if date_to:
+        filters.append(["denial_date", "<=", date_to])
+
+    import json as _json
+    filter_str = _json.dumps(filters) if filters else ""
+    fields = '["name","claim","denial_date","carc_codes","denied_amount","canonical_state"]'
+
+    denials = await _list_frappe_docs("SM Denial", filters=filter_str, fields=fields, limit=limit, offset=offset)
+    return DenialListResponse(
+        data=[DenialListItem(**d) for d in denials],
+        total=len(denials),
+    )
+
+
+@router.get("/denials/{denial_name}", response_model=DenialDetailResponse)
+async def get_denial(denial_name: str):
+    """Get full denial detail."""
+    denial = await _read_frappe_doc("SM Denial", denial_name)
+    return DenialDetailResponse(
+        name=denial.get("name", denial_name),
+        claim=denial.get("claim"),
+        era=denial.get("era"),
+        denial_date=denial.get("denial_date"),
+        carc_codes=denial.get("carc_codes"),
+        rarc_codes=denial.get("rarc_codes"),
+        denied_amount=float(denial.get("denied_amount") or 0),
+        canonical_state=denial.get("canonical_state", ""),
+        appeal_deadline=denial.get("appeal_deadline"),
+        assigned_to=denial.get("assigned_to"),
+        notes=denial.get("notes"),
+    )
+
+
 @webhook_router.post("/277")
 async def stedi_277_webhook(request_body: dict):
     """
@@ -392,3 +550,225 @@ async def stedi_277_webhook(request_body: dict):
         })
 
     return {"status": "ok", "matched": True, "claim_name": claim_name, "category": category_code}
+
+
+@webhook_router.post("/835")
+async def stedi_835_webhook(request_body: dict):
+    """
+    Receive 835 ERA from Stedi. Creates SM ERA, matches to claims,
+    auto-posts payments, detects denials, creates SM Tasks for unmatched lines.
+    """
+    # TODO: Move to background job for large ERAs (BILL-010)
+    transaction_id = request_body.get("transactionId", "")
+    transaction_set = request_body.get("x12", {}).get("transactionSetIdentifier", "")
+
+    if transaction_set and transaction_set != "835":
+        logger.warning("Received non-835 webhook: %s", transaction_set)
+        return {"status": "ignored", "reason": "not an 835 transaction"}
+
+    # 1. Fetch full 835 from Stedi
+    async with httpx.AsyncClient() as client:
+        resp = await client.get(
+            f"{STEDI_BASE_URL}/healthcare/era/{transaction_id}",
+            headers=_stedi_headers(),
+            timeout=30,
+        )
+        resp.raise_for_status()
+        era_data = resp.json()
+
+    now_utc = datetime.now(timezone.utc)
+
+    # 2. Resolve payer by stedi_trading_partner_id
+    payer_id = era_data.get("payerIdentifier", "")
+    payer_name = None
+    payer_appeal_window = None
+    if payer_id:
+        try:
+            payers = await _list_frappe_docs(
+                "SM Payer",
+                filters=f'[["stedi_trading_partner_id","=","{payer_id}"]]',
+                fields='["name","appeal_window_days"]',
+                limit=1,
+            )
+            if payers:
+                payer_name = payers[0]["name"]
+                payer_appeal_window = payers[0].get("appeal_window_days")
+        except Exception as exc:
+            logger.warning("Failed to resolve payer for %s: %s", payer_id, exc)
+
+    # 3. Process claim payments
+    claim_payments = era_data.get("claimPayments", [])
+    era_lines = []
+    total_paid = 0.0
+    matched_count = 0
+    unmatched_count = 0
+
+    for cp in claim_payments:
+        pcn = cp.get("patientControlNumber", "")
+        charged = float(cp.get("chargedAmount", 0))
+        paid = float(cp.get("paidAmount", 0))
+        patient_resp = float(cp.get("patientResponsibility", 0))
+
+        # Extract adjustment info
+        adjustments = cp.get("adjustments", [])
+        total_adj = sum(float(a.get("amount", 0)) for a in adjustments)
+        carc_list = [a.get("reasonCode", "") for a in adjustments if a.get("reasonCode")]
+        carc_codes = ",".join(carc_list) if carc_list else ""
+        group_codes = [a.get("groupCode", "") for a in adjustments]
+
+        rarc_list = cp.get("remarkCodes", [])
+        rarc_codes = ",".join(rarc_list) if rarc_list else ""
+
+        # Extract CPT from first service line
+        service_lines = cp.get("serviceLines", [])
+        cpt_code = service_lines[0].get("procedureCode", "") if service_lines else ""
+
+        # Denial detection: paid_amount == 0 AND non-PR group code
+        non_pr_groups = {"CO", "OA", "PI"}
+        is_denied = 1 if paid == 0 and any(g in non_pr_groups for g in group_codes) else 0
+
+        # Match to SM Claim by patient_control_number
+        claim_name = None
+        match_status = "unmatched"
+        try:
+            claims = await _list_frappe_docs(
+                "SM Claim",
+                filters=f'[["patient_control_number","=","{pcn}"]]',
+                fields='["name","canonical_state","claim_charge_amount","paid_amount","adjustment_amount","patient_responsibility","payer"]',
+                limit=1,
+            )
+            if claims:
+                claim_name = claims[0]["name"]
+                match_status = "matched"
+                matched_count += 1
+            else:
+                unmatched_count += 1
+        except Exception as exc:
+            logger.warning("Failed to match claim for PCN %s: %s", pcn, exc)
+            unmatched_count += 1
+
+        total_paid += paid
+
+        era_lines.append({
+            "claim": claim_name,
+            "patient_control_number": pcn,
+            "cpt_code": cpt_code,
+            "charged_amount": charged,
+            "paid_amount": paid,
+            "adjustment_amount": total_adj,
+            "patient_responsibility": patient_resp,
+            "carc_codes": carc_codes,
+            "rarc_codes": rarc_codes,
+            "is_denied": is_denied,
+            "match_status": match_status,
+        })
+
+    # 4. Create SM ERA with child era_lines
+    era_doc = await _create_frappe_doc("SM ERA", {
+        "doctype": "SM ERA",
+        "stedi_transaction_id": transaction_id,
+        "payer": payer_name,
+        "era_date": era_data.get("paymentDate"),
+        "check_eft_number": era_data.get("checkOrEftNumber", ""),
+        "total_paid_amount": total_paid,
+        "total_claims": len(claim_payments),
+        "matched_claims": matched_count,
+        "unmatched_claims": unmatched_count,
+        "processing_status": "processing",
+        "received_at": now_utc.strftime("%Y-%m-%d %H:%M:%S"),
+        "raw_json": json.dumps(era_data),
+        "era_lines": era_lines,
+    })
+    era_name = era_doc.get("name", "")
+    era_date = era_data.get("paymentDate")
+
+    # 5. Auto-post payments and create denials/tasks
+    for line in era_lines:
+        if line["match_status"] == "matched" and not line["is_denied"]:
+            # Payment auto-posting
+            try:
+                claim = await _read_frappe_doc("SM Claim", line["claim"])
+                existing_paid = float(claim.get("paid_amount") or 0)
+                existing_adj = float(claim.get("adjustment_amount") or 0)
+                existing_pr = float(claim.get("patient_responsibility") or 0)
+                new_paid = existing_paid + line["paid_amount"]
+                new_adj = existing_adj + line["adjustment_amount"]
+                new_pr = existing_pr + line["patient_responsibility"]
+                charge = float(claim.get("claim_charge_amount") or 0)
+
+                net_expected = charge - new_adj
+                if net_expected > 0 and new_paid >= net_expected:
+                    new_state = "paid"
+                elif new_paid > 0:
+                    new_state = "partial_paid"
+                else:
+                    new_state = claim.get("canonical_state", "adjudicating")
+
+                await _update_frappe_doc("SM Claim", line["claim"], {
+                    "paid_amount": new_paid,
+                    "adjustment_amount": new_adj,
+                    "patient_responsibility": new_pr,
+                    "adjudication_date": era_date,
+                    "canonical_state": new_state,
+                })
+            except Exception as exc:
+                logger.error("Failed to auto-post payment for %s: %s", line["claim"], exc)
+
+        elif line["match_status"] == "matched" and line["is_denied"]:
+            # Create SM Denial
+            try:
+                denial_data = {
+                    "doctype": "SM Denial",
+                    "claim": line["claim"],
+                    "era": era_name,
+                    "denial_date": era_date,
+                    "carc_codes": line["carc_codes"],
+                    "rarc_codes": line["rarc_codes"],
+                    "denied_amount": line["charged_amount"] - line["paid_amount"],
+                    "canonical_state": "new",
+                }
+                if payer_appeal_window and era_date:
+                    deadline = datetime.strptime(era_date, "%Y-%m-%d") + timedelta(days=int(payer_appeal_window))
+                    denial_data["appeal_deadline"] = deadline.strftime("%Y-%m-%d")
+                await _create_frappe_doc("SM Denial", denial_data)
+
+                # Also update claim state to denied
+                await _update_frappe_doc("SM Claim", line["claim"], {
+                    "canonical_state": "denied",
+                    "adjudication_date": era_date,
+                })
+            except Exception as exc:
+                logger.error("Failed to create SM Denial for %s: %s", line["claim"], exc)
+
+        elif line["match_status"] == "unmatched":
+            # Create SM Task for manual review
+            try:
+                await _create_frappe_doc("SM Task", {
+                    "doctype": "SM Task",
+                    "title": f"Unmatched ERA line: PCN {line['patient_control_number']}",
+                    "description": (
+                        f"ERA {era_name} contains a payment for PCN {line['patient_control_number']} "
+                        f"that does not match any SM Claim. Manual review required."
+                    ),
+                    "canonical_state": "open",
+                })
+            except Exception as exc:
+                logger.error("Failed to create SM Task for unmatched PCN %s: %s", line["patient_control_number"], exc)
+
+    # 6. Update ERA processing status
+    final_status = "posted" if unmatched_count == 0 else "partial_posted"
+    try:
+        await _update_frappe_doc("SM ERA", era_name, {
+            "processing_status": final_status,
+            "processed_at": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S"),
+        })
+    except Exception as exc:
+        logger.error("Failed to update ERA status: %s", exc)
+
+    return {
+        "status": "ok",
+        "era_name": era_name,
+        "total_claims": len(claim_payments),
+        "matched": matched_count,
+        "unmatched": unmatched_count,
+    }
