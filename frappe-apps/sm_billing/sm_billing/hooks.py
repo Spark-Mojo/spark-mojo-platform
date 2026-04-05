@@ -34,4 +34,4 @@ home_page = ""
 
 # Fixtures
 # ----------
-fixtures = []
+fixtures = ["SM Payer"]
