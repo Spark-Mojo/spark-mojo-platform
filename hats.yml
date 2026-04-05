@@ -1,357 +1,154 @@
 cli:
   backend: "claude"
-
 event_loop:
   starting_event: "session.start"
   completion_promise: "LOOP_COMPLETE"
-  max_iterations: 300
+  max_iterations: 200
   max_runtime_seconds: 28800
-
 core:
   guardrails:
     - "Governance repo absolute path: /Users/jamesilsley/GitHub/sparkmojo-internal/"
-    - "Story files absolute path: /Users/jamesilsley/GitHub/sparkmojo-internal/platform/feature-library/stories/"
-    - "NEVER install Frappe apps via bench — causes VPS restart loops."
-    - "NEVER add sm_billing to apps.txt or Dockerfile.frappe — managed by deploy.sh only."
-    - "NEVER create TypeScript files — all frontend files are .jsx."
-    - "NEVER hardcode credentials — all secrets via os.getenv()."
-    - "Always deploy to VPS after every story is verified."
-    - "BILL-004: Extend billing.py, do NOT create a new file."
-    - "BILL-004: 835 webhook goes in billing_webhook_router (same as 277)."
-    - "BILL-004: NEVER store medplum_client_secret in Frappe or git."
-    - "STORY-017: NEVER store medplum_client_secret in Frappe or git — log WARNING to stdout only."
-    - "Coverage command always omits frappe_native.py: pytest tests/ --cov=. --cov-report=term-missing --omit=connectors/frappe_native.py --cov-fail-under=70"
-    - "VPS abstraction layer tests must use .venv: cd /home/ops/spark-mojo-platform/abstraction-layer && .venv/bin/python3 -m pytest tests/ -v"
-    - "All VPS curl test URLs use poc-dev.app.sparkmojo.com — never poc.sparkmojo.com"
-
+    - "Platform repo absolute path: /Users/jamesilsley/GitHub/spark-mojo-platform/"
+    - "NEVER modify CLAUDE.md - it is permanent and sacred"
+    - "NEVER modify Desktop.jsx routing structure"
+    - "NEVER create .ts or .tsx files - frontend is JSX only"
+    - "NEVER hardcode hex colors - use var(--sm-*) tokens"
+    - "NEVER run bench get-app or bench install-app without explicit story instruction"
+    - "NEVER call Frappe directly from React - always via abstraction layer"
+    - "NEVER add clinical routes to billing.py - clinical.py is a separate file"
+    - "Routing: modules on poc-dev.app.sparkmojo.com, webhooks on api.poc.sparkmojo.com"
+    - "When ambiguous on architecture: write BLOCKED-[STORY-ID].md and move to next story"
+    - "Documentation stories: read actual committed code before writing any artifact"
+    - "Documentation verbosity: fifth-grader readable, 100x detail is the target"
+    - "DEFICIENCIES.md must be brutally honest with specific file and function references"
+    - "Research stories: use web search, be verbose, cite sources"
 hats:
   health_check:
     name: "Health Check"
-    description: "Verifies baseline repo health before any build work. Halts if broken."
+    description: "Verifies baseline health before any build work. Halts if broken."
     triggers: ["session.start"]
     publishes: ["health.ok", "health.blocked"]
     max_activations: 1
     instructions: |
-      Read CLAUDE.md at /Users/jamesilsley/GitHub/spark-mojo-platform/CLAUDE.md first.
-      Run these checks. If any fail, write HEALTH-BLOCKED.md and emit health.blocked.
-
-      1. Python imports check:
+      Run baseline checks in order. If any fail, write HEALTH-BLOCKED.md with
+      exact error and emit health.blocked. Do not proceed if health is broken.
+      1. Check abstraction layer tests pass:
          cd /Users/jamesilsley/GitHub/spark-mojo-platform/abstraction-layer
-         python3 -c "import main" 2>&1
-         PASS: no ImportError
-
-      2. Existing tests pass:
-         pytest tests/ -q 2>&1 | tail -5
-         PASS: 0 failures
-
-      3. No BLOCKED-* files from previous runs:
-         ls /Users/jamesilsley/GitHub/spark-mojo-platform/BLOCKED-* 2>/dev/null && echo "BLOCKED FILES FOUND" || echo "clean"
-         PASS: no files found
-
-      4. billing.py import check (BILL-003 dependency):
-         cd /Users/jamesilsley/GitHub/spark-mojo-platform/abstraction-layer
-         python3 -c "from routes.billing import router; print('OK')" 2>&1
-         PASS: prints OK
-
-      5. medplum_connector import check (STORY-015 dependency):
-         cd /Users/jamesilsley/GitHub/spark-mojo-platform/abstraction-layer
-         python3 -c "from connectors.medplum_connector import MedplumClient; print('OK')" 2>&1
-         PASS: prints OK
-
-      If all pass: ralph emit "health.ok" "all health checks pass"
-
-  dispatcher:
-    name: "Dispatcher"
-    description: "Fans out after health check to start BILL-004 and STORY-017 parallel tracks."
-    triggers: ["health.ok"]
-    publishes: ["bill_004.plan_start", "story_017.plan_start"]
-    max_activations: 1
+         pytest tests/ -v 2>&1 | tail -5
+         PASS: exits 0, no failures
+      2. Check frontend lints clean:
+         cd /Users/jamesilsley/GitHub/spark-mojo-platform/frontend
+         pnpm run lint 2>&1 | tail -5
+         PASS: exits 0, 0 errors
+      3. Check governance repo is accessible:
+         ls /Users/jamesilsley/GitHub/sparkmojo-internal/platform/PROCESS.md
+         PASS: file exists
+      If all pass: ralph emit "health.ok" "baseline healthy: tests pass, lint clean, governance accessible"
+  story_planner:
+    name: "Story Planner"
+    description: "Reads next story from PROMPT.md, determines type, writes build plan."
+    triggers: ["health.ok", "story.committed"]
+    publishes: ["plan.ready", "queue.complete"]
     instructions: |
-      ralph emit "bill_004.plan_start" "starting BILL-004 track"
-      ralph emit "story_017.plan_start" "starting STORY-017 track"
-
-  bill_004_planner:
-    name: "BILL-004 Planner"
-    description: "Plans 835 ERA processing. Reads story spec and all DocType schemas."
-    triggers: ["bill_004.plan_start"]
-    publishes: ["bill_004_plan.ready", "bill_004.blocked"]
-    max_activations: 1
+      Read /Users/jamesilsley/GitHub/spark-mojo-platform/PROMPT.md.
+      Find the first story without a [STORY-ID]-COMPLETE marker at repo root.
+      If all stories have COMPLETE markers: print LOOP_COMPLETE and emit queue.complete.
+      Read the story spec at the absolute path shown in PROMPT.md.
+      Determine story type: CODE, DOCUMENTATION, or RESEARCH.
+      Write PLAN-[STORY-ID].md at repo root with:
+      - Story ID and type
+      - Files to create or modify (with absolute paths)
+      - Quality gates to run for this story type
+      - Dependencies to check before starting
+      - Any ambiguities that need resolution
+      If ambiguous on architecture: write BLOCKED-[STORY-ID].md. Emit plan.ready anyway
+      so the builder can handle the blocked state.
+      ralph emit "plan.ready" "[STORY-ID]: type=[type], [N] files, gates=[gate summary]"
+  builder:
+    name: "Builder"
+    description: "Executes the plan. Code stories build and run fast gates. Doc stories read code and write artifacts. Research stories conduct research and write findings."
+    triggers: ["plan.ready", "build.retry"]
+    publishes: ["build.ready", "build.blocked"]
     instructions: |
-      Read the full story spec:
-      /Users/jamesilsley/GitHub/sparkmojo-internal/platform/feature-library/stories/BILL-004-era-835-processing.md
-
-      Read these reference files:
-      /Users/jamesilsley/GitHub/spark-mojo-platform/abstraction-layer/routes/billing.py
-      /Users/jamesilsley/GitHub/spark-mojo-platform/frappe-apps/sm_billing/sm_billing/sm_billing/doctype/sm_era/sm_era.json
-      /Users/jamesilsley/GitHub/spark-mojo-platform/frappe-apps/sm_billing/sm_billing/sm_billing/doctype/sm_era_line/sm_era_line.json
-      /Users/jamesilsley/GitHub/spark-mojo-platform/frappe-apps/sm_billing/sm_billing/sm_billing/doctype/sm_denial/sm_denial.json
-      /Users/jamesilsley/GitHub/spark-mojo-platform/frappe-apps/sm_billing/sm_billing/sm_billing/doctype/sm_claim/sm_claim.json
-
-      Write PLAN-BILL-004.md at repo root with:
-      - File to extend: abstraction-layer/routes/billing.py (not a new file)
-      - New endpoints: POST /webhooks/stedi/835, GET /era/{era_name}, GET /denials, GET /denials/{denial_name}
-      - 835 webhook goes in billing_webhook_router alongside the existing 277 handler
-      - ERA matching logic: query SM Claim by patient_control_number
-      - Denial detection: CAS group code + paid_amount == 0
-      - SM Task creation for unmatched lines
-      - Test strategy: mock Frappe + Stedi HTTP calls, synthetic 835 payload
-      - Gate type: pytest + coverage
-
-      ralph emit "bill_004_plan.ready" "BILL-004: 4 endpoints planned, ERA matching strategy defined"
-
-  story_017_planner:
-    name: "STORY-017 Planner"
-    description: "Plans Medplum per-project ClientApplication creation."
-    triggers: ["story_017.plan_start"]
-    publishes: ["story_017_plan.ready", "story_017.blocked"]
-    max_activations: 1
+      Read PLAN-[STORY-ID].md at repo root.
+      If BLOCKED file exists for this story: write BLOCKED-[STORY-ID].md with
+      full context and emit build.blocked.
+      For CODE stories:
+        git checkout -b [branch name from PROMPT.md]
+        Implement exactly what the story spec says. Nothing more. Nothing less.
+        Run fast gate after each significant change:
+          pytest tests/[relevant_test_file].py -v
+        When fast gates pass: ralph emit "build.ready" "[STORY-ID]: code complete, fast gates pass"
+      For DOCUMENTATION stories:
+        Read every file listed in the PROMPT.md "Read before writing" section.
+        Read the actual committed code - not just the story spec.
+        Create the output directory if it does not exist.
+        Write each required artifact file with extreme verbosity.
+        Fifth-grader readable. 100x the detail you think you need.
+        DEFICIENCIES.md must be brutally honest with specific code references.
+        Commit each file to sparkmojo-internal main as you complete it.
+        When all files written and committed: ralph emit "build.ready" "[STORY-ID]: [N] files written and committed"
+      For RESEARCH stories:
+        Read every file listed in the PROMPT.md "Read before writing" section.
+        Use web search extensively. Research the questions in the story spec.
+        Write verbose, specific, opinionated research documents.
+        Cite sources. Be honest about uncertainty.
+        Commit both research files to sparkmojo-internal main.
+        When complete: ralph emit "build.ready" "[STORY-ID]: research complete, [N] documents committed"
+  verifier:
+    name: "Verifier"
+    description: "Runs full gate suite appropriate to story type. Only hat that creates COMPLETE markers."
+    triggers: ["build.ready"]
+    publishes: ["task.done", "build.retry"]
     instructions: |
-      Read the full story spec:
-      /Users/jamesilsley/GitHub/sparkmojo-internal/platform/feature-library/stories/STORY-017-medplum-client-application.md
-
-      Read these reference files:
-      /Users/jamesilsley/GitHub/spark-mojo-platform/abstraction-layer/connectors/medplum_connector.py
-      /Users/jamesilsley/GitHub/spark-mojo-platform/abstraction-layer/routes/provisioning.py
-      /Users/jamesilsley/GitHub/sparkmojo-internal/platform/decisions/DECISION-028-medplum-multi-tenancy.md
-
-      Write PLAN-STORY-017.md at repo root with:
-      - File to extend: abstraction-layer/connectors/medplum_connector.py (add create_client_application())
-      - File to modify: abstraction-layer/routes/provisioning.py (add Step 8b after existing Step 8)
-      - CRITICAL: medplum_client_secret must NEVER be stored in Frappe or committed to git
-      - medplum_client_secret handling: log to stdout with WARNING prefix, then discard
-      - medplum_client_id: store in SM Site Registry if field exists, otherwise note as gap
-      - Fallback behavior: if ClientApplication creation fails, provisioning continues with warning
-      - Test strategy: mock MedplumClient.create_client_application(), test success + failure paths
-      - Gate type: pytest + coverage
-
-      ralph emit "story_017_plan.ready" "STORY-017: ClientApplication creation planned, secret handling strategy defined"
-
-  bill_004_builder:
-    name: "BILL-004 Builder"
-    description: "Extends billing.py with 835 ERA webhook, ERA endpoints, and denial endpoints."
-    triggers: ["bill_004_plan.ready"]
-    publishes: ["bill_004_build.ready", "bill_004_build.blocked"]
-    max_activations: 3
-    instructions: |
-      Read PLAN-BILL-004.md. If BLOCKED, write BLOCKED-BILL-004.md and emit bill_004_build.blocked.
-
-      cd /Users/jamesilsley/GitHub/spark-mojo-platform
-      git checkout main
-      git pull origin main
-      git checkout -b story/bill-004-era-835-processing
-
-      Extend ONLY: abstraction-layer/routes/billing.py
-      Add to billing_webhook_router: POST /835
-      Add to router: GET /era/{era_name}, GET /denials, GET /denials/{denial_name}
-      Follow the ERA processing logic exactly as specified in the story spec.
-      All Frappe calls via _read_frappe_doc() and _update_frappe_doc() helpers already in billing.py.
-      All Stedi calls mocked in tests.
-
-      Create: abstraction-layer/tests/test_bill_004.py
-      Test cases must cover:
-        - 835 webhook creates SM ERA + SM ERA Line records
-        - matched lines update SM Claim paid_amount, canonical_state
-        - fully paid claim gets canonical_state = "paid"
-        - partially paid claim gets canonical_state = "partial_paid"
-        - denied claim gets canonical_state = "denied" + SM Denial created
-        - unmatched line creates SM Task
-        - GET /era/{era_name} returns full ERA detail
-        - GET /denials returns filtered denial list
-        - GET /denials/{denial_name} returns full denial detail
-
-      Fast gate:
-      cd /Users/jamesilsley/GitHub/spark-mojo-platform/abstraction-layer
-      python3 -c "from routes.billing import router, webhook_router; print('import OK')"
-      PASS: prints import OK
-
-      ralph emit "bill_004_build.ready" "BILL-004: ERA webhook + 3 endpoints built, import OK"
-
-  story_017_builder:
-    name: "STORY-017 Builder"
-    description: "Adds create_client_application() to MedplumClient and calls it in provisioning."
-    triggers: ["story_017_plan.ready"]
-    publishes: ["story_017_build.ready", "story_017_build.blocked"]
-    max_activations: 3
-    instructions: |
-      Read PLAN-STORY-017.md. If BLOCKED, write BLOCKED-STORY-017.md and emit story_017_build.blocked.
-
-      cd /Users/jamesilsley/GitHub/spark-mojo-platform
-      git checkout main
-      git pull origin main
-      git checkout -b story/story-017-medplum-client-application
-
-      Extend: abstraction-layer/connectors/medplum_connector.py
-      Add method create_client_application(self, project_id, app_name) -> dict
-      POST to /admin/projects/{project_id}/client
-      Returns dict with id, secret, clientId
-      Raises exception on failure
-
-      Modify: abstraction-layer/routes/provisioning.py
-      Add Step 8b after the existing Step 8 Medplum project creation block.
-      CRITICAL: medplum_client_secret must be logged as WARNING and then discarded — never stored.
-
-      Update: abstraction-layer/tests/test_medplum_connector.py (or create if missing)
-      Add tests for create_client_application():
-        - success case (mocked response)
-        - failure case (mock raises exception, provisioning continues with warning)
-
-      Fast gate:
-      cd /Users/jamesilsley/GitHub/spark-mojo-platform/abstraction-layer
-      python3 -c "from connectors.medplum_connector import MedplumClient; c = MedplumClient(); print(hasattr(c, 'create_client_application'))"
-      PASS: prints True
-
-      ralph emit "story_017_build.ready" "STORY-017: create_client_application built, fast gate OK"
-
-  bill_004_verifier:
-    name: "BILL-004 Verifier"
-    description: "Full pytest suite for ERA processing. All acceptance criteria must pass."
-    triggers: ["bill_004_build.ready"]
-    publishes: ["bill_004.done", "bill_004_build.retry"]
-    instructions: |
-      GATE 1: Import check
-      cd /Users/jamesilsley/GitHub/spark-mojo-platform/abstraction-layer
-      python3 -c "from routes.billing import router, webhook_router; print('OK')"
-      PASS: prints OK
-
-      GATE 2: New ERA tests pass
-      pytest tests/test_bill_004.py -v 2>&1
-      PASS: 0 failures
-
-      GATE 3: Full suite passes
-      pytest tests/ -v 2>&1 | tail -10
-      PASS: 0 failures
-
-      GATE 4: Coverage >= 70%
-      pytest tests/ --cov=. --cov-report=term-missing --omit=connectors/frappe_native.py --cov-fail-under=70 2>&1 | tail -15
-      PASS: exits 0
-
-      GATE 5: No hardcoded secrets
-      grep -n "stedi_api_key\s*=\s*['\"][a-zA-Z0-9]" /Users/jamesilsley/GitHub/spark-mojo-platform/abstraction-layer/routes/billing.py && echo FAIL || echo PASS
-      PASS: prints PASS
-
+      Read PLAN-[STORY-ID].md to determine story type and gates.
+      For CODE stories - run ALL of these:
+        1. cd /Users/jamesilsley/GitHub/spark-mojo-platform/abstraction-layer
+           pytest tests/ -v
+           PASS: 0 failures
+           FAIL: emit build.retry with exact failure, file, line number
+        2. pytest tests/ --cov=. --cov-report=term-missing --cov-fail-under=70
+           PASS: exits 0
+           FAIL: emit build.retry with coverage report
+        3. Check endpoint reachable per story spec verification steps.
+           Use correct host per routing reference in PROMPT.md.
+           PASS: app response (not Traefik 404)
+           FAIL: emit build.retry with exact curl output
+      For DOCUMENTATION stories - verify ALL of these:
+        1. All required files exist at output path
+           ls [output_path]/*.md | wc -l
+           PASS: count matches required file count from story spec
+           FAIL: emit build.retry listing missing files
+        2. Each file meets minimum length
+           wc -w [output_path]/*.md
+           PASS: each file >= minimum words from story spec
+           FAIL: emit build.retry listing short files
+        3. Story-specific checks per story spec acceptance criteria
+           (FAQ question counts, specific content requirements, etc.)
+      For RESEARCH stories - verify ALL of these:
+        1. Both research files exist at output paths
+        2. Business requirements doc >= 2000 words
+        3. Technical research doc >= 1500 words and contains a recommendation section
+        4. wc -w on each file
       If ALL gates pass:
-        touch /Users/jamesilsley/GitHub/spark-mojo-platform/BILL-004-COMPLETE
-        ralph emit "bill_004.done" "BILL-004: all gates pass"
-
-      If ANY fail:
-        ralph emit "bill_004_build.retry" "BILL-004: [exact gate that failed and error output]"
-
-  story_017_verifier:
-    name: "STORY-017 Verifier"
-    description: "Full pytest suite for ClientApplication creation."
-    triggers: ["story_017_build.ready"]
-    publishes: ["story_017.done", "story_017_build.retry"]
+        touch [STORY-ID]-COMPLETE
+        ralph emit "task.done" "[STORY-ID]: all gates pass - [summary of results]"
+      If ANY gate fails:
+        ralph emit "build.retry" "[STORY-ID]: [exact failure details]"
+  committer:
+    name: "Committer"
+    description: "Commits code story work. Documentation and research stories are already committed by builder."
+    triggers: ["task.done"]
+    publishes: ["story.committed"]
     instructions: |
-      GATE 1: Method exists on MedplumClient
-      cd /Users/jamesilsley/GitHub/spark-mojo-platform/abstraction-layer
-      python3 -c "from connectors.medplum_connector import MedplumClient; c = MedplumClient(); print(hasattr(c, 'create_client_application'))"
-      PASS: prints True
-
-      GATE 2: Provisioning import clean
-      python3 -c "from routes.provisioning import router; print('OK')"
-      PASS: prints OK
-
-      GATE 3: Full suite passes
-      pytest tests/ -v 2>&1 | tail -10
-      PASS: 0 failures
-
-      GATE 4: Coverage >= 70%
-      pytest tests/ --cov=. --cov-report=term-missing --omit=connectors/frappe_native.py --cov-fail-under=70 2>&1 | tail -15
-      PASS: exits 0
-
-      GATE 5: Secret is never stored — verify log warning pattern exists
-      grep -n "WARNING\|client_secret" /Users/jamesilsley/GitHub/spark-mojo-platform/abstraction-layer/routes/provisioning.py | head -10
-      PASS: WARNING prefix present, no assignment to Frappe fields
-
-      If ALL gates pass:
-        touch /Users/jamesilsley/GitHub/spark-mojo-platform/STORY-017-COMPLETE
-        ralph emit "story_017.done" "STORY-017: all gates pass"
-
-      If ANY fail:
-        ralph emit "story_017_build.retry" "STORY-017: [exact gate that failed and error output]"
-
-  bill_004_committer:
-    name: "BILL-004 Committer"
-    description: "Commits BILL-004, merges to main, deploys to VPS."
-    triggers: ["bill_004.done"]
-    publishes: ["bill_004.committed"]
-    max_activations: 1
-    instructions: |
-      cd /Users/jamesilsley/GitHub/spark-mojo-platform
-      git add -A
-      git commit -m "feat: 835 ERA processing — webhook receiver, claim matching, payment auto-post, denial detection"
-      git push origin story/bill-004-era-835-processing
-
-      git checkout main
-      git merge story/bill-004-era-835-processing --no-ff -m "merge: BILL-004 835 ERA processing verified"
-      git push origin main
-
-      ssh sparkmojo 'cd /home/ops/spark-mojo-platform && git pull origin main && ./deploy.sh'
-      PASS: deploy.sh exits 0
-
-      ralph emit "bill_004.committed" "BILL-004 merged to main and deployed"
-
-  story_017_committer:
-    name: "STORY-017 Committer"
-    description: "Commits STORY-017, merges to main, deploys to VPS."
-    triggers: ["story_017.done"]
-    publishes: ["story_017.committed"]
-    max_activations: 1
-    instructions: |
-      cd /Users/jamesilsley/GitHub/spark-mojo-platform
-      git add -A
-      git commit -m "feat: Medplum per-project ClientApplication creation in provisioning API (STORY-017)"
-      git push origin story/story-017-medplum-client-application
-
-      git checkout main
-      git merge story/story-017-medplum-client-application --no-ff -m "merge: STORY-017 Medplum ClientApplication creation verified"
-      git push origin main
-
-      ssh sparkmojo 'cd /home/ops/spark-mojo-platform && git pull origin main && ./deploy.sh'
-      PASS: deploy.sh exits 0
-
-      ralph emit "story_017.committed" "STORY-017 merged to main and deployed"
-
-  session_closer:
-    name: "Session Closer"
-    description: "Writes run summary when both stories are committed."
-    triggers: ["bill_004.committed", "story_017.committed"]
-    publishes: ["session.closed"]
-    instructions: |
-      Write SESSION-23-OVERNIGHT-COMPLETE.md at repo root with:
-      - BILL-004 status: branch, commit hash, endpoints built, test count, coverage
-      - STORY-017 status: branch, commit hash, method added, test results
-      - Any BLOCKED files or warnings
-      - VPS deployment status for both stories
-      - Next steps: run morning verification, commission BILL-005 + STORY-018
-
-      ralph emit "session.closed" "Session 23 overnight run complete"
-
-  cleanup:
-    name: "Cleanup"
-    description: "Archives PLAN-*, *-COMPLETE, and run summary files."
-    triggers: ["session.closed"]
-    publishes: []
-    max_activations: 1
-    instructions: |
-      DATE=$(date +%Y-%m-%d)
-      ARCHIVE_DIR=/Users/jamesilsley/GitHub/spark-mojo-platform/docarchive/ralph-runs/$DATE
-      mkdir -p $ARCHIVE_DIR
-
-      Move to archive (skip if not found):
-      - PLAN-*.md
-      - *-COMPLETE (zero-byte marker files)
-      - SESSION-*-COMPLETE.md
-
-      Do NOT move:
-      - BLOCKED-*.md
-      - CLAUDE.md
-      - PROMPT.md
-      - hats.yml
-
-      cd /Users/jamesilsley/GitHub/spark-mojo-platform
-      git add -A
-      git commit -m "chore: archive Ralph run artifacts to docarchive/ralph-runs/$DATE"
-      git push origin main
-
-      Print: LOOP_COMPLETE
+      Read PLAN-[STORY-ID].md to determine story type.
+      For CODE stories:
+        cd /Users/jamesilsley/GitHub/spark-mojo-platform
+        git add -A
+        Read exact commit message from story spec file in sparkmojo-internal.
+        git commit -m "[exact message from story spec]"
+        ralph emit "story.committed" "[STORY-ID] committed on [branch]"
+      For DOCUMENTATION and RESEARCH stories:
+        Files are already committed to sparkmojo-internal by the builder.
+        No additional commit needed in spark-mojo-platform.
+        ralph emit "story.committed" "[STORY-ID] documentation committed to sparkmojo-internal"
