@@ -339,9 +339,6 @@ async def step_08_create_medplum_project(
             project = await medplum_client.create_project(site_subdomain)
             medplum_project_id = project["id"]
             steps_completed.append("create_medplum_project")
-            # TODO (STORY-017): After creating the Project, create a ClientApplication
-            # within the Project for the abstraction layer to use for tenant-scoped
-            # FHIR API calls. Store client_id and client_secret in SM Site Registry.
             return medplum_project_id
         except Exception as e:
             medplum_project_id = f"stub-{uuid4().hex[:8]}"
@@ -352,6 +349,43 @@ async def step_08_create_medplum_project(
         medplum_project_id = f"stub-{uuid4().hex[:8]}"
         warnings.append("medplum_project_stub")
         return medplum_project_id
+
+
+async def step_08b_create_client_application(
+    medplum_project_id: str,
+    site_subdomain: str,
+    warnings: list[str],
+    steps_completed: list[str],
+    steps_failed: list[str],
+) -> Optional[str]:
+    """Create a Medplum ClientApplication for tenant-scoped FHIR access.
+
+    Returns the client_id (safe to store) or None on failure.
+    The client_secret is logged to stdout and then discarded (HIPAA).
+    """
+    if medplum_project_id.startswith("stub-"):
+        warnings.append("medplum_client_app_skipped: no real project")
+        return None
+
+    if not medplum_client.is_configured:
+        return None
+
+    try:
+        result = await medplum_client.create_client_application(
+            medplum_project_id, f"{site_subdomain}-abstraction-layer"
+        )
+        client_id = result.get("id") or result.get("clientId")
+        client_secret = result.get("secret")
+        logger.warning(
+            "WARNING MEDPLUM_CLIENT_SECRET for %s: %s — COPY THIS NOW, it will not be stored",
+            site_subdomain, client_secret,
+        )
+        steps_completed.append("create_client_application")
+        return client_id
+    except Exception as e:
+        steps_failed.append(f"create_client_application: {str(e)}")
+        warnings.append(f"medplum_client_app_failed: {str(e)}. Tenant-scoped FHIR access unavailable.")
+        return None
 
 
 async def step_09_seed_n8n(site_subdomain: str, site_type: str, warnings: list[str]) -> Optional[str]:
@@ -390,6 +424,7 @@ async def step_10_register_site(
     n8n_workspace_ref: Optional[str],
     installed_apps: list[str],
     steps_failed: list[str],
+    medplum_client_id: Optional[str] = None,
 ) -> None:
     """Register site in SM Site Registry on admin.sparkmojo.com. HARD STOP on failure."""
     provisioning_status = "complete" if not steps_failed else "partial"
@@ -407,6 +442,7 @@ async def step_10_register_site(
         "bench_name": bench_name,
         "bench_host": bench_host,
         "medplum_project_id": medplum_project_id,
+        "medplum_client_id": medplum_client_id or "",
         "n8n_workspace_ref": n8n_workspace_ref,
         "installed_apps": json.dumps(installed_apps),
         "connectors_json": "{}",
@@ -668,6 +704,11 @@ async def create_site(req: SiteCreateRequest):
     if not medplum_project_id:
         medplum_project_id = f"stub-{uuid4().hex[:8]}"
 
+    # Step 8b — Create Medplum ClientApplication (STORY-017)
+    medplum_client_id = await step_08b_create_client_application(
+        medplum_project_id, req.site_subdomain, warnings, steps_completed, steps_failed
+    )
+
     # Step 9 — Seed n8n workspace (STUB)
     n8n_workspace_ref = None
     try:
@@ -682,7 +723,7 @@ async def create_site(req: SiteCreateRequest):
         await step_10_register_site(
             req, site_name, site_url, bench_name, bench_host,
             medplum_project_id, n8n_workspace_ref, installed_apps,
-            steps_failed,
+            steps_failed, medplum_client_id=medplum_client_id,
         )
         steps_completed.append("register_in_site_registry")
     except HTTPException:

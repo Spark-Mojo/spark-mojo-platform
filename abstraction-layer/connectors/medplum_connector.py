@@ -108,5 +108,17 @@ class MedplumClient:
             "POST", "/admin/projects", json_body={"name": project_name}
         )
 
+    async def create_client_application(self, project_id: str, app_name: str) -> dict:
+        """Create a ClientApplication within a Medplum Project.
+
+        Returns dict with keys: id, secret, clientId.
+        The caller is responsible for handling the secret securely.
+        """
+        return await self._request(
+            "POST",
+            f"/admin/projects/{project_id}/client",
+            json_body={"name": app_name},
+        )
+
     async def close(self):
         await self._http.aclose()
