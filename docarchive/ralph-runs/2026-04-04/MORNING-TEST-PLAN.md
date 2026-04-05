@@ -1,132 +1,99 @@
-# MORNING-TEST-PLAN: PROV-001 Provisioning API
+# Session 22 Morning Verification Plan
+## BILL-003 + STORY-016
 
-**Branch:** `queue/session-19-prov-001`
-**Date:** April 4, 2026
-**Story:** PROV-001
-
----
-
-## What Was Built
-
-1. **`abstraction-layer/routes/provisioning.py`** — Full provisioning API with 14-step orchestration
-2. **SM Bench Registry DocType** — New DocType in sm_provisioning for bench tracking
-3. **SM Site Registry schema extensions** — 9 new fields (bench_name, bench_host, medplum_project_id, n8n_workspace_ref, timezone, installed_apps, provisioning_timestamp, provisioning_status)
-4. **Vertical templates** — behavioral_health.yaml and general_smb.yaml in abstraction-layer/provisioning/templates/
-5. **Router registration** — provisioning_router registered in main.py at `/api/admin`
-6. **Tests** — Validation, template loading, endpoint structure, and Pydantic model tests
-7. **.env.example** — Updated with provisioning env vars
-
-## Endpoints
-
-| Method | Path | Description |
-|--------|------|-------------|
-| POST | `/api/admin/sites/create` | Full 14-step provisioning |
-| GET | `/api/admin/sites` | List all sites |
-| GET | `/api/admin/sites/{subdomain}` | Get single site |
-| GET | `/api/admin/benches` | List benches with utilization |
+**Check these in order after Ralph finishes.**
 
 ---
 
-## Pre-Merge Test Plan
-
-### 1. Unit Tests (run locally)
-
+## Step 1 — git log (both repos)
 ```bash
-cd abstraction-layer
-pip install pyyaml
-pytest tests/test_provisioning.py -v
-pytest tests/test_provisioning.py --cov=routes --cov-report=term-missing
+cd /Users/jamesilsley/GitHub/spark-mojo-platform && git log --oneline -5
+ssh sparkmojo 'cd /home/ops/spark-mojo-platform && git log --oneline -3'
 ```
+Pass: BILL-003 and STORY-016 merge commits appear on both local and VPS.
 
-**Expected:** 58 tests pass. Coverage on routes/provisioning.py >= 80%.
+---
 
-**Test classes:**
-- `TestSiteCreateValidation` (5 tests) — Pydantic validation via API
-- `TestTemplateLoading` (4 tests) — YAML template file existence and content
-- `TestListEndpoints` (3 tests) — GET endpoint structure in empty state
-- `TestProvisioningModels` (3 tests) — Pydantic models directly
-- `TestDockerExecHelper` (4 tests) — Docker exec wrapper and admin headers
-- `TestPreflightStep` (3 tests) — Pre-flight with/without admin URL, duplicate detection
-- `TestTemplateLoadingStep` (5 tests) — Template loading, overrides, invalid types
-- `TestBenchSelection` (3 tests) — Dev fallback, no-bench-found, capacity warning
-- `TestFrappeSiteSteps` (8 tests) — All Docker exec steps: create site, erpnext, SM apps, vertical apps
-- `TestConfigureAndVerify` (12 tests) — Site config, HIPAA verification, smoke test, bench migrate, Traefik
-- `TestMedplumAndN8n` (5 tests) — Stub mode, real API calls, n8n failure handling
-- `TestSiteRegistration` (2 tests) — No admin URL skip, duplicate 409
-- `TestCreateSiteEndpoint` (2 tests) — Full orchestration success and partial failure
-
-### 2. Code Review Checklist
-
-- [ ] No hardcoded credentials in provisioning.py (all from env vars)
-- [ ] SiteCreateRequest validates subdomain, site_type, server_tier
-- [ ] HARD STOP steps (1, 2, 3, 10) raise HTTPException
-- [ ] Non-HARD-STOP steps catch exceptions and add to steps_failed
-- [ ] Medplum stub mode works when MEDPLUM_BASE_URL is empty
-- [ ] n8n stub mode works when N8N_BASE_URL is empty
-- [ ] Traefik warning always added to response warnings
-- [ ] SM Bench Registry DocType has correct field structure
-- [ ] SM Site Registry has all 9 new fields
-- [ ] Router registered in main.py with prefix `/api/admin`
-- [ ] pyyaml added to requirements.txt
-- [ ] Duplicate subdomain returns 409
-
-### 3. Post-Merge VPS Verification
-
-After merging and running `deploy.sh`:
-
+## Step 2 — billing.py exists and registers two routers
 ```bash
-# 1. Verify bench migrate succeeds on admin site
-ssh sparkmojo "docker exec frappe-poc-backend-1 bench --site admin.sparkmojo.com migrate"
+ls /Users/jamesilsley/GitHub/spark-mojo-platform/abstraction-layer/routes/billing.py
+grep -c "billing_router\|billing_webhook_router" /Users/jamesilsley/GitHub/spark-mojo-platform/abstraction-layer/main.py
+```
+Pass: file exists, count >= 2.
 
-# 2. Verify SM Bench Registry DocType accessible
-ssh sparkmojo "docker exec frappe-poc-backend-1 bench --site admin.sparkmojo.com execute \
-  'frappe.db.get_list(\"SM Bench Registry\", limit=1)'"
+---
 
-# 3. Seed the initial bench record
-ssh sparkmojo "docker exec frappe-poc-backend-1 bench --site admin.sparkmojo.com execute \
-  'doc = frappe.get_doc({\"doctype\": \"SM Bench Registry\", \"bench_name\": \"hipaa-health-01\", \"bench_host\": \"72.60.125.140\", \"bench_tier\": \"hipaa-health\", \"is_active\": 1, \"active_site_count\": 3, \"capacity_threshold\": 60}); doc.insert(ignore_permissions=True); frappe.db.commit(); print(\"Seeded:\", doc.name)'"
+## Step 3 — billing tests pass locally
+```bash
+cd /Users/jamesilsley/GitHub/spark-mojo-platform/abstraction-layer
+pytest tests/test_billing.py -v 2>&1 | tail -20
+```
+Pass: 0 failures.
 
-# 4. Test provisioning endpoint (creates a real site!)
-curl -X POST https://poc.sparkmojo.com/api/admin/sites/create \
+---
+
+## Step 4 — full test suite passes with coverage
+```bash
+cd /Users/jamesilsley/GitHub/spark-mojo-platform/abstraction-layer
+pytest tests/ --cov=. --cov-report=term-missing --omit=connectors/frappe_native.py --cov-fail-under=70 2>&1 | tail -20
+```
+Pass: exits 0, coverage >= 70%.
+
+---
+
+## Step 5 — billing endpoints appear in OpenAPI docs on VPS
+```bash
+curl -s https://poc.sparkmojo.com/openapi.json | python3 -c "import sys,json; paths=json.load(sys.stdin)['paths']; print([p for p in paths if 'billing' in p or '277' in p])"
+```
+Pass: three billing paths in output.
+
+---
+
+## Step 6 — claim submission endpoint responds (sandbox mode)
+```bash
+# First create a test claim in Frappe Desk if not already present
+curl -s -X POST https://poc.sparkmojo.com/api/modules/billing/claims/submit \
   -H 'Content-Type: application/json' \
-  -d '{
-    "site_subdomain": "test-prov-01",
-    "site_type": "behavioral_health",
-    "server_tier": "hipaa",
-    "admin_password": "Test1234!",
-    "display_name": "Test Practice",
-    "timezone": "America/New_York"
-  }'
-
-# 5. Verify list endpoint
-curl https://poc.sparkmojo.com/api/admin/sites
-
-# 6. Verify single site endpoint
-curl https://poc.sparkmojo.com/api/admin/sites/test-prov-01
-
-# 7. Verify bench list
-curl https://poc.sparkmojo.com/api/admin/benches
-
-# 8. Verify duplicate returns 409
-# (run same create call again — expect HTTP 409)
-
-# 9. Verify new site in bench
-ssh sparkmojo "docker exec frappe-poc-backend-1 bench list-sites"
+  -d '{"claim_name": "CLM-202604-0001", "validation_mode": "snip"}'
 ```
-
-### 4. Known Limitations (Expected)
-
-- Medplum project creation is STUB mode (MEDPLUM_BASE_URL not set) — returns stub-* ID
-- n8n workspace seeding is STUB (N8N_BASE_URL not set)
-- Traefik Host() rule must be added manually for new subdomains
-- HIPAA checks 4-8 require manual confirmation
-- Multi-bench SSH routing not implemented (PROV-006)
-- No auth on admin endpoints yet — admin auth is a follow-on
+Pass: HTTP 200 (success or structured error — no 500, no 404).
 
 ---
 
-## Risk Assessment
+## Step 7 — provisioning.py Medplum stub replaced
+```bash
+grep -n "medplum_client.is_configured\|MedplumClient" /Users/jamesilsley/GitHub/spark-mojo-platform/abstraction-layer/routes/provisioning.py | head -10
+```
+Pass: MedplumClient imported and is_configured check present.
 
-**Low risk:** All changes are additive. No existing endpoints or DocTypes modified in breaking ways. SM Site Registry gains new optional fields only. New router prefix `/api/admin` does not conflict with existing routes.
+---
 
-**Rollback:** Revert the branch merge. No destructive schema changes.
+## Step 8 — stub mode still works without MEDPLUM_BASE_URL
+```bash
+ssh sparkmojo "docker exec poc-api sh -c 'MEDPLUM_BASE_URL= python3 -c \"from routes.provisioning import medplum_client; print(medplum_client.is_configured)\"'"
+```
+Pass: prints False.
+
+---
+
+## Step 9 — SESSION-22-OVERNIGHT-COMPLETE.md exists
+```bash
+ls /Users/jamesilsley/GitHub/spark-mojo-platform/docarchive/ralph-runs/2026-04-*/SESSION-22-OVERNIGHT-COMPLETE.md 2>/dev/null || ls /Users/jamesilsley/GitHub/spark-mojo-platform/SESSION-22-OVERNIGHT-COMPLETE.md 2>/dev/null
+```
+Pass: file found in either location.
+
+---
+
+## Step 10 — No BLOCKED files
+```bash
+ls /Users/jamesilsley/GitHub/spark-mojo-platform/BLOCKED-* 2>/dev/null && echo "REVIEW NEEDED" || echo "clean"
+```
+Pass: prints clean.
+
+---
+
+## If All Steps Pass
+BILL-003 and STORY-016 are fully verified. Commission BILL-004 (ERA 835 processing) and STORY-017 (per-project ClientApplication) in the next session.
+
+## If Steps Fail
+Note the exact failure and step number. Bring back to Claude Chat with the error output.

@@ -1,35 +1,46 @@
 # Session 21 Overnight Run — Complete
 
 **Date:** 2026-04-04
-**Stories:** BILL-002, STORY-015
+**Status:** All stories complete and merged to main
 
 ---
 
 ## BILL-002 — Core Billing DocTypes
 
-- **Branch:** `story/bill-002-core-billing-doctypes` → merged to `main`
-- **Merge commit:** `ab20843` — merge: BILL-002 core billing DocTypes — 11 DocTypes verified on VPS
-- **VPS deployment:** Deployed via `deploy.sh`
-- **VPS verification:** poc-dev migrate OK, 5/6 verification pass (5/6 on admin is expected — SM Task DocType not installed on admin site)
-- **Status:** COMPLETE
+| Field | Value |
+|-------|-------|
+| Branch | `story/bill-002-core-billing-doctypes` |
+| Merge commit | `ab20843` |
+| Status | Merged to main, deployed to VPS, verified |
+
+**Summary:** 11 billing DocTypes created in `sm_billing` app — SM Payer, SM Plan, SM Credential, SM Claim, SM Claim Line, SM Remittance, SM Payment, SM Denial, SM Appeal, SM Prior Auth, SM Fee Schedule. All DocTypes passed `bench migrate` and were verified on VPS. Controller classes renamed Sm->SM to match Frappe naming convention (fix commit `b83797d`).
+
+---
 
 ## STORY-015 — Medplum Abstraction Layer Connector
 
-- **Branch:** `story/story-015-medplum-connector` (not yet merged)
-- **Commit:** `4e8132f` — feat: STORY-015 Medplum abstraction layer connector with project_id enforcement
-- **Tests:** 109 passed, 0 failures
-- **Coverage:** 76.70% (threshold: 70%) ✓
-- **Status:** COMPLETE (pending merge)
+| Field | Value |
+|-------|-------|
+| Branch | `story/story-015-medplum-connector` |
+| Merge commit | `8744bb9` |
+| Status | Merged to main |
+
+**Test results:** 109 passed, 0 failures
+**Coverage:** 76.70% (threshold: 70%)
+
+**Summary:** Medplum connector added to abstraction layer with project_id enforcement. Unit tests pass with full coverage compliance. No VPS deployment required (Python connector only).
 
 ---
 
 ## Warnings / Blocked Files
 
-- No BLOCKED files created
-- No warnings
+- No new BLOCKED files created during this session
+- Existing archived: `BLOCKED-FRAPPE-SDK-REFACTOR.md`, `BLOCKED-STORY-003.md` (in docarchive/)
+
+---
 
 ## Next Steps
 
-1. **Merge STORY-015** — PR `story/story-015-medplum-connector` → `main`, then deploy to VPS
-2. **Commission BILL-003** — next billing story (billing workflows / API endpoints)
-3. **Commission STORY-016** — next platform story
+1. Commission **BILL-003** — next billing story (billing API routes / abstraction layer endpoints)
+2. Commission **STORY-016** — next feature story
+3. Both BILL-002 and STORY-015 branches can be cleaned up (already merged)
