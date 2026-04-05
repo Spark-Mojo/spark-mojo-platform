@@ -248,6 +248,11 @@ git pull origin main
 - **Docker disk fills up over time** — build cache and old images accumulate. Run `scripts/docker-cleanup.sh` weekly or after heavy build sessions. A weekly cron is set up on the VPS (Sunday 3am). If disk exceeds 80%, run with `--aggressive` flag.
 - **After `docker compose down/up`, restart the frontend container last** — `sudo docker restart frappe-poc-frontend-1`. Nginx caches the backend container's IP at startup. If the backend gets a new IP after recreation, nginx sends traffic to the old IP (502 Bad Gateway). A frontend restart forces DNS re-resolution.
 - **`deploy.sh --verify-only` shows 5/6 on admin — this is expected** — The abstraction layer `tasks/list` check fails on `admin.sparkmojo.com` because SM Task DocType is not installed on the admin site (admin only has erpnext + sm_provisioning). 5/6 is a passing result for the admin site.
+- **Routing: Modules vs Webhooks vs Frappe Desk — three distinct host rules in the POC environment. Do not mix them up in test commands or verification steps:**
+  - `poc-dev.sparkmojo.com` — Frappe Desk only. No `/api/modules/` or `/api/webhooks/` routing. Those paths fall through to Frappe and will return `{"exc_type":"DoesNotExistError"}` — not the FastAPI response you expect.
+  - `poc-dev.app.sparkmojo.com` — Abstraction layer module routes only. Use for: `GET/POST /api/modules/billing/...`, `GET /api/modules/provisioning/...`
+  - `api.poc.sparkmojo.com` — Webhook routes only. Use for: `POST /api/webhooks/stedi/835`, `POST /api/webhooks/...`
+  Always use the correct host in test commands and story verification steps. Using `poc-dev.sparkmojo.com` for API module calls is a silent failure — you get a Frappe error instead of a 401/422 from the app.
 
 ---
 
@@ -469,4 +474,4 @@ src/components/
 
 ---
 
-*Last updated: April 2, 2026 — Session 17 (final). docker-cleanup.sh added. Three new Known Gotchas: Docker disk, nginx stale-IP after container recreation, deploy.sh --verify-only 5/6 on admin expected.*
+*Last updated: April 5, 2026 — Session 25. Routing gotcha added (modules vs webhooks vs Frappe Desk). Previous: Session 17 — docker-cleanup.sh added, three Known Gotchas: Docker disk, nginx stale-IP after container recreation, deploy.sh --verify-only 5/6 on admin expected.*
