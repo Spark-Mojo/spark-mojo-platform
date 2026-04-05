@@ -26,7 +26,7 @@ Read this file completely before taking any action. This is the authoritative co
 The Frappe stack runs under `frappe-poc` Docker Compose. The correct container names are:
 
 | Container | Name | Use for |
-|-----------|------|--------|
+|-----------|------|---------|
 | **Backend (bench commands)** | `frappe-poc-backend-1` | All `bench --site` commands |
 | Frontend (nginx) | `frappe-poc-frontend-1` | Traefik routing only |
 | Database | `frappe-poc-db-1` | Direct MariaDB access |
@@ -37,6 +37,18 @@ The Frappe stack runs under `frappe-poc` Docker Compose. The correct container n
 The correct bench container is `frappe-poc-backend-1`.
 
 Verify at any time: `ssh sparkmojo 'docker ps --format "{{.Names}}" | grep frappe'`
+
+The abstraction layer and Medplum stack run under `spark-mojo-platform` Docker Compose:
+
+| Container | Name | Use for |
+|-----------|------|---------|
+| **FastAPI abstraction layer** | `spark-mojo-platform-poc-api-1` | Restart after env changes: `docker restart spark-mojo-platform-poc-api-1` |
+| React frontend | `spark-mojo-platform-poc-frontend-1` | Frontend container |
+| Medplum server | `spark-mojo-platform-medplum-1` | FHIR server |
+| Medplum Postgres | `spark-mojo-platform-medplum-postgres-1` | Medplum database |
+| Medplum Redis | `spark-mojo-platform-medplum-redis-1` | Medplum cache |
+
+Verify at any time: `ssh sparkmojo 'docker ps --format "{{.Names}}" | grep spark-mojo'`
 
 ---
 
@@ -474,4 +486,4 @@ src/components/
 
 ---
 
-*Last updated: April 5, 2026 — Session 25. Routing gotcha added (modules vs webhooks vs Frappe Desk). Previous: Session 17 — docker-cleanup.sh added, three Known Gotchas: Docker disk, nginx stale-IP after container recreation, deploy.sh --verify-only 5/6 on admin expected.*
+*Last updated: April 5, 2026 — Session 25. Abstraction layer + Medplum container names added to reference table. Routing gotcha added (modules vs webhooks vs Frappe Desk). Previous: Session 17 — docker-cleanup.sh added, three Known Gotchas: Docker disk, nginx stale-IP after container recreation, deploy.sh --verify-only 5/6 on admin expected.*
