@@ -20,6 +20,7 @@ from connectors import frappe_native, simplepractice, valant, plane
 from routes.onboarding import router as onboarding_router
 from routes.provisioning import router as provisioning_router
 from routes.billing import router as billing_router, webhook_router as billing_webhook_router
+from routes.clinical import router as clinical_router
 from google_auth import router as google_auth_router
 from modules.tasks.routes import router as tasks_router
 
@@ -78,6 +79,7 @@ app.include_router(onboarding_router)
 app.include_router(provisioning_router, prefix="/api/admin")
 app.include_router(billing_router, prefix="/api/modules/billing")
 app.include_router(billing_webhook_router, prefix="/api/webhooks/stedi")
+app.include_router(clinical_router, prefix="/api/modules/clinical")
 app.include_router(google_auth_router)
 app.include_router(tasks_router)
 
