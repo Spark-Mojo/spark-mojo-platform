@@ -262,6 +262,7 @@ git pull origin main
 - **After `docker compose down/up`, restart the frontend container last** — `sudo docker restart frappe-poc-frontend-1`. Nginx caches the backend container's IP at startup. If the backend gets a new IP after recreation, nginx sends traffic to the old IP (502 Bad Gateway). A frontend restart forces DNS re-resolution.
 - **`deploy.sh --verify-only` shows 5/6 on admin - this is expected** — The abstraction layer `tasks/list` check fails on `admin.sparkmojo.com` because SM Task DocType is not installed on the admin site (admin only has erpnext + sm_provisioning). 5/6 is a passing result for the admin site.
 - **docker compose restart requires the -f flag on the VPS** — The VPS uses a non-default compose file. Always specify the file explicitly: `docker compose -f /home/ops/spark-mojo-platform/docker-compose.poc.yml restart poc-api`. Running `docker compose restart poc-api` without the -f flag will fail with 'no such service' because docker compose cannot find the service without knowing which compose file to use.
+- **Always use deploy.sh for deploys - never docker compose restart as a substitute** — docker compose restart skips the full deploy cycle. It does not run bench migrate, does not run Phase 7 end-to-end verification checks, and does not update SM apps. Always deploy using: `cd /home/ops/spark-mojo-platform && git pull origin main && ./deploy.sh`. The only valid exception is restarting a container after an `.env.poc` change where no code changed. Even then, prefer deploy.sh.
 - **Routing: Modules vs Webhooks vs Frappe Desk - three distinct host rules in the POC environment. Do not mix them up in test commands or verification steps:**
   - `poc-dev.sparkmojo.com` — Frappe Desk only. No `/api/modules/` or `/api/webhooks/` routing. Those paths fall through to Frappe and will return `{"exc_type":"DoesNotExistError"}` — not the FastAPI response you expect.
   - `poc-dev.app.sparkmojo.com` — Abstraction layer module routes only. Use for: `GET/POST /api/modules/billing/...`, `GET /api/modules/provisioning/...`
@@ -489,4 +490,4 @@ src/components/
 
 ---
 
-*Last updated: April 6, 2026 — Session 26. Docker compose -f flag gotcha added. Previous: .env.poc canonical path clarified. Mandatory git push origin rule added to Ralph Orchestrator Rules.*
+*Last updated: April 6, 2026 - Session 26. deploy.sh mandatory use rule added. Docker compose -f flag gotcha added. Previous: .env.poc canonical path clarified. Mandatory git push origin rule added to Ralph Orchestrator Rules.*
