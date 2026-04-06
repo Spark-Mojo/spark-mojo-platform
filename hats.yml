@@ -1,3 +1,7 @@
+# MANDATORY: After each code story hat completes its commit, run:
+# git push origin $(git branch --show-current)
+# This ensures the branch exists on GitHub origin and can be accessed by the VPS.
+# Branches that exist only locally cannot be merged via VPS or accessed by CoWork.
 cli:
   backend: "claude"
 event_loop:
@@ -22,6 +26,7 @@ core:
     - "Documentation verbosity: fifth-grader readable, 100x detail is the target"
     - "DEFICIENCIES.md must be brutally honest with specific file and function references"
     - "Research stories: use web search, be verbose, cite sources"
+    - "After every CODE story commit: git push origin $(git branch --show-current)"
 hats:
   health_check:
     name: "Health Check"
@@ -137,7 +142,7 @@ hats:
         ralph emit "build.retry" "[STORY-ID]: [exact failure details]"
   committer:
     name: "Committer"
-    description: "Commits code story work. Documentation and research stories are already committed by builder."
+    description: "Commits code story work and pushes branch to GitHub origin. Documentation and research stories are already committed by builder."
     triggers: ["task.done"]
     publishes: ["story.committed"]
     instructions: |
@@ -147,7 +152,10 @@ hats:
         git add -A
         Read exact commit message from story spec file in sparkmojo-internal.
         git commit -m "[exact message from story spec]"
-        ralph emit "story.committed" "[STORY-ID] committed on [branch]"
+        MANDATORY: Push the feature branch to GitHub origin so it exists remotely.
+        git push origin $(git branch --show-current)
+        Verify the push succeeded (exit code 0). If push fails, log the error and retry once.
+        ralph emit "story.committed" "[STORY-ID] committed and pushed to origin on [branch]"
       For DOCUMENTATION and RESEARCH stories:
         Files are already committed to sparkmojo-internal by the builder.
         No additional commit needed in spark-mojo-platform.
