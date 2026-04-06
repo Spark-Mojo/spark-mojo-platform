@@ -130,7 +130,7 @@ async def _resolve_project_id(tenant_site: str) -> str:
         resp = await client.get(
             "/api/resource/SM Site Registry",
             params={
-                "filters": f'[["site_name","=","{tenant_site}"]]',
+                "filters": f'[["name","=","{tenant_site}"]]',
                 "fields": '["name","medplum_project_id"]',
                 "limit_page_length": 1,
             },
