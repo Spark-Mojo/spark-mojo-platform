@@ -1,7 +1,8 @@
 """
-Billing capability routes — Stedi claim submission and 277CA webhook.
+Billing capability routes — Stedi claim submission, 277CA webhook, eligibility.
 
 Handles SM Claim submission to Stedi clearinghouse (DECISION-027, DECISION-011).
+Eligibility checks via 270/271 (BILL-005).
 All data flows through Frappe REST API via token auth.
 """
 
@@ -12,8 +13,10 @@ from datetime import datetime, timedelta, timezone
 from typing import Optional
 
 import httpx
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel
+
+from connectors.stedi import check_eligibility, StediTimeoutError, StediAPIError
 
 logger = logging.getLogger("abstraction-layer.billing")
 
@@ -245,6 +248,288 @@ async def _list_frappe_docs(doctype: str, filters: str = "", fields: str = "", l
         resp = await client.get(f"/api/resource/{doctype}", params=params, timeout=15)
         resp.raise_for_status()
         return resp.json().get("data", [])
+
+
+# ---------------------------------------------------------------------------
+# Eligibility models
+# ---------------------------------------------------------------------------
+
+class EligibilityCheckRequest(BaseModel):
+    payer_name: str
+    provider_npi: str
+    provider_name: str
+    member_id: str
+    member_first_name: str
+    member_last_name: str
+    member_dob: str
+    service_type_code: str = "30"
+    date_of_service: str = ""
+
+
+class EligibilityCheckResponse(BaseModel):
+    is_eligible: bool
+    coverage_status: str
+    payer_name: str
+    member_id: str
+    member_name: str
+    group_number: Optional[str] = None
+    plan_name: Optional[str] = None
+    plan_begin_date: Optional[str] = None
+    plan_end_date: Optional[str] = None
+    deductible_individual: Optional[float] = None
+    deductible_met: Optional[float] = None
+    deductible_remaining: Optional[float] = None
+    out_of_pocket_individual: Optional[float] = None
+    out_of_pocket_met: Optional[float] = None
+    out_of_pocket_remaining: Optional[float] = None
+    copay: Optional[float] = None
+    coinsurance_percent: Optional[float] = None
+    mental_health_covered: Optional[bool] = None
+    mental_health_notes: Optional[str] = None
+    raw_response: dict
+    checked_at: str
+
+
+def _parse_271_response(raw: dict, payer_name: str, member_id: str,
+                         member_first_name: str, member_last_name: str,
+                         date_of_service: str) -> EligibilityCheckResponse:
+    """Parse a Stedi 271 response into a structured EligibilityCheckResponse."""
+    now_iso = datetime.now(timezone.utc).isoformat()
+
+    # Default values
+    coverage_status = "unknown"
+    is_eligible = False
+    group_number = None
+    plan_name = None
+    plan_begin_date = None
+    plan_end_date = None
+    deductible_individual = None
+    deductible_met = None
+    deductible_remaining = None
+    oop_individual = None
+    oop_met = None
+    oop_remaining = None
+    copay = None
+    coinsurance_percent = None
+    mh_covered = None
+    mh_notes = None
+
+    try:
+        # Parse plan status from benefits
+        benefits = raw.get("benefits", [])
+        plan_info = raw.get("planInformation", {})
+        subscriber_info = raw.get("subscriber", {})
+
+        # Plan-level info
+        group_number = subscriber_info.get("groupNumber") or plan_info.get("groupNumber")
+        plan_name = plan_info.get("planName")
+
+        for b in benefits:
+            info_type = b.get("benefitInformationType", "")
+            service_types = b.get("serviceTypeCodes", [])
+            time_qualifier = b.get("timePeriodQualifier", "")
+            amount = b.get("benefitAmount")
+            percent = b.get("benefitPercent")
+            coverage_level = b.get("coverageLevelCode", "")
+
+            # Active plan determination
+            if info_type == "1":  # Active Coverage
+                coverage_status = "active"
+                if b.get("planBeginDate"):
+                    plan_begin_date = b["planBeginDate"]
+                if b.get("planEndDate"):
+                    plan_end_date = b["planEndDate"]
+            elif info_type == "6":  # Inactive
+                coverage_status = "inactive"
+
+            # Individual deductible (coverage level IND)
+            if info_type == "C" and coverage_level in ("IND", ""):
+                if time_qualifier in ("23", "24", "29", ""):  # Calendar/plan year
+                    if amount is not None:
+                        deductible_individual = float(amount)
+            if info_type == "C" and b.get("inPlanNetworkIndicator") == "Y":
+                if amount is not None:
+                    deductible_individual = float(amount)
+
+            # Deductible met/remaining
+            if info_type == "G" and coverage_level in ("IND", ""):
+                if amount is not None:
+                    deductible_met = float(amount)
+            if info_type == "J" and coverage_level in ("IND", ""):
+                if amount is not None:
+                    deductible_remaining = float(amount)
+
+            # Out of pocket
+            if info_type == "G" and "out_of_pocket" in b.get("benefitDescription", "").lower():
+                if amount is not None:
+                    oop_met = float(amount)
+            if info_type == "F":  # Out of pocket maximum
+                if coverage_level in ("IND", ""):
+                    if amount is not None:
+                        oop_individual = float(amount)
+            if info_type == "J" and "out_of_pocket" in b.get("benefitDescription", "").lower():
+                if amount is not None:
+                    oop_remaining = float(amount)
+
+            # Copay
+            if info_type == "B" and amount is not None:
+                if "30" in service_types or not service_types:
+                    copay = float(amount)
+
+            # Coinsurance
+            if info_type == "A" and percent is not None:
+                if "30" in service_types or not service_types:
+                    coinsurance_percent = float(percent)
+
+            # Mental health specific
+            if "30" in service_types:
+                if info_type == "1":
+                    mh_covered = True
+                elif info_type == "6":
+                    mh_covered = False
+                if b.get("additionalInformation"):
+                    mh_notes = (mh_notes or "") + b["additionalInformation"] + " "
+
+        # Determine eligibility from coverage status and plan dates
+        if coverage_status == "active":
+            is_eligible = True
+            # Check if date_of_service falls within plan dates
+            if plan_end_date and date_of_service:
+                try:
+                    end = datetime.strptime(plan_end_date, "%Y-%m-%d")
+                    dos = datetime.strptime(date_of_service, "%Y-%m-%d")
+                    if dos > end:
+                        is_eligible = False
+                except ValueError:
+                    pass
+
+    except Exception:
+        # Parse failure on any field — log but don't raise
+        pass
+
+    return EligibilityCheckResponse(
+        is_eligible=is_eligible,
+        coverage_status=coverage_status,
+        payer_name=payer_name,
+        member_id=member_id,
+        member_name=f"{member_first_name} {member_last_name}",
+        group_number=group_number,
+        plan_name=plan_name,
+        plan_begin_date=plan_begin_date,
+        plan_end_date=plan_end_date,
+        deductible_individual=deductible_individual,
+        deductible_met=deductible_met,
+        deductible_remaining=deductible_remaining,
+        out_of_pocket_individual=oop_individual,
+        out_of_pocket_met=oop_met,
+        out_of_pocket_remaining=oop_remaining,
+        copay=copay,
+        coinsurance_percent=coinsurance_percent,
+        mental_health_covered=mh_covered,
+        mental_health_notes=mh_notes.strip() if mh_notes else None,
+        raw_response=raw,
+        checked_at=now_iso,
+    )
+
+
+# ---------------------------------------------------------------------------
+# Eligibility endpoints
+# ---------------------------------------------------------------------------
+
+async def _do_eligibility_check(
+    payer_name: str, provider_npi: str, provider_name: str,
+    member_id: str, member_first_name: str, member_last_name: str,
+    member_dob: str, service_type_code: str, date_of_service: str,
+) -> EligibilityCheckResponse:
+    """Shared logic for POST and GET eligibility check."""
+    if not date_of_service:
+        date_of_service = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+
+    # Look up SM Payer by payer_name
+    payers = await _list_frappe_docs(
+        "SM Payer",
+        filters=json.dumps([["payer_name", "=", payer_name]]),
+        fields='["name","payer_name","stedi_trading_partner_id"]',
+        limit=1,
+    )
+    if not payers:
+        raise HTTPException(status_code=404, detail=f"Payer not found: {payer_name}")
+
+    payer = payers[0]
+    trading_partner_id = payer.get("stedi_trading_partner_id", "")
+    if not trading_partner_id:
+        raise HTTPException(
+            status_code=422,
+            detail=f"Payer {payer_name} has no Stedi trading partner ID configured",
+        )
+
+    try:
+        raw_response = await check_eligibility(
+            trading_partner_id=trading_partner_id,
+            provider_npi=provider_npi,
+            provider_name=provider_name,
+            member_id=member_id,
+            member_first_name=member_first_name,
+            member_last_name=member_last_name,
+            member_dob=member_dob,
+            service_type_code=service_type_code,
+            date_of_service=date_of_service,
+        )
+    except StediTimeoutError as exc:
+        raise HTTPException(status_code=504, detail=str(exc))
+    except StediAPIError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=exc.detail)
+
+    return _parse_271_response(
+        raw=raw_response,
+        payer_name=payer_name,
+        member_id=member_id,
+        member_first_name=member_first_name,
+        member_last_name=member_last_name,
+        date_of_service=date_of_service,
+    )
+
+
+@router.post("/eligibility/check", response_model=EligibilityCheckResponse)
+async def eligibility_check_post(req: EligibilityCheckRequest):
+    """Check patient insurance eligibility via Stedi 270/271."""
+    return await _do_eligibility_check(
+        payer_name=req.payer_name,
+        provider_npi=req.provider_npi,
+        provider_name=req.provider_name,
+        member_id=req.member_id,
+        member_first_name=req.member_first_name,
+        member_last_name=req.member_last_name,
+        member_dob=req.member_dob,
+        service_type_code=req.service_type_code,
+        date_of_service=req.date_of_service,
+    )
+
+
+@router.get("/eligibility/check", response_model=EligibilityCheckResponse)
+async def eligibility_check_get(
+    payer_name: str = Query(...),
+    provider_npi: str = Query(...),
+    provider_name: str = Query(...),
+    member_id: str = Query(...),
+    member_first_name: str = Query(...),
+    member_last_name: str = Query(...),
+    member_dob: str = Query(...),
+    service_type_code: str = Query("30"),
+    date_of_service: str = Query(""),
+):
+    """Check patient insurance eligibility via query params."""
+    return await _do_eligibility_check(
+        payer_name=payer_name,
+        provider_npi=provider_npi,
+        provider_name=provider_name,
+        member_id=member_id,
+        member_first_name=member_first_name,
+        member_last_name=member_last_name,
+        member_dob=member_dob,
+        service_type_code=service_type_code,
+        date_of_service=date_of_service,
+    )
 
 
 # ---------------------------------------------------------------------------
