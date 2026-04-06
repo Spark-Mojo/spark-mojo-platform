@@ -260,8 +260,9 @@ git pull origin main
 - **Medplum healthcheck uses node, not curl** — the medplum-server image does not include curl. Use: `node -e "require('http').get('http://localhost:8103/healthcheck', r => { process.exit(r.statusCode === 200 ? 0 : 1) })"` inside the container.
 - **Docker disk fills up over time** — build cache and old images accumulate. Run `scripts/docker-cleanup.sh` weekly or after heavy build sessions. A weekly cron is set up on the VPS (Sunday 3am). If disk exceeds 80%, run with `--aggressive` flag.
 - **After `docker compose down/up`, restart the frontend container last** — `sudo docker restart frappe-poc-frontend-1`. Nginx caches the backend container's IP at startup. If the backend gets a new IP after recreation, nginx sends traffic to the old IP (502 Bad Gateway). A frontend restart forces DNS re-resolution.
-- **`deploy.sh --verify-only` shows 5/6 on admin — this is expected** — The abstraction layer `tasks/list` check fails on `admin.sparkmojo.com` because SM Task DocType is not installed on the admin site (admin only has erpnext + sm_provisioning). 5/6 is a passing result for the admin site.
-- **Routing: Modules vs Webhooks vs Frappe Desk — three distinct host rules in the POC environment. Do not mix them up in test commands or verification steps:**
+- **`deploy.sh --verify-only` shows 5/6 on admin - this is expected** — The abstraction layer `tasks/list` check fails on `admin.sparkmojo.com` because SM Task DocType is not installed on the admin site (admin only has erpnext + sm_provisioning). 5/6 is a passing result for the admin site.
+- **docker compose restart requires the -f flag on the VPS** — The VPS uses a non-default compose file. Always specify the file explicitly: `docker compose -f /home/ops/spark-mojo-platform/docker-compose.poc.yml restart poc-api`. Running `docker compose restart poc-api` without the -f flag will fail with 'no such service' because docker compose cannot find the service without knowing which compose file to use.
+- **Routing: Modules vs Webhooks vs Frappe Desk - three distinct host rules in the POC environment. Do not mix them up in test commands or verification steps:**
   - `poc-dev.sparkmojo.com` — Frappe Desk only. No `/api/modules/` or `/api/webhooks/` routing. Those paths fall through to Frappe and will return `{"exc_type":"DoesNotExistError"}` — not the FastAPI response you expect.
   - `poc-dev.app.sparkmojo.com` — Abstraction layer module routes only. Use for: `GET/POST /api/modules/billing/...`, `GET /api/modules/provisioning/...`
   - `api.poc.sparkmojo.com` — Webhook routes only. Use for: `POST /api/webhooks/stedi/835`, `POST /api/webhooks/...`
@@ -349,7 +350,7 @@ Never emit `LOOP_COMPLETE` without running every gate.
 16. **/api/modules/ routing requires Traefik priority rule.**
     The abstraction layer must have higher priority than Frappe's `/api/` catch-all.
     If `/api/modules/tasks/list` returns a Frappe error, the Traefik priority rule is missing.
-17. **`frappe-apps/` is not volume-mounted in the POC — this is intentional.**
+17. **`frappe-apps/` is not volume-mounted in the POC - this is intentional.**
     Do not attempt to fix this without reading DEPLOY.md.
 18. **Setup wizard must be suppressed on every new site** — see Known Gotchas.
 19. **HostRegexp rules do NOT trigger ACME cert issuance** — see Known Gotchas.
@@ -488,4 +489,4 @@ src/components/
 
 ---
 
-*Last updated: April 6, 2026 — Session 26. .env.poc canonical path clarified. Mandatory git push origin rule added to Ralph Orchestrator Rules. Previous: Session 25 — Abstraction layer + Medplum container names added to reference table. Routing gotcha added (modules vs webhooks vs Frappe Desk).*
+*Last updated: April 6, 2026 — Session 26. Docker compose -f flag gotcha added. Previous: .env.poc canonical path clarified. Mandatory git push origin rule added to Ralph Orchestrator Rules.*
