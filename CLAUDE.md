@@ -274,6 +274,7 @@ git pull origin main
 - Every story **MUST** include a smoke test step.
 - After merging feature branches, **always trigger a deploy**.
 - Never mark a story complete if the feature is unreachable from the UI.
+- **MANDATORY: After building and committing a code story to its feature branch, always run:** `git push origin <branch-name>` Feature branches must exist on GitHub origin, not only on the local machine. Failure to push means the VPS cannot access the branch and the branch is at risk of being lost.
 - **Design system verification** on any story touching `frontend/src/`:
   - No hardcoded hex colors
   - Every new component in Library.jsx
@@ -487,4 +488,4 @@ src/components/
 
 ---
 
-*Last updated: April 6, 2026 — Session 26. .env.poc canonical path clarified in Known Gotchas (canonical path is /home/ops/spark-mojo-platform/.env.poc, not frappe-poc). Previous: Session 25 — Abstraction layer + Medplum container names added to reference table. Routing gotcha added (modules vs webhooks vs Frappe Desk).*
+*Last updated: April 6, 2026 — Session 26. .env.poc canonical path clarified. Mandatory git push origin rule added to Ralph Orchestrator Rules. Previous: Session 25 — Abstraction layer + Medplum container names added to reference table. Routing gotcha added (modules vs webhooks vs Frappe Desk).*
