@@ -10,9 +10,9 @@ story/bill-010-state-machine-controller
 Python controller (API/Infrastructure)
 
 ## Dependency Check
-- BILL-006: OK (commit 9e32451 on current branch)
-- BILL-007: OK (commit d5b91e6 on current branch)
-- BILL-009: OK (commit 742d515 + fixes on current branch)
+- BILL-006: COMPLETE ✓ (marker exists)
+- BILL-007: COMPLETE ✓ (marker exists)
+- BILL-009: COMPLETE ✓ (marker exists)
 
 All dependencies satisfied.
 

@@ -1,0 +1,6 @@
+BILL-010 verified complete — 2026-04-07
+- 12/12 unit tests pass (pytest -v)
+- VALID_TRANSITIONS dict: 19 states, exact spec match
+- VALID_TRIGGER_TYPES: 5 types
+- transition_state(): 8-step method, no save/commit
+- VPS verification (migrate + bench console) deferred to post-merge
