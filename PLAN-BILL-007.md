@@ -10,7 +10,7 @@ BILL-007
 DocType JSON change (fields only — no patch, no controller logic)
 
 ## Dependency Check
-- **BILL-006**: COMMITTED and PUSHED on `story/bill-006-canonical-state-expansion` ✓
+- **BILL-006**: COMPLETE (marked BILL-006-COMPLETE) ✓
 
 ## Files to Modify
 
@@ -24,7 +24,7 @@ DocType JSON change (fields only — no patch, no controller logic)
 
 1. Add 10 field entries to the `fields` array in sm_claim.json (after existing `claim_lines` entry)
 2. Append 10 fieldnames to `field_order` after `claim_lines`
-3. Update `modified` timestamp to `2026-04-06 00:00:00.000000`
+3. Update `modified` timestamp to `2026-04-07 00:00:00.000000`
 
 ### Fields to Add
 
