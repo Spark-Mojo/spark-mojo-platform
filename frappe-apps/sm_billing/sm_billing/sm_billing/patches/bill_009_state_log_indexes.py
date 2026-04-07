@@ -3,6 +3,11 @@ import frappe
 
 
 def execute():
+    if not frappe.db.table_exists("SM Claim State Log"):
+        # Table not yet created — will be created by model sync.
+        # Re-run this patch after migrate completes.
+        return
+
     frappe.db.sql(
         "CREATE INDEX IF NOT EXISTS `idx_state_log_claim`"
         " ON `tabSM Claim State Log` (`claim`)"
