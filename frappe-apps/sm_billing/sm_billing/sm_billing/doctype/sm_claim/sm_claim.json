@@ -29,7 +29,17 @@
     "ai_completeness_score",
     "ai_risk_level",
     "notes",
-    "claim_lines"
+    "claim_lines",
+    "state_changed_at",
+    "state_changed_by",
+    "previous_state",
+    "state_change_reason",
+    "is_overdue",
+    "hold_reason",
+    "secondary_payer",
+    "patient_balance_amount",
+    "write_off_amount",
+    "write_off_approved_by"
   ],
   "fields": [
     {
@@ -187,6 +197,61 @@
       "fieldtype": "Table",
       "label": "Claim Lines",
       "options": "SM Claim Line"
+    },
+    {
+      "fieldname": "state_changed_at",
+      "fieldtype": "Datetime",
+      "label": "State Changed At"
+    },
+    {
+      "fieldname": "state_changed_by",
+      "fieldtype": "Data",
+      "label": "State Changed By",
+      "length": 140
+    },
+    {
+      "fieldname": "previous_state",
+      "fieldtype": "Data",
+      "label": "Previous State",
+      "length": 64
+    },
+    {
+      "fieldname": "state_change_reason",
+      "fieldtype": "Small Text",
+      "label": "State Change Reason"
+    },
+    {
+      "fieldname": "is_overdue",
+      "fieldtype": "Check",
+      "label": "Overdue",
+      "default": "0"
+    },
+    {
+      "fieldname": "hold_reason",
+      "fieldtype": "Small Text",
+      "label": "Hold Reason"
+    },
+    {
+      "fieldname": "secondary_payer",
+      "fieldtype": "Link",
+      "label": "Secondary Payer",
+      "options": "SM Payer"
+    },
+    {
+      "fieldname": "patient_balance_amount",
+      "fieldtype": "Currency",
+      "label": "Patient Balance Amount"
+    },
+    {
+      "fieldname": "write_off_amount",
+      "fieldtype": "Currency",
+      "label": "Write-Off Amount"
+    },
+    {
+      "fieldname": "write_off_approved_by",
+      "fieldtype": "Data",
+      "label": "Write-Off Approved By",
+      "length": 140
     }
   ],
   "index_web_pages_for_search": 0,
