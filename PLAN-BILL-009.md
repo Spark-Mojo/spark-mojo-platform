@@ -10,7 +10,7 @@ story/bill-009-state-log-doctype
 DocType JSON + patch file
 
 ## Dependency Check
-- BILL-006: COMMITTED (9e32451) ✓
+- BILL-006: COMPLETE ✓
 
 ## Files to Create
 
