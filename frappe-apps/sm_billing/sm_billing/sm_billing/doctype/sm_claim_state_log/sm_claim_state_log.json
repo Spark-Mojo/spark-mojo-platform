@@ -1,0 +1,118 @@
+{
+  "actions": [],
+  "autoname": "CLM-LOG-.YYYY.-.####",
+  "creation": "2026-04-06 00:00:00.000000",
+  "doctype": "DocType",
+  "engine": "InnoDB",
+  "field_order": [
+    "claim",
+    "from_state",
+    "to_state",
+    "changed_at",
+    "changed_by",
+    "trigger_type",
+    "trigger_reference",
+    "reason",
+    "paid_amount_at_change",
+    "adjustment_amount_at_change",
+    "patient_responsibility_at_change"
+  ],
+  "fields": [
+    {
+      "fieldname": "claim",
+      "fieldtype": "Link",
+      "label": "Claim",
+      "options": "SM Claim",
+      "reqd": 1,
+      "in_list_view": 1
+    },
+    {
+      "fieldname": "from_state",
+      "fieldtype": "Data",
+      "label": "From State",
+      "length": 64,
+      "reqd": 1
+    },
+    {
+      "fieldname": "to_state",
+      "fieldtype": "Data",
+      "label": "To State",
+      "length": 64,
+      "reqd": 1,
+      "in_list_view": 1
+    },
+    {
+      "fieldname": "changed_at",
+      "fieldtype": "Datetime",
+      "label": "Changed At",
+      "reqd": 1,
+      "in_list_view": 1
+    },
+    {
+      "fieldname": "changed_by",
+      "fieldtype": "Data",
+      "label": "Changed By",
+      "length": 140,
+      "reqd": 1
+    },
+    {
+      "fieldname": "trigger_type",
+      "fieldtype": "Select",
+      "label": "Trigger Type",
+      "options": "manual\nwebhook_277ca\nwebhook_835\napi\nscheduler",
+      "reqd": 1
+    },
+    {
+      "fieldname": "trigger_reference",
+      "fieldtype": "Data",
+      "label": "Trigger Reference",
+      "length": 256
+    },
+    {
+      "fieldname": "reason",
+      "fieldtype": "Small Text",
+      "label": "Reason"
+    },
+    {
+      "fieldname": "paid_amount_at_change",
+      "fieldtype": "Currency",
+      "label": "Paid Amount at Change"
+    },
+    {
+      "fieldname": "adjustment_amount_at_change",
+      "fieldtype": "Currency",
+      "label": "Adjustment Amount at Change"
+    },
+    {
+      "fieldname": "patient_responsibility_at_change",
+      "fieldtype": "Currency",
+      "label": "Patient Responsibility at Change"
+    }
+  ],
+  "index_web_pages_for_search": 0,
+  "is_submittable": 0,
+  "links": [],
+  "modified": "2026-04-06 00:00:00.000000",
+  "modified_by": "Administrator",
+  "module": "SM Billing",
+  "name": "SM Claim State Log",
+  "naming_rule": "Expression",
+  "owner": "Administrator",
+  "permissions": [
+    {
+      "create": 1,
+      "delete": 1,
+      "email": 1,
+      "export": 1,
+      "print": 1,
+      "read": 1,
+      "report": 1,
+      "role": "System Manager",
+      "share": 1,
+      "write": 1
+    }
+  ],
+  "sort_field": "changed_at",
+  "sort_order": "DESC",
+  "track_changes": 0
+}
