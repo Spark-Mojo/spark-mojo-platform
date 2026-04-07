@@ -1,1 +1,2 @@
 sm_billing.sm_billing.patches.bill_006_migrate_canonical_state
+sm_billing.sm_billing.patches.bill_008_sm_claim_indexes
