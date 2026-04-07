@@ -1,162 +1,145 @@
-# MANDATORY: After each code story hat completes its commit, run:
-# git push origin $(git branch --show-current)
-# This ensures the branch exists on GitHub origin and can be accessed by the VPS.
-# Branches that exist only locally cannot be merged via VPS or accessed by CoWork.
 cli:
   backend: "claude"
+
 event_loop:
   starting_event: "session.start"
   completion_promise: "LOOP_COMPLETE"
-  max_iterations: 200
+  max_iterations: 150
   max_runtime_seconds: 28800
+
 core:
   guardrails:
     - "Governance repo absolute path: /Users/jamesilsley/GitHub/sparkmojo-internal/"
     - "Platform repo absolute path: /Users/jamesilsley/GitHub/spark-mojo-platform/"
-    - "NEVER modify CLAUDE.md - it is permanent and sacred"
-    - "NEVER modify Desktop.jsx routing structure"
-    - "NEVER create .ts or .tsx files - frontend is JSX only"
+    - "Story specs absolute path: /Users/jamesilsley/GitHub/sparkmojo-internal/platform/feature-library/stories/"
+    - "NEVER use TypeScript - all frontend files are .jsx"
     - "NEVER hardcode hex colors - use var(--sm-*) tokens"
-    - "NEVER run bench get-app or bench install-app without explicit story instruction"
-    - "NEVER call Frappe directly from React - always via abstraction layer"
-    - "NEVER add clinical routes to billing.py - clinical.py is a separate file"
-    - "Routing: modules on poc-dev.app.sparkmojo.com, webhooks on api.poc.sparkmojo.com"
-    - "When ambiguous on architecture: write BLOCKED-[STORY-ID].md and move to next story"
-    - "Documentation stories: read actual committed code before writing any artifact"
-    - "Documentation verbosity: fifth-grader readable, 100x detail is the target"
-    - "DEFICIENCIES.md must be brutally honest with specific file and function references"
-    - "Research stories: use web search, be verbose, cite sources"
-    - "After every CODE story commit: git push origin $(git branch --show-current)"
+    - "NEVER install pip packages or bench apps on VPS during a build run"
+    - "NEVER modify CLAUDE.md, hats.yml, or PROMPT.md during a build run"
+    - "If any architectural decision is ambiguous: write BLOCKED-[STORY-ID].md and move to next story"
+    - "All stories in this run are Frappe DocType or Python stories - no frontend work"
+    - "VPS backend container name: frappe-poc-backend-1"
+    - "VPS DB container name: frappe-poc-db-1"
+    - "Frappe site name: poc-dev.sparkmojo.com"
+    - "MariaDB database name: _af67db3b56527a72"
+    - ".env.poc canonical path on VPS: /home/ops/spark-mojo-platform/.env.poc"
 hats:
   health_check:
     name: "Health Check"
-    description: "Verifies baseline health before any build work. Halts if broken."
+    description: "Verifies baseline Frappe and Python health before any build work. Halts session if baseline is broken."
     triggers: ["session.start"]
     publishes: ["health.ok", "health.blocked"]
     max_activations: 1
     instructions: |
-      Run baseline checks in order. If any fail, write HEALTH-BLOCKED.md with
-      exact error and emit health.blocked. Do not proceed if health is broken.
-      1. Check abstraction layer tests pass:
-         cd /Users/jamesilsley/GitHub/spark-mojo-platform/abstraction-layer
-         pytest tests/ -v 2>&1 | tail -5
-         PASS: exits 0, no failures
-      2. Check frontend lints clean:
-         cd /Users/jamesilsley/GitHub/spark-mojo-platform/frontend
-         pnpm run lint 2>&1 | tail -5
-         PASS: exits 0, 0 errors
-      3. Check governance repo is accessible:
-         ls /Users/jamesilsley/GitHub/sparkmojo-internal/platform/PROCESS.md
-         PASS: file exists
-      If all pass: ralph emit "health.ok" "baseline healthy: tests pass, lint clean, governance accessible"
+      Run these checks in order. If any fail, write HEALTH-BLOCKED.md at repo root explaining which check failed and why, then emit health.blocked.
+      1. Verify Python imports work:
+         cd /Users/jamesilsley/GitHub/spark-mojo-platform
+         python -c "import frappe" 2>&1
+         PASS: no ImportError (frappe not installed locally is acceptable - note it)
+      2. Verify patches.txt is parseable (no syntax errors):
+         cat frappe-apps/sm_billing/sm_billing/patches.txt
+         PASS: file readable, no binary content
+      3. Verify sm_claim.json is valid JSON:
+         python -c "import json; json.load(open('frappe-apps/sm_billing/sm_billing/sm_billing/doctype/sm_claim/sm_claim.json'))"
+         PASS: exits 0
+      4. Verify story spec files exist:
+         ls /Users/jamesilsley/GitHub/sparkmojo-internal/platform/feature-library/stories/BILL-006-canonical-state-expansion.md
+         ls /Users/jamesilsley/GitHub/sparkmojo-internal/platform/feature-library/stories/BILL-007-sm-claim-new-fields.md
+         ls /Users/jamesilsley/GitHub/sparkmojo-internal/platform/feature-library/stories/BILL-008-sm-claim-indexes.md
+         ls /Users/jamesilsley/GitHub/sparkmojo-internal/platform/feature-library/stories/BILL-009-state-log-doctype.md
+         ls /Users/jamesilsley/GitHub/sparkmojo-internal/platform/feature-library/stories/BILL-010-state-machine-controller.md
+         PASS: all 5 files exist      5. Verify VPS SSH is reachable:
+         ssh -o ConnectTimeout=10 sparkmojo "echo ok"
+         PASS: prints "ok"
+      If all 5 checks pass:
+      ralph emit "health.ok" "JSON valid, story specs present, VPS reachable"
+
   story_planner:
     name: "Story Planner"
-    description: "Reads next story from PROMPT.md, determines type, writes build plan."
+    description: "Reads PROMPT.md, finds next incomplete story, confirms dependencies are met, writes build plan."
     triggers: ["health.ok", "story.committed"]
     publishes: ["plan.ready", "queue.complete"]
     instructions: |
       Read /Users/jamesilsley/GitHub/spark-mojo-platform/PROMPT.md.
-      Find the first story without a [STORY-ID]-COMPLETE marker at repo root.
-      If all stories have COMPLETE markers: print LOOP_COMPLETE and emit queue.complete.
-      Read the story spec at the absolute path shown in PROMPT.md.
-      Determine story type: CODE, DOCUMENTATION, or RESEARCH.
-      Write PLAN-[STORY-ID].md at repo root with:
-      - Story ID and type
-      - Files to create or modify (with absolute paths)
-      - Quality gates to run for this story type
-      - Dependencies to check before starting
-      - Any ambiguities that need resolution
-      If ambiguous on architecture: write BLOCKED-[STORY-ID].md. Emit plan.ready anyway
-      so the builder can handle the blocked state.
-      ralph emit "plan.ready" "[STORY-ID]: type=[type], [N] files, gates=[gate summary]"
+      Find the first story in the queue that does NOT have a COMPLETE marker file at repo root (e.g., BILL-006-COMPLETE).
+      If all stories have COMPLETE markers:
+        Write RUN-SUMMARY-SESSION-28.md at repo root summarizing all results.
+        Print LOOP_COMPLETE
+        ralph emit "queue.complete" "all stories complete"
+        Stop.
+      For the identified story:
+      1. Read the full story spec from the absolute path in PROMPT.md
+      2. Check dependencies: if the story spec lists Depends on, verify those COMPLETE marker files exist
+         If a dependency is not complete, write BLOCKED-[STORY-ID].md explaining the missing dependency, then emit plan.ready with BLOCKED flag
+      3. Write PLAN-[STORY-ID].md at repo root with:
+         - Story ID and branch name
+         - List of files to create or modify with absolute paths
+         - Story type (DocType JSON change / patch file / Python controller)
+         - Dependency check result
+         - Quality gate type (DocType gates or Python gates - see PROMPT.md Definition of Done)
+      ralph emit "plan.ready" "[STORY-ID]: [N] files, type: [type], deps: ok"
   builder:
     name: "Builder"
-    description: "Executes the plan. Code stories build and run fast gates. Doc stories read code and write artifacts. Research stories conduct research and write findings."
+    description: "Implements the story plan exactly as specified. Runs fast gate after each file. Never improvises on architecture."
     triggers: ["plan.ready", "build.retry"]
     publishes: ["build.ready", "build.blocked"]
     instructions: |
-      Read PLAN-[STORY-ID].md at repo root.
-      If BLOCKED file exists for this story: write BLOCKED-[STORY-ID].md with
-      full context and emit build.blocked.
-      For CODE stories:
-        git checkout -b [branch name from PROMPT.md]
-        Implement exactly what the story spec says. Nothing more. Nothing less.
-        Run fast gate after each significant change:
-          pytest tests/[relevant_test_file].py -v
-        When fast gates pass: ralph emit "build.ready" "[STORY-ID]: code complete, fast gates pass"
-      For DOCUMENTATION stories:
-        Read every file listed in the PROMPT.md "Read before writing" section.
-        Read the actual committed code - not just the story spec.
-        Create the output directory if it does not exist.
-        Write each required artifact file with extreme verbosity.
-        Fifth-grader readable. 100x the detail you think you need.
-        DEFICIENCIES.md must be brutally honest with specific code references.
-        Commit each file to sparkmojo-internal main as you complete it.
-        When all files written and committed: ralph emit "build.ready" "[STORY-ID]: [N] files written and committed"
-      For RESEARCH stories:
-        Read every file listed in the PROMPT.md "Read before writing" section.
-        Use web search extensively. Research the questions in the story spec.
-        Write verbose, specific, opinionated research documents.
-        Cite sources. Be honest about uncertainty.
-        Commit both research files to sparkmojo-internal main.
-        When complete: ralph emit "build.ready" "[STORY-ID]: research complete, [N] documents committed"
+      Read PLAN-[STORY-ID].md at repo root to identify the current story.
+      If PLAN file contains BLOCKED: write BLOCKED-[STORY-ID].md and ralph emit "build.blocked" "[STORY-ID]: blocked - [reason]". Stop.
+      git checkout -b story/[branch-name-from-plan]
+      Build exactly what the story spec says. Read the spec at the absolute path in PLAN file.
+      Nothing more. Nothing less. No extra fields, no extra methods, no extra files.
+      After each file is created or modified, run the fast gate:
+      - For DocType JSON changes:
+        python -c "import json; json.load(open('[absolute path to modified json]'))"
+        PASS: exits 0 (valid JSON)
+      - For Python patch files:
+        python -c "import ast; ast.parse(open('[absolute path]').read())"
+        PASS: exits 0 (valid Python syntax)
+      - For sm_claim.py (BILL-010):
+        python -m pytest frappe-apps/sm_billing/sm_billing/sm_billing/doctype/sm_claim/test_sm_claim.py -v 2>&1 | tail -5
+        PASS: all tests pass
+      If fast gate fails: fix immediately before proceeding to next file.
+      When all files are created and fast gates pass:
+      ralph emit "build.ready" "[STORY-ID]: all files created, fast gates pass"
   verifier:
     name: "Verifier"
-    description: "Runs full gate suite appropriate to story type. Only hat that creates COMPLETE markers."
+    description: "Runs full gate suite against the story spec acceptance criteria. Only hat that can mark a story done."
     triggers: ["build.ready"]
     publishes: ["task.done", "build.retry"]
     instructions: |
-      Read PLAN-[STORY-ID].md to determine story type and gates.
-      For CODE stories - run ALL of these:
-        1. cd /Users/jamesilsley/GitHub/spark-mojo-platform/abstraction-layer
-           pytest tests/ -v
-           PASS: 0 failures
-           FAIL: emit build.retry with exact failure, file, line number
-        2. pytest tests/ --cov=. --cov-report=term-missing --cov-fail-under=70
+      Read PLAN-[STORY-ID].md to identify current story and gate type.
+      For BILL-006, BILL-007, BILL-008, BILL-009 (DocType gates):
+      SSH to VPS and run:
+        ssh sparkmojo "docker exec frappe-poc-backend-1 bash -c 'cd /home/frappe/frappe-bench && git pull origin main && bench --site poc-dev.sparkmojo.com migrate'"
+        PASS: exits 0, no errors in output
+        Then run story-specific verification commands from the "Test Steps (VPS Verification)" section of the story spec.
+        Each step has an Expected output - compare actual to expected.
+        Run patch idempotency check (run-patch twice, verify no error on second run).
+      For BILL-010 (Python controller gates):
+        1. Run unit tests locally:
+           cd /Users/jamesilsley/GitHub/spark-mojo-platform
+           python -m pytest frappe-apps/sm_billing/sm_billing/sm_billing/doctype/sm_claim/test_sm_claim.py -v
+           PASS: 12 tests, 0 failures
+        2. Only if tests pass - SSH to VPS:
+           ssh sparkmojo "docker exec frappe-poc-backend-1 bash -c 'cd /home/frappe/frappe-bench && git pull origin main && bench --site poc-dev.sparkmojo.com migrate'"
            PASS: exits 0
-           FAIL: emit build.retry with coverage report
-        3. Check endpoint reachable per story spec verification steps.
-           Use correct host per routing reference in PROMPT.md.
-           PASS: app response (not Traefik 404)
-           FAIL: emit build.retry with exact curl output
-      For DOCUMENTATION stories - verify ALL of these:
-        1. All required files exist at output path
-           ls [output_path]/*.md | wc -l
-           PASS: count matches required file count from story spec
-           FAIL: emit build.retry listing missing files
-        2. Each file meets minimum length
-           wc -w [output_path]/*.md
-           PASS: each file >= minimum words from story spec
-           FAIL: emit build.retry listing short files
-        3. Story-specific checks per story spec acceptance criteria
-           (FAQ question counts, specific content requirements, etc.)
-      For RESEARCH stories - verify ALL of these:
-        1. Both research files exist at output paths
-        2. Business requirements doc >= 2000 words
-        3. Technical research doc >= 1500 words and contains a recommendation section
-        4. wc -w on each file
+        3. Run bench console verification from story spec Test Steps 6-8.
       If ALL gates pass:
         touch [STORY-ID]-COMPLETE
-        ralph emit "task.done" "[STORY-ID]: all gates pass - [summary of results]"
+        ralph emit "task.done" "[STORY-ID]: all gates pass - [summary of gate results]"
       If ANY gate fails:
-        ralph emit "build.retry" "[STORY-ID]: [exact failure details]"
+        ralph emit "build.retry" "[STORY-ID]: gate failed - [exact command, exact error, line number if applicable]"
   committer:
     name: "Committer"
-    description: "Commits code story work and pushes branch to GitHub origin. Documentation and research stories are already committed by builder."
+    description: "Commits verified work using the exact commit message from the story spec. Then pushes branch to GitHub origin."
     triggers: ["task.done"]
     publishes: ["story.committed"]
     instructions: |
-      Read PLAN-[STORY-ID].md to determine story type.
-      For CODE stories:
-        cd /Users/jamesilsley/GitHub/spark-mojo-platform
-        git add -A
-        Read exact commit message from story spec file in sparkmojo-internal.
-        git commit -m "[exact message from story spec]"
-        MANDATORY: Push the feature branch to GitHub origin so it exists remotely.
-        git push origin $(git branch --show-current)
-        Verify the push succeeded (exit code 0). If push fails, log the error and retry once.
-        ralph emit "story.committed" "[STORY-ID] committed and pushed to origin on [branch]"
-      For DOCUMENTATION and RESEARCH stories:
-        Files are already committed to sparkmojo-internal by the builder.
-        No additional commit needed in spark-mojo-platform.
-        ralph emit "story.committed" "[STORY-ID] documentation committed to sparkmojo-internal"
+      Read PLAN-[STORY-ID].md to identify current story and branch name.
+      Read the story spec to get the exact commit message from the "Commit Message" section.
+      git add -A
+      git commit -m "[exact commit message from story spec - copy verbatim]"
+      git push origin story/[branch-name]
+      Verify the push succeeded (exit 0).
+      ralph emit "story.committed" "[STORY-ID] committed and pushed on story/[branch-name]"
