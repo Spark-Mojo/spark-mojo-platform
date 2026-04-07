@@ -10,8 +10,8 @@ BILL-008
 Frappe DocType — patch file (no JSON changes)
 
 ## Dependency Check
-- **BILL-007**: COMMITTED on `story/bill-007-sm-claim-new-fields` (commit d5b91e6) ✅
-- **BILL-006**: COMMITTED on `story/bill-006-canonical-state-expansion` (commit 9e32451) ✅
+- **BILL-007**: COMPLETE ✅ (marker written 2026-04-07)
+- **BILL-006**: COMPLETE ✅ (marker written 2026-04-07)
 
 ## Files to Create/Modify
 
