@@ -14,7 +14,7 @@ from fastapi import FastAPI, Request, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 
-from auth import validate_frappe_session, get_current_user
+from auth import validate_frappe_session, get_current_user, verify_admin_key
 from registry import ConnectorRegistry, SiteRegistry
 from connectors import frappe_native, simplepractice, valant, plane
 from routes.onboarding import router as onboarding_router
@@ -76,7 +76,11 @@ async def httpx_error_handler(request: Request, exc: _httpx.HTTPStatusError):
 
 # Dedicated capability routers (registered before generic catch-all)
 app.include_router(onboarding_router)
-app.include_router(provisioning_router, prefix="/api/admin")
+app.include_router(
+    provisioning_router,
+    prefix="/api/admin",
+    dependencies=[Depends(verify_admin_key)],
+)
 app.include_router(billing_router, prefix="/api/modules/billing")
 app.include_router(billing_webhook_router, prefix="/api/webhooks/stedi")
 app.include_router(clinical_router, prefix="/api/modules/clinical")
@@ -106,7 +110,7 @@ async def health():
 
 
 @app.post("/admin/registry/refresh")
-async def registry_refresh(request: Request):
+async def registry_refresh(request: Request, _: None = Depends(verify_admin_key)):
     """Force refresh the SiteRegistry cache from SM Site Registry DocType."""
     site_registry: SiteRegistry = request.app.state.site_registry
     await site_registry.refresh()

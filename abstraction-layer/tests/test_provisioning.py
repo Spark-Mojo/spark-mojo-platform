@@ -18,6 +18,9 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 from fastapi.testclient import TestClient
 
 
+TEST_ADMIN_KEY = "test-provisioning-key"
+
+
 @pytest.fixture
 def client():
     """Create a test client with mocked dependencies."""
@@ -26,12 +29,17 @@ def client():
     os.environ["ADMIN_FRAPPE_URL"] = ""
     os.environ["MEDPLUM_BASE_URL"] = ""
     os.environ["N8N_BASE_URL"] = ""
+    os.environ["ADMIN_SERVICE_KEY"] = TEST_ADMIN_KEY
     os.environ["PROVISIONING_TEMPLATE_DIR"] = os.path.join(
         os.path.dirname(__file__), "..", "provisioning", "templates"
     )
 
+    # Update module-level variable so verify_admin_key picks it up
+    import auth
+    auth.ADMIN_SERVICE_KEY = TEST_ADMIN_KEY
+
     from main import app
-    return TestClient(app)
+    return TestClient(app, headers={"X-Admin-Key": TEST_ADMIN_KEY})
 
 
 VALID_REQUEST = {

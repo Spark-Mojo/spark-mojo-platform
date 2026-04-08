@@ -493,9 +493,12 @@ async def step_10_register_site(
 
     # Trigger registry refresh
     try:
+        admin_key = os.getenv("ADMIN_SERVICE_KEY", "")
+        headers = {"X-Admin-Key": admin_key} if admin_key else {}
         async with httpx.AsyncClient() as client:
             await client.post(
                 f"{ADMIN_FRAPPE_URL.replace('/api', '')}/admin/registry/refresh",
+                headers=headers,
                 timeout=5,
             )
     except Exception:

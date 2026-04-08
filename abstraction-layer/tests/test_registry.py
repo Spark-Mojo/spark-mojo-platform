@@ -185,13 +185,16 @@ async def test_registry_refresh_endpoint():
     site_reg = SiteRegistry()
     app.state.site_registry = site_reg
 
-    with patch.dict(os.environ, {"ADMIN_FRAPPE_URL": "http://admin:8000"}):
+    test_key = "test-registry-key"
+    with patch.dict(os.environ, {"ADMIN_FRAPPE_URL": "http://admin:8000", "ADMIN_SERVICE_KEY": test_key}):
+        import auth
+        auth.ADMIN_SERVICE_KEY = test_key
         site_reg._admin_url = "http://admin:8000"
         with patch("registry.httpx.AsyncClient", return_value=mock_client):
             async with AsyncClient(
                 transport=ASGITransport(app=app), base_url="http://test"
             ) as client:
-                resp = await client.post("/admin/registry/refresh")
+                resp = await client.post("/admin/registry/refresh", headers={"X-Admin-Key": test_key})
 
     assert resp.status_code == 200
     data = resp.json()

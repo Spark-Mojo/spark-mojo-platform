@@ -7,11 +7,12 @@ then falls back to Frappe session cookie, then dev mode fallback.
 
 import os
 import json
+import secrets
 from dotenv import load_dotenv
 load_dotenv()
 
 import httpx
-from fastapi import Request, HTTPException
+from fastapi import Request, Header, HTTPException
 
 from session_store import get_session
 
@@ -108,3 +109,19 @@ async def get_current_user(request: Request) -> dict:
         "roles": roles,
         "tenant_id": "default",
     }
+
+
+ADMIN_SERVICE_KEY = os.getenv("ADMIN_SERVICE_KEY", "")
+
+
+async def verify_admin_key(x_admin_key: str = Header(None, alias="X-Admin-Key")) -> None:
+    """
+    Dependency for admin-only routes.
+    Validates the X-Admin-Key header against ADMIN_SERVICE_KEY env var.
+    Raises 500 if ADMIN_SERVICE_KEY is not configured (misconfigured server).
+    Raises 403 if header is missing or does not match.
+    """
+    if not ADMIN_SERVICE_KEY:
+        raise HTTPException(status_code=500, detail="ADMIN_SERVICE_KEY not configured")
+    if not x_admin_key or not secrets.compare_digest(x_admin_key, ADMIN_SERVICE_KEY):
+        raise HTTPException(status_code=403, detail="Invalid or missing admin key")
