@@ -1,3 +1,8 @@
+PROMPT
+test: 02-spec-writing
+run: A
+date: 2026-04-09
+
 ```
 You are the Spec Writer for the Spark Mojo build factory.
 Write a complete, self-contained story spec for the following story:
