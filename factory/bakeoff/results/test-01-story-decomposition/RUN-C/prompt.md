@@ -1,62 +1,52 @@
 Prompt
 test: 01-story-decomposition
-run: B
+run: C
 date: 2026-04-09
 
-You are the Story Decomposer for the Spark Mojo build factory. Read the Scheduling Mojo research summary below. Break this capability into atomic, independently testable stories for the build factory.
---- SCHEDULING MOJO RESEARCH SUMMARY ---
-CAPABILITY: Scheduling Mojo VERTICAL: Behavioral Health (first instance) CORE PURPOSE: Allows practices to manage provider availability, book appointments, and track the full appointment lifecycle from request through completion or cancellation.
+You are the Story Decomposer for the Spark Mojo build factory. Read the Knowledge Base Wiki research summary below. Break this capability into atomic, independently testable stories for the build factory.
+--- KNOWLEDGE BASE WIKI RESEARCH SUMMARY ---
+CAPABILITY: Knowledge Base Wiki (KB/Wiki Mojo) VERTICAL: Universal (all verticals) CORE PURPOSE: Allows practices to maintain internal operational documentation (SOPs, policies, training reference) and optionally expose curated articles to clients via the patient portal Help section.
 WORKFLOWS:
-1. Provider Setup: Admin configures provider weekly schedule templates (days available, hours, appointment types allowed). Admin blocks off individual time slots (vacation, lunch, admin time).
-2. Appointment Booking: Receptionist or patient searches available slots by provider, date range, and appointment type. System validates against provider schedule and existing bookings. Appointment created in Requested state.
-3. Appointment Confirmation: Provider or admin confirms a Requested appointment. Status moves to Confirmed. Reminder notification queued.
-4. Appointment Execution: On the day, appointment moves to In Progress when session starts. Moves to Completed when clinician marks it done. Completion triggers billing workflow (session completion is the billing trigger per platform vocabulary).
-5. Cancellation and No-Show: Receptionist or patient cancels with reason code. Clinician marks no-show. Each has distinct state transitions and requires CRM timeline entries.
-6. Rescheduling: Cancel existing appointment, create new one, preserve link to original if part of a recurring series.
-7. Recurring Appointments: Weekly or biweekly series. User chooses to edit one instance or all future instances.
-8. Telehealth Link Generation: For telehealth appointment types, a video link is generated and attached to the appointment. Link surfaces in patient reminder notifications.
-9. Waitlist: If no slots available, patient joins a waitlist for a provider+type combination. Auto-notified when a matching slot opens.
-APPOINTMENT STATUS LIFECYCLE: Requested → Confirmed → In Progress → Completed Requested → Cancelled Confirmed → Cancelled Confirmed → No-Show Completed, Cancelled, and No-Show are terminal states.
+1. Article Creation: Staff member creates article with title, rich text body, category, and visibility setting (internal or client-facing). Saved as Draft initially.
+2. Article Publishing (Internal): Internal articles can be self-published by author or any admin. Status moves directly Draft → Published.
+3. Article Publishing (Client-Facing): Client-facing articles require admin approval. Status path: Draft → Under Review → Published. Reviewer can reject back to Draft with comments.
+4. Version History: Every time an article body is saved, a version snapshot is created. Admin can view version history and restore any previous version. Restoring creates a new version (does not delete history).
+5. Category Management: Admin creates and manages a category hierarchy (up to 2 levels deep). Articles belong to exactly one category. Categories have a default visibility setting.
+6. Full-Text Search: Staff can search across all published articles they have access to. Clients see only client-facing published articles. Search is role-aware.
+7. Article Archiving: Published articles can be archived by admin. Archived articles are not returned in search or category browse. Accessible via direct link to authorized staff only.
+8. Client Portal Surface: Client-facing published articles appear in the patient portal Help section. Read-only for clients. Filtered by the site's article category configuration.
+9. SOP Connection (boundary rule): SOP Mojo owns the relationship between operational SOPs and Wiki articles. An SOP may reference Wiki articles, but the Wiki does not trigger, drive, or write to SOPs. When a client-facing article changes status, n8n may notify SOP Mojo to flag linked SOPs for review. The Wiki never calls SOP Mojo directly.
+ARTICLE STATUS LIFECYCLE: Draft → Published (internal articles, direct) Draft → Under Review → Published (client-facing articles) Draft → Under Review → Draft (rejected, with comments) Published → Archived Archived is terminal for display purposes (but not for history).
 DOCTYPE REQUIREMENTS:
-* SM Appointment: main record (provider_id, patient_id, appointment_type, start_datetime, end_datetime, status, location_type, telehealth_link, notes, cancellation_reason, series_id, recurring_parent_id)
-* SM Provider Schedule: weekly template (provider_id, day_of_week, start_time, end_time, appointment_types_allowed)
-* SM Schedule Block: individual blocked time (provider_id, date, start_time, end_time, reason)
-* SM Appointment Type: configurable types (name, duration_minutes, is_telehealth, buffer_minutes_after, default_location_type)
-* SM Waitlist Entry: patient_id, provider_id, appointment_type, requested_date_from, requested_date_to, notified
+* SM Article: main record (title, slug, body_html, category, visibility: internal|client, status: draft|under_review|published|archived, author, reviewer, rejection_notes, last_published_at)
+* SM Article Version: version history (article_id, version_number, body_html, saved_by, saved_at, word_count)
+* SM Wiki Category: category (name, parent_category, slug, description, default_visibility, is_active)
 ABSTRACTION LAYER ENDPOINTS NEEDED:
-* GET /api/modules/scheduling/slots (query available slots by provider, date range, appointment type)
-* POST /api/modules/scheduling/appointment/create
-* GET /api/modules/scheduling/appointment/{id}
-* PUT /api/modules/scheduling/appointment/{id}/confirm
-* PUT /api/modules/scheduling/appointment/{id}/start
-* PUT /api/modules/scheduling/appointment/{id}/complete
-* PUT /api/modules/scheduling/appointment/{id}/cancel
-* PUT /api/modules/scheduling/appointment/{id}/no-show
-* GET /api/modules/scheduling/providers (list with availability metadata)
-* GET /api/modules/scheduling/provider/{id}/schedule
-* POST /api/modules/scheduling/provider/{id}/schedule
-* POST /api/modules/scheduling/provider/{id}/block
-* DELETE /api/modules/scheduling/provider/{id}/block/{block_id}
-* POST /api/modules/scheduling/waitlist/join
-* DELETE /api/modules/scheduling/waitlist/{id}
+* POST /api/modules/wiki/article/create
+* GET /api/modules/wiki/article/{id}
+* PUT /api/modules/wiki/article/{id}/update (body + metadata, creates new version)
+* PUT /api/modules/wiki/article/{id}/submit-for-review
+* PUT /api/modules/wiki/article/{id}/publish
+* PUT /api/modules/wiki/article/{id}/reject (with rejection_notes)
+* PUT /api/modules/wiki/article/{id}/archive
+* GET /api/modules/wiki/article/{id}/versions
+* POST /api/modules/wiki/article/{id}/restore/{version_number}
+* GET /api/modules/wiki/articles (list with filters: category, visibility, status, search)
+* POST /api/modules/wiki/category/create
+* PUT /api/modules/wiki/category/{id}/update
+* GET /api/modules/wiki/categories
 FRONTEND COMPONENTS NEEDED:
-* AvailabilityCalendar: weekly view of provider availability with slot selection
-* AppointmentBookingForm: slot + patient + type picker with confirmation step
-* AppointmentCard: appointment detail display with status-aware action buttons
-* ProviderScheduleEditor: weekly template management interface
-* WaitlistPanel: view and manage waitlist entries
-INTEGRATIONS (all via n8n — Frappe never calls these directly):
-* Appointment reminder notifications (24h and 1h before, email + SMS)
-* Telehealth link generation (via video provider API)
-* Billing trigger on completion (kicks off billing workflow in Healthcare Billing Mojo)
-* Waitlist slot-opening notification (when a slot opens, notify waitlisted patients)
-FHIR: SM Appointment maps to FHIR R4 Appointment resource via Medplum
-CRM TIMELINE REQUIREMENTS:
-* Appointment created: write to client CRM timeline
-* Appointment confirmed: write to client CRM timeline
-* Appointment completed: write to client CRM timeline (include type and duration)
-* Appointment cancelled: write to client CRM timeline (include reason)
-* No-show: write to client CRM timeline
+* ArticleEditor: rich text editor with title, category selector, visibility toggle, save and submit controls
+* ArticleViewer: renders published article with metadata (last updated, reviewer, version info)
+* ArticleList: searchable and filterable article list with status badges
+* CategoryTree: collapsible category hierarchy browser
+* VersionHistoryPanel: version list with restore button
+INTEGRATIONS (all via n8n):
+* Notify author when client-facing article is approved or rejected
+* Notify admin when any client-facing article is published (QA awareness)
+* Notify SOP Mojo when a client-facing article changes status (passive flag, no write-back)
+CRM TIMELINE:
+* N/A for individual article actions. Exception: if a client-facing article is published for the first time, write a practice-level activity log entry (not a client-specific CRM timeline entry).
 --- END RESEARCH SUMMARY ---
 ATOMIC means:
 * ONE endpoint, OR one React component, OR one n8n workflow, OR one DocType. Never multiple.
@@ -74,12 +64,13 @@ Every story must answer these three Spec Gates:
 2. CRM Timeline: What does this story write to the CRM timeline? (N/A is valid with explanation)
 3. Right Level: Universal, vertical, client, or role level?
 Output a STORIES.md file with:
-* Story ID (SCHED-001, SCHED-002, etc.), title, category, size (S or XS only)
+* Story ID (WIKI-001, WIKI-002, etc.), title, category, size (S or XS only)
 * One-sentence description
 * Dependencies (IDs or None)
 * Spec Gate answers (one line each)
 Then output a DEPENDENCY-GRAPH.md showing build order and parallel execution groups.
-``````markdown
+```
+```markdown
 # Spark Mojo — Platform Guardrails
 
 **Every agent reads this file. Every spec factory hat loads this file first.**
