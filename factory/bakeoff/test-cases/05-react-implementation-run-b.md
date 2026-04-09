@@ -11,7 +11,7 @@
 
 Provide as context:
 - `factory/guardrails/PLATFORM-GUARDRAILS.md`
-- An existing component, e.g.: `platform/apps/mojo_frontend/src/library/MojoCard.jsx`
+- An existing component: `frontend/src/components/mojos/WorkboardMojo.jsx`
 
 ---
 
@@ -21,7 +21,7 @@ You are the Story Builder for the Spark Mojo build factory. Implement the follow
 STORY: BILL-FRONTEND-001 TITLE: Claim status pill component CATEGORY: FRONTEND SIZE: XS
 WHAT TO BUILD: A single React JSX component: ClaimStatusPill. Displays a small colored pill badge showing a claim's canonical state. Pure display component — no API calls.
 ARCHITECTURE CONSTRAINTS:
-* File: platform/apps/mojo_frontend/src/library/ClaimStatusPill.jsx (new)
+* File: frontend/src/components/mojos/ClaimStatusPill.jsx (new)
 * NO TypeScript. File extension must be .jsx.
 * Use var(--sm-*) CSS variables for ALL colors. No hardcoded hex values.
 * Pure display component. Accepts state as a prop. Does NOT fetch from any API.

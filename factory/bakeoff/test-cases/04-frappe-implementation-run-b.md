@@ -11,7 +11,7 @@
 
 Provide as context:
 - `factory/guardrails/PLATFORM-GUARDRAILS.md`
-- `platform/apps/mojo_abstraction_layer/billing/claims.py` (pattern reference — existing billing MAL endpoints)
+- `abstraction-layer/routes/billing.py` (pattern reference — existing billing MAL endpoints)
 
 Do NOT provide the state machine controller code. The model must import it as described in the spec.
 
@@ -28,7 +28,7 @@ ARCHITECTURE CONSTRAINTS:
 * The controller's transition_state(claim_name, new_state) raises ValueError with a message if the transition is invalid.
 * The site name comes from the request header: X-Frappe-Site-Name
 FILES TO CREATE OR MODIFY:
-* MODIFY: platform/apps/mojo_abstraction_layer/billing/claims.py (add the new endpoint, do not modify existing endpoints)
+* MODIFY: abstraction-layer/routes/billing.py (add the new endpoint, do not modify existing endpoints)
 DETAILED SPECIFICATION: Request: POST /api/modules/billing/claim/{claim_id}/transition Header: X-Frappe-Site-Name: {site_name} Body: { "new_state": "submitted" }
 Response (200): { "claim_id": "{claim_id}", "previous_state": "ready_to_submit", "current_state": "submitted", "valid_next_states": ["acknowledged", "rejected"] }
 Response (400): { "error": "new_state is required" } Response (404): { "error": "claim not found", "claim_id": "{claim_id}" } Response (409): { "error": "invalid transition", "from_state": "{current}", "to_state": "{requested}", "valid_transitions": ["{list}"] } Response (422): { "error": "site_name header missing" }
@@ -47,7 +47,7 @@ ACCEPTANCE CRITERIA:
 5. Missing body field returns 400
 6. Missing site header returns 422
 7. All 6 tests pass
-8. Endpoint added to existing claims.py — no new files created
+8. Endpoint added to existing billing.py — no new files created
 Write the implementation and tests. Nothing else.
 ```
 
@@ -63,7 +63,7 @@ Write the implementation and tests. Nothing else.
 - 1: Code does not run or is completely wrong
 
 ### Category B: Convention Compliance (0-5)
-- 5: Endpoint added to existing claims.py matching existing patterns; imports correct; no new files created; SM prefix used correctly
+- 5: Endpoint added to existing billing.py matching existing patterns; imports correct; no new files created; SM prefix used correctly
 - 4: Mostly compliant; 1 minor deviation
 - 3: Generally follows conventions but noticeable deviations
 - 2: Ignores existing patterns

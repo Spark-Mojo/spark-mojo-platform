@@ -10,8 +10,8 @@ the Spark Mojo frontend?
 
 Provide as context:
 - `factory/guardrails/PLATFORM-GUARDRAILS.md`
-- An existing component from the platform library, e.g.:
-  `platform/apps/mojo_frontend/src/library/MojoCard.jsx`
+- An existing component from the platform:
+  `frontend/src/components/mojos/WorkboardMojo.jsx`
   (for pattern reference only)
 
 ---
@@ -27,7 +27,7 @@ CATEGORY: FRONTEND
 SIZE: XS
 WHAT TO BUILD: A single React JSX component: FeatureFlagBadge. It displays a small badge showing whether a named feature is enabled or disabled for the current site. Used by the admin console to give operators a quick visual indicator when listing features.
 ARCHITECTURE CONSTRAINTS:
-* File: platform/apps/mojo_frontend/src/library/FeatureFlagBadge.jsx (new)
+* File: frontend/src/components/mojos/FeatureFlagBadge.jsx (new)
 * NO TypeScript. File extension must be .jsx.
 * Use var(--sm-*) CSS variables for ALL colors. No hardcoded hex values.
 * The component calls GET /api/modules/admin/features/{subdomain} to check feature status. It does NOT call Frappe directly.
@@ -103,3 +103,9 @@ These are binary checks. Each violation costs 2 points.
 
 **Maximum score: 25**
 **Pass threshold: 18/25**
+
+---
+
+## Scoring Note
+
+Run A was executed before this path correction was applied. Models received the wrong file path in the spec but were provided `frontend/src/components/mojos/WorkboardMojo.jsx` as context. Since all models received identical information, Run A cross-model comparisons remain valid.

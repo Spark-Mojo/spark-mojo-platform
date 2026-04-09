@@ -10,7 +10,7 @@ the Spark Mojo abstraction layer?
 
 Provide as context:
 - `factory/guardrails/PLATFORM-GUARDRAILS.md`
-- The existing file: `platform/apps/mojo_abstraction_layer/billing/claims.py`
+- The existing file: `abstraction-layer/routes/billing.py`
   (use as a pattern reference for how MAL endpoints are structured)
 
 Do NOT provide any existing vocabulary-related code if it exists.
@@ -30,8 +30,8 @@ WHAT TO BUILD: Add a single GET endpoint to the abstraction layer at:
 GET /api/modules/desktop/vocabulary
 This endpoint reads the current site's vocabulary configuration and returns the resolved vocabulary dictionary. The vocabulary maps 18 platform concept keys (e.g., "person", "service_record", "invoice") to their display labels for this site.
 ARCHITECTURE CONSTRAINTS:
-* This endpoint lives in: platform/apps/mojo_abstraction_layer/desktop/vocabulary.py (new file)
-* Register it in: platform/apps/mojo_abstraction_layer/desktop/init.py (modify)
+* This endpoint lives in: abstraction-layer/routes/desktop.py (new file)
+* Register it in: abstraction-layer/main.py (modify)
 * The endpoint is called by the React frontend on app load via useSiteConfig hook
 * The SM Site Registry DocType (sm_site_registry in sm_widgets app) has a config_json field (Long Text, valid JSON) that may contain a "vocabulary" section with overrides
 * Platform defaults are a Python dict in the same file
@@ -39,8 +39,8 @@ ARCHITECTURE CONSTRAINTS:
 * The site name comes from the request header: X-Frappe-Site-Name
 * No custom DocType needed for this story
 FILES TO CREATE OR MODIFY:
-* CREATE: platform/apps/mojo_abstraction_layer/desktop/vocabulary.py
-* MODIFY: platform/apps/mojo_abstraction_layer/desktop/init.py
+* CREATE: abstraction-layer/routes/desktop.py
+* MODIFY: abstraction-layer/main.py
 DETAILED SPECIFICATION:
 Request: GET /api/modules/desktop/vocabulary
 Header: X-Frappe-Site-Name: {site_name}
@@ -83,7 +83,7 @@ ACCEPTANCE CRITERIA:
 4. Unknown site name returns 404
 5. Malformed config_json does not cause a 500; returns platform defaults
 6. All 5 tests pass
-7. New file uses the same import and routing pattern as claims.py
+7. New file uses the same import and routing pattern as billing.py
 Write the implementation. Write the tests. Do not write anything else.
 ```
 
@@ -99,7 +99,7 @@ Write the implementation. Write the tests. Do not write anything else.
 - 1: Code does not run or is completely wrong
 
 ### Category B: Convention Compliance (0-5)
-- 5: File structure, imports, and routing pattern match the existing claims.py pattern; SM prefix used where applicable; no direct Frappe calls from wrong layer
+- 5: File structure, imports, and routing pattern match the existing billing.py pattern; SM prefix used where applicable; no direct Frappe calls from wrong layer
 - 4: Mostly compliant; 1 minor deviation
 - 3: Generally follows conventions but has noticeable deviations
 - 2: Ignores existing patterns; would not integrate with the codebase
@@ -128,3 +128,9 @@ Write the implementation. Write the tests. Do not write anything else.
 
 **Maximum score: 25**
 **Pass threshold: 18/25**
+
+---
+
+## Scoring Note
+
+Run A was executed before this path correction was applied. Models received the wrong file paths in the spec but were provided `abstraction-layer/routes/billing.py` as context. Since all models received identical wrong information, Run A cross-model comparisons remain valid. Convention Compliance scoring should focus on import and routing pattern quality, not path string matching.

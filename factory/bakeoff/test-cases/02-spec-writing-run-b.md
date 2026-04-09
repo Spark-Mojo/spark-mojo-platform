@@ -12,7 +12,7 @@
 
 Provide as context:
 - `factory/guardrails/PLATFORM-GUARDRAILS.md`
-- `platform/apps/mojo_abstraction_layer/billing/claims.py` (pattern reference for billing MAL endpoints)
+- `abstraction-layer/routes/billing.py` (pattern reference for billing MAL endpoints)
 
 Do NOT provide BILL-010 or any existing story spec to the model.
 

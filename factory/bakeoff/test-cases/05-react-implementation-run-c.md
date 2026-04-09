@@ -11,7 +11,7 @@
 
 Provide as context:
 - `factory/guardrails/PLATFORM-GUARDRAILS.md`
-- An existing component, e.g.: `platform/apps/mojo_frontend/src/library/MojoCard.jsx`
+- An existing component: `frontend/src/components/mojos/WorkboardMojo.jsx`
 
 ---
 
@@ -21,7 +21,7 @@ You are the Story Builder for the Spark Mojo build factory. Implement the follow
 STORY: SCHEDULING-FRONTEND-001 TITLE: ProviderSelector dropdown component CATEGORY: FRONTEND SIZE: S
 WHAT TO BUILD: A single React JSX component: ProviderSelector. A searchable dropdown that fetches available providers and lets the user select one for appointment booking.
 ARCHITECTURE CONSTRAINTS:
-* File: platform/apps/mojo_frontend/src/library/ProviderSelector.jsx (new)
+* File: frontend/src/components/mojos/ProviderSelector.jsx (new)
 * NO TypeScript. .jsx only.
 * Use var(--sm-*) CSS variables for ALL colors. No hardcoded hex values.
 * Fetches from /api/modules/scheduling/providers — the abstraction layer only. Do NOT call Frappe directly.

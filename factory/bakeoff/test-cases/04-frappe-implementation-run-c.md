@@ -11,7 +11,7 @@
 
 Provide as context:
 - `factory/guardrails/PLATFORM-GUARDRAILS.md`
-- `platform/apps/mojo_abstraction_layer/billing/claims.py` (pattern reference)
+- `abstraction-layer/routes/billing.py` (pattern reference)
 
 ---
 
@@ -21,14 +21,14 @@ You are the Story Builder for the Spark Mojo build factory. Implement the follow
 STORY: FEATURE-FLAG-001 TITLE: Site feature flags endpoint CATEGORY: BACKEND SIZE: XS DEPENDENCIES: None
 WHAT TO BUILD: A GET endpoint that returns which platform features are enabled for a given site.
 ARCHITECTURE CONSTRAINTS:
-* Endpoint lives in: platform/apps/mojo_abstraction_layer/admin/features.py (new file)
-* Register in: platform/apps/mojo_abstraction_layer/admin/init.py (modify)
+* Endpoint lives in: abstraction-layer/routes/admin.py (new file)
+* Register in: abstraction-layer/main.py (modify)
 * React calls /api/modules/admin/features/{subdomain}. React never calls Frappe directly.
 * Site config is stored in SM Site Registry DocType (field: config_json, Long Text, valid JSON)
 * The site name comes from the URL path parameter {subdomain}
 FILES TO CREATE OR MODIFY:
-* CREATE: platform/apps/mojo_abstraction_layer/admin/features.py
-* MODIFY: platform/apps/mojo_abstraction_layer/admin/init.py
+* CREATE: abstraction-layer/routes/admin.py
+* MODIFY: abstraction-layer/main.py
 DETAILED SPECIFICATION: Request: GET /api/modules/admin/features/{subdomain}
 Platform defaults (all False): billing_mojo, scheduling_mojo, workboard_mojo, wiki_mojo, crm_mojo, patient_portal
 The SM Site Registry config_json may have a "features" key with boolean overrides. Site overrides supersede platform defaults. Unknown keys in config_json features are ignored.
@@ -63,7 +63,7 @@ Write the implementation and tests. Nothing else.
 - 1: Code does not run or is wrong
 
 ### Category B: Convention Compliance (0-5)
-- 5: File structure, imports, routing match existing MAL patterns; init.py correctly modified; no hardcoded values outside the defaults dict
+- 5: File structure, imports, routing match existing MAL patterns; main.py correctly modified to register the new router; no hardcoded values outside the defaults dict
 - 4: Mostly compliant; 1 deviation
 - 3: Generally follows conventions with deviations
 - 2: Ignores existing patterns
@@ -84,7 +84,7 @@ Write the implementation and tests. Nothing else.
 - 1: No error handling
 
 ### Category E: Scope Discipline (0-5)
-- 5: Creates exactly 2 files; 6 exact feature keys defined; no added complexity; response schema matches spec exactly
+- 5: Creates exactly 1 new file and modifies exactly 1 existing file; 6 exact feature keys defined; no added complexity; response schema matches spec exactly
 - 4: One minor deviation
 - 3: Added or removed features
 - 2: Significant deviation

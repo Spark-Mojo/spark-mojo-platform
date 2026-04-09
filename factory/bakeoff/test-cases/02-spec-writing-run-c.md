@@ -11,7 +11,7 @@
 
 Provide as context:
 - `factory/guardrails/PLATFORM-GUARDRAILS.md`
-- `platform/apps/mojo_abstraction_layer/billing/claims.py` (pattern reference)
+- `abstraction-layer/routes/billing.py` (pattern reference)
 
 Do NOT provide any existing notification-related code.
 
