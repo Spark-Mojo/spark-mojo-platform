@@ -1,3 +1,4 @@
+PROMPT
 model: model-delta
 test: 03-prose-quality
 run: A

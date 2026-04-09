@@ -3,6 +3,8 @@ test: 01-story-decomposition
 run: B
 date: 2026-04-09
 
+```
+
 You are the Story Decomposer for the Spark Mojo build factory. Read the Scheduling Mojo research summary below. Break this capability into atomic, independently testable stories for the build factory.
 --- SCHEDULING MOJO RESEARCH SUMMARY ---
 CAPABILITY: Scheduling Mojo VERTICAL: Behavioral Health (first instance) CORE PURPOSE: Allows practices to manage provider availability, book appointments, and track the full appointment lifecycle from request through completion or cancellation.

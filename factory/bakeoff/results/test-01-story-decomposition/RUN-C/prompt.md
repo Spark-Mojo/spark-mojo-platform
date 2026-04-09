@@ -3,6 +3,8 @@ test: 01-story-decomposition
 run: C
 date: 2026-04-09
 
+```
+
 You are the Story Decomposer for the Spark Mojo build factory. Read the Knowledge Base Wiki research summary below. Break this capability into atomic, independently testable stories for the build factory.
 --- KNOWLEDGE BASE WIKI RESEARCH SUMMARY ---
 CAPABILITY: Knowledge Base Wiki (KB/Wiki Mojo) VERTICAL: Universal (all verticals) CORE PURPOSE: Allows practices to maintain internal operational documentation (SOPs, policies, training reference) and optionally expose curated articles to clients via the patient portal Help section.

@@ -7,12 +7,12 @@ Use the Greek letter code names below.
 
 | Code Name | Real Model | Provider | Model String |
 |-----------|------------|----------|-------------|
-| model-alpha | GLM 5.1 | | |
-| model-beta | Claude Opus 4.6 | | |
-| model-gamma | Qwen 3.6 Plus | | |
-| model-delta | Claude Sonnet 4.6 | | |
-| model-epsilon | MiniMax2.7 | | |
-| model-zeta | Kimi 2.5 | | |
+| model-alpha | | | |
+| model-beta | | | |
+| model-gamma | | | |
+| model-delta | | | |
+| model-epsilon | | | |
+| model-zeta | | | |
 
 **Date assigned:** ___________
 **Assigned by:** James

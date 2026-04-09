@@ -1,3 +1,4 @@
+PROMPT
 model: model-gamma
 test: 03-prose-quality
 run: B

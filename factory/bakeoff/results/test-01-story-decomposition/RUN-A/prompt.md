@@ -3,6 +3,8 @@ test: 01-story-decomposition
 run: A
 date: 2026-04-09
 
+```
+
 You are the Story Decomposer for the Spark Mojo build factory.
 Read the CRM Client Identity research documents provided. Break this capability into atomic, independently testable stories for the build factory.
 ATOMIC means:
