@@ -101,8 +101,8 @@ Then output a DEPENDENCY-GRAPH.md showing build order and parallel execution gro
 ## Scoring Rubric
 
 ### Category A: Atomicity (0-5)
-- 5: All stories are size S or XS, no story has both backend and frontend, no story has more than 2 endpoints
-- 4: 1-2 stories are slightly over-scoped but splittable
+- 5: All stories are size S or XS or M, no story has both backend and frontend, no story has more than 2 endpoints
+- 4: 2-3 stories are slightly over-scoped but splittable
 - 3: Several stories are too large; would cause build failures
 - 2: Stories are feature-sized, not work-item-sized
 - 1: Monolithic decomposition; not usable
@@ -116,7 +116,7 @@ Then output a DEPENDENCY-GRAPH.md showing build order and parallel execution gro
 
 ### Category C: Spec Gate Compliance (0-5)
 - 5: All three gates answered for every story; CRM timeline entries explicitly addressed for the 5 lifecycle events listed in the research
-- 4: All stories have all three gates; 1-2 answers are thin
+- 4: All stories have all three gates; 2-3 answers are thin
 - 3: Spec gates present but several are placeholder answers
 - 2: Spec gates inconsistently applied
 - 1: Spec gates absent or ignored

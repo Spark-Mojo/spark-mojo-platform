@@ -3,6 +3,9 @@ test: 04-frappe-implementation
 run: A
 date: 2026-04-09
 
+I'll implement the vocabulary endpoint exactly as specified. Let me create the new route file and modify `main.py`.
+
+
 ```python
 """
 Vocabulary resolution endpoint — returns resolved display labels for platform concept keys.
@@ -170,6 +173,11 @@ async def get_vocabulary(request: Request):
     resolved = _resolve_vocabulary(client_overrides)
     return VocabularyResponse(vocabulary=resolved)
 ```
+
+
+Now I'll write the test file:
+
+
 ```python
 """
 Tests for vocabulary resolution endpoint (CRM-VOCAB-001).

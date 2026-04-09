@@ -91,22 +91,22 @@ Then output a DEPENDENCY-GRAPH.md showing build order and parallel execution gro
 ## Scoring Rubric
 
 ### Category A: Atomicity (0-5)
-- 5: All stories are size S or XS, no story has both backend and frontend, no story has more than 2 endpoints
-- 4: 1-2 stories slightly over-scoped but splittable
-- 3: Several stories are too large
+- 5: All stories are size S or XS or M, no story has both backend and frontend, no story has more than 2 endpoints
+- 4: 3-4 stories slightly over-scoped but splittable
+- 3: All stories are too large
 - 2: Feature-sized, not work-item-sized
 - 1: Monolithic; not usable
 
 ### Category B: Completeness (0-5)
 - 5: All 13 endpoints have stories; all 3 DocTypes have creation stories; all 3 n8n integrations have INTEGRATION stories; version history is a distinct story set (not bundled with article update)
 - 4: 1-2 endpoints or integrations missing
-- 3: Noticeable gaps
+- 3: Significant gaps
 - 2: Major sections unaddressed
 - 1: Incomplete
 
 ### Category C: Spec Gate Compliance (0-5)
 - 5: All three gates answered; CRM timeline correctly identified as N/A for most actions with the one exception (first publish of client-facing article) correctly noted
-- 4: Gates present; 1-2 thin answers
+- 4: Gates present; 3-4 thin answers
 - 3: Spec gates present but several are placeholder answers
 - 2: Inconsistently applied
 - 1: Absent or ignored

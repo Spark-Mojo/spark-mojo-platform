@@ -53,9 +53,9 @@ Then output a DEPENDENCY-GRAPH.md showing build order and parallel execution gro
 ## Scoring Rubric
 
 ### Category A: Atomicity (0-5)
-- 5: All stories are size S or XS, no story has both backend and frontend, no story has more than 2 endpoints
-- 4: 1-2 stories are slightly over-scoped but splittable
-- 3: Several stories are too large; would cause build failures
+- 5: All stories are size S or XS or m, no story has both backend and frontend, no story has more than 2 endpoints
+- 4: 3-4 stories are slightly over-scoped but splittable
+- 3: Many stories are too large; would cause build failures
 - 2: Stories are feature-sized, not work-item-sized
 - 1: Monolithic decomposition; not usable
 

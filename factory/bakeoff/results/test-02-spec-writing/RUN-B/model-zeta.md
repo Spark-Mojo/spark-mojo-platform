@@ -3,7 +3,7 @@ test: 02-spec-writing
 run: B
 date: 2026-04-09
 
-```markdown
+ ```markdown
 # Story Spec: BILL-QUERY-001
 
 ## Header
