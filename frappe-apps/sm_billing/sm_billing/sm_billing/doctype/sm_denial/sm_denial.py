@@ -1,6 +1,9 @@
 import frappe
 from frappe.model.document import Document
 from datetime import timedelta
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 APPEAL_WINDOW_DAYS = 90
@@ -20,7 +23,67 @@ class SMDenial(Document):
             self.appeal_deadline = denial_dt + timedelta(days=APPEAL_WINDOW_DAYS)
 
     def after_insert(self):
+        self._classify_denial()
         self._create_workboard_task()
+
+    def _classify_denial(self):
+        """Classify denial via AWS Bedrock and write AI fields."""
+        try:
+            from sm_billing.sm_billing.denial_classifier import classify_denial
+
+            carc_codes = [row.carc_code for row in (self.carc_codes or [])]
+            rarc_codes = [row.rarc_code for row in (self.rarc_codes or [])]
+
+            # Get payer and CPT codes from linked claim
+            payer_name = ""
+            cpt_codes = []
+            if self.claim:
+                try:
+                    claim_doc = frappe.get_doc("SM Claim", self.claim)
+                    payer_name = getattr(claim_doc, "payer_name", "") or ""
+                    cpt_codes = [
+                        row.cpt_code
+                        for row in getattr(claim_doc, "claim_lines", [])
+                        if hasattr(row, "cpt_code") and row.cpt_code
+                    ]
+                except Exception:
+                    logger.debug("Could not load linked claim %s for classification", self.claim)
+
+            result = classify_denial(carc_codes, rarc_codes, payer_name, cpt_codes)
+
+            frappe.db.set_value(
+                "SM Denial",
+                self.name,
+                {
+                    "ai_category": result["ai_category"],
+                    "ai_appealable": result["ai_appealable"],
+                    "ai_action": result["ai_action"],
+                    "ai_confidence": result["ai_confidence"],
+                },
+                update_modified=False,
+            )
+            logger.debug(
+                "Denial %s classified: category=%s, confidence=%s",
+                self.name,
+                result["ai_category"],
+                result["ai_confidence"],
+            )
+        except Exception as e:
+            logger.warning("Denial classification failed for %s: %s", self.name, str(e))
+            try:
+                frappe.db.set_value(
+                    "SM Denial",
+                    self.name,
+                    {
+                        "ai_category": "pending",
+                        "ai_appealable": False,
+                        "ai_action": "Classification failed - manual review required",
+                        "ai_confidence": 0.0,
+                    },
+                    update_modified=False,
+                )
+            except Exception:
+                logger.warning("Could not write fallback classification for %s", self.name)
 
     def _create_workboard_task(self):
         """Create an SM Task for denial review via the workboard."""
