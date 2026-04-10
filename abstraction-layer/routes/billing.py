@@ -1332,3 +1332,288 @@ async def stedi_835_webhook(request_body: dict):
         "matched": matched_count,
         "unmatched": unmatched_count,
     }
+
+
+# ---------------------------------------------------------------------------
+# BILL-018: Appeal Outcome Endpoints
+# ---------------------------------------------------------------------------
+
+class AppealWonRequest(BaseModel):
+    appeal_id: str
+    result_notes: Optional[str] = None
+
+
+class AppealLostRequest(BaseModel):
+    appeal_id: str
+    result_notes: Optional[str] = None
+
+
+class WriteOffRequest(BaseModel):
+    claim_id: str
+    reason_code: str
+    approved_by: str
+    write_off_amount: float
+
+
+class EscalateRequest(BaseModel):
+    appeal_id: str
+
+
+async def _complete_task_by_source(source_object_id: str):
+    """Complete an open SM Task linked to a source object via the tasks API."""
+    try:
+        tasks = await _list_frappe_docs(
+            "SM Task",
+            filters=json.dumps([
+                ["source_object_id", "=", source_object_id],
+                ["source_system", "=", "Healthcare Billing Mojo"],
+                ["canonical_state", "not in", ["Completed", "Canceled"]],
+            ]),
+            fields='["name"]',
+            limit=10,
+        )
+        for task in tasks:
+            try:
+                await _update_frappe_doc("SM Task", task["name"], {
+                    "canonical_state": "Completed",
+                })
+            except Exception as exc:
+                logger.warning("Failed to complete task %s: %s", task["name"], exc)
+    except Exception as exc:
+        logger.warning("Failed to find tasks for %s: %s", source_object_id, exc)
+
+
+async def _complete_all_billing_tasks_for_claim(claim_name: str):
+    """Complete all open billing tasks linked to a claim."""
+    try:
+        tasks = await _list_frappe_docs(
+            "SM Task",
+            filters=json.dumps([
+                ["source_system", "=", "Healthcare Billing Mojo"],
+                ["canonical_state", "not in", ["Completed", "Canceled"]],
+            ]),
+            fields='["name","source_object_id"]',
+            limit=200,
+        )
+        for task in tasks:
+            # Check if task's source object links to this claim
+            src = task.get("source_object_id", "")
+            if not src:
+                continue
+            # Try loading as SM Denial or SM Appeal to check claim linkage
+            try:
+                denial = await _read_frappe_doc("SM Denial", src)
+                if denial.get("claim") == claim_name:
+                    await _update_frappe_doc("SM Task", task["name"], {
+                        "canonical_state": "Completed",
+                    })
+                    continue
+            except Exception:
+                pass
+            try:
+                appeal = await _read_frappe_doc("SM Appeal", src)
+                if appeal.get("claim") == claim_name:
+                    await _update_frappe_doc("SM Task", task["name"], {
+                        "canonical_state": "Completed",
+                    })
+            except Exception:
+                pass
+    except Exception as exc:
+        logger.warning("Failed to complete billing tasks for claim %s: %s", claim_name, exc)
+
+
+@router.post("/appeals/won")
+async def appeal_won(req: AppealWonRequest):
+    """Record appeal won — transitions claim to adjudicating."""
+    appeal = await _read_frappe_doc("SM Appeal", req.appeal_id)
+    if appeal.get("result") != "pending":
+        raise HTTPException(status_code=400, detail="Appeal result is not pending")
+
+    claim_name = appeal.get("claim")
+    claim = await _read_frappe_doc("SM Claim", claim_name)
+    if claim.get("canonical_state") != "in_appeal":
+        raise HTTPException(status_code=400, detail="Claim is not in in_appeal state")
+
+    # Update SM Appeal
+    update_data = {
+        "result": "won",
+        "result_date": datetime.now(timezone.utc).strftime("%Y-%m-%d"),
+    }
+    if req.result_notes:
+        update_data["result_notes"] = req.result_notes
+    await _update_frappe_doc("SM Appeal", req.appeal_id, update_data)
+
+    # Transition claim: in_appeal → adjudicating
+    await _transition_claim_state(
+        claim_name=claim_name,
+        to_state="adjudicating",
+        trigger_reference=req.appeal_id,
+        reason=f"Appeal won at level {appeal.get('appeal_level', 1)}",
+        trigger_type="api",
+    )
+
+    # Complete appeal task
+    await _complete_task_by_source(req.appeal_id)
+
+    updated_appeal = await _read_frappe_doc("SM Appeal", req.appeal_id)
+    updated_claim = await _read_frappe_doc("SM Claim", claim_name)
+
+    return {
+        "appeal": updated_appeal,
+        "claim_state": updated_claim.get("canonical_state"),
+    }
+
+
+@router.post("/appeals/lost")
+async def appeal_lost(req: AppealLostRequest):
+    """Record appeal lost — transitions claim back to denied, creates decision task."""
+    appeal = await _read_frappe_doc("SM Appeal", req.appeal_id)
+    if appeal.get("result") != "pending":
+        raise HTTPException(status_code=400, detail="Appeal result is not pending")
+
+    claim_name = appeal.get("claim")
+    claim = await _read_frappe_doc("SM Claim", claim_name)
+    if claim.get("canonical_state") != "in_appeal":
+        raise HTTPException(status_code=400, detail="Claim is not in in_appeal state")
+
+    # Update SM Appeal
+    update_data = {
+        "result": "lost",
+        "result_date": datetime.now(timezone.utc).strftime("%Y-%m-%d"),
+    }
+    if req.result_notes:
+        update_data["result_notes"] = req.result_notes
+    await _update_frappe_doc("SM Appeal", req.appeal_id, update_data)
+
+    # Transition claim: in_appeal → denied
+    await _transition_claim_state(
+        claim_name=claim_name,
+        to_state="denied",
+        trigger_reference=req.appeal_id,
+        reason=f"Appeal lost at level {appeal.get('appeal_level', 1)}",
+        trigger_type="api",
+    )
+
+    # Create new decision task
+    try:
+        await _create_frappe_doc("SM Task", {
+            "doctype": "SM Task",
+            "title": f"Decide next step: level 2 appeal or write-off for claim {claim_name}",
+            "task_type": "appeal_decision",
+            "task_mode": "active",
+            "source_system": "Healthcare Billing Mojo",
+            "source_object_id": req.appeal_id,
+            "assigned_role": "Billing Coordinator",
+            "priority": "Normal",
+            "canonical_state": "Open",
+        })
+    except Exception as exc:
+        logger.error("Failed to create appeal_decision task: %s", exc)
+
+    # Complete original appeal task
+    await _complete_task_by_source(req.appeal_id)
+
+    updated_appeal = await _read_frappe_doc("SM Appeal", req.appeal_id)
+    updated_claim = await _read_frappe_doc("SM Claim", claim_name)
+
+    return {
+        "appeal": updated_appeal,
+        "claim_state": updated_claim.get("canonical_state"),
+    }
+
+
+@router.post("/appeals/write_off")
+async def appeal_write_off(req: WriteOffRequest):
+    """Write off a denied claim — requires supervisor approval."""
+    claim = await _read_frappe_doc("SM Claim", req.claim_id)
+    if claim.get("canonical_state") != "denied":
+        raise HTTPException(status_code=400, detail="Claim is not in denied state")
+
+    # Verify supervisor role
+    try:
+        user = await _read_frappe_doc("User", req.approved_by)
+        roles = [r.get("role", "") for r in user.get("roles", [])]
+        if "Billing Supervisor" not in roles:
+            raise HTTPException(
+                status_code=403,
+                detail={"error": "write_off_requires_supervisor_approval"},
+            )
+    except HTTPException:
+        raise
+    except Exception:
+        raise HTTPException(
+            status_code=403,
+            detail={"error": "write_off_requires_supervisor_approval"},
+        )
+
+    # Update claim with write-off info
+    await _update_frappe_doc("SM Claim", req.claim_id, {
+        "write_off_amount": req.write_off_amount,
+        "write_off_approved_by": req.approved_by,
+    })
+
+    # Transition to written_off
+    await _transition_claim_state(
+        claim_name=req.claim_id,
+        to_state="written_off",
+        trigger_reference=req.approved_by,
+        reason=f"Write-off approved by {req.approved_by}: {req.reason_code}",
+        trigger_type="api",
+    )
+
+    # Complete all open billing tasks for this claim
+    await _complete_all_billing_tasks_for_claim(req.claim_id)
+
+    updated_claim = await _read_frappe_doc("SM Claim", req.claim_id)
+    return {"claim": updated_claim}
+
+
+@router.post("/appeals/escalate")
+async def appeal_escalate(req: EscalateRequest):
+    """Escalate a lost level-1 appeal to level 2."""
+    appeal = await _read_frappe_doc("SM Appeal", req.appeal_id)
+    if appeal.get("result") != "lost":
+        raise HTTPException(status_code=400, detail="Appeal result is not lost")
+    if appeal.get("appeal_level", 1) != 1:
+        raise HTTPException(status_code=400, detail="Only level-1 appeals can be escalated")
+
+    denial_name = appeal.get("denial")
+    claim_name = appeal.get("claim")
+
+    # Check no level-2 appeal already exists
+    existing = await _list_frappe_docs(
+        "SM Appeal",
+        filters=json.dumps([
+            ["denial", "=", denial_name],
+            ["appeal_level", "=", 2],
+        ]),
+        fields='["name"]',
+        limit=1,
+    )
+    if existing:
+        raise HTTPException(
+            status_code=409,
+            detail={"error": "level_2_appeal_already_exists"},
+        )
+
+    # Calculate payer_deadline for level 2
+    original_deadline = appeal.get("payer_deadline", "")
+    new_deadline = ""
+    if original_deadline:
+        try:
+            dl = datetime.strptime(original_deadline, "%Y-%m-%d")
+            new_deadline = (dl + timedelta(days=30)).strftime("%Y-%m-%d")
+        except (ValueError, TypeError):
+            pass
+
+    # Create level-2 appeal — after_insert hook handles transition + task + letter
+    new_appeal = await _create_frappe_doc("SM Appeal", {
+        "doctype": "SM Appeal",
+        "claim": claim_name,
+        "denial": denial_name,
+        "appeal_level": 2,
+        "payer_deadline": new_deadline,
+        "result": "pending",
+    })
+
+    return {"appeal": new_appeal}
