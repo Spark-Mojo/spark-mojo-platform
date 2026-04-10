@@ -1809,3 +1809,214 @@ async def ar_aging(
         "overdue_total": overdue_total,
         "as_of": datetime.now(timezone.utc).isoformat(),
     }
+
+
+AI_CATEGORIES = ["correctable", "appealable", "terminal", "pending"]
+
+TERMINAL_CLAIM_STATES = ["paid", "written_off", "closed", "voided"]
+
+
+@router.get("/ar/denials")
+async def ar_denials(
+    site: str = Query(..., description="Frappe site name for tenant isolation"),
+    date_from: Optional[str] = None,
+    date_to: Optional[str] = None,
+):
+    denial_filters = []
+    if date_from:
+        denial_filters.append(["denial_date", ">=", date_from])
+    if date_to:
+        denial_filters.append(["denial_date", "<=", date_to])
+
+    denial_fields = '["name","claim","denial_date","ai_category","carc_codes"]'
+    denials = await _list_frappe_docs(
+        "SM Denial",
+        filters=json.dumps(denial_filters) if denial_filters else "",
+        fields=denial_fields,
+        limit=0,
+    )
+
+    claim_fields = '["name","canonical_state","payer","cpt_code","state_changed_at"]'
+    claims = await _list_frappe_docs(
+        "SM Claim",
+        fields=claim_fields,
+        limit=0,
+    )
+    claims_by_name = {c["name"]: c for c in claims}
+
+    if date_from and date_to:
+        d_from = datetime.strptime(date_from, "%Y-%m-%d").date()
+        d_to = datetime.strptime(date_to, "%Y-%m-%d").date()
+        period_days = (d_to - d_from).days + 1
+        prior_from = (d_from - timedelta(days=period_days)).strftime("%Y-%m-%d")
+        prior_to = (d_from - timedelta(days=1)).strftime("%Y-%m-%d")
+    elif date_from:
+        d_from = datetime.strptime(date_from, "%Y-%m-%d").date()
+        today = datetime.now().date()
+        period_days = (today - d_from).days + 1
+        prior_from = (d_from - timedelta(days=period_days)).strftime("%Y-%m-%d")
+        prior_to = (d_from - timedelta(days=1)).strftime("%Y-%m-%d")
+    else:
+        today = datetime.now().date()
+        d_from = today.replace(day=1)
+        if d_from.month == 1:
+            prior_month_start = d_from.replace(year=d_from.year - 1, month=12)
+        else:
+            prior_month_start = d_from.replace(month=d_from.month - 1)
+        prior_from = prior_month_start.strftime("%Y-%m-%d")
+        prior_to = (d_from - timedelta(days=1)).strftime("%Y-%m-%d")
+
+    prior_filters = [
+        ["denial_date", ">=", prior_from],
+        ["denial_date", "<=", prior_to],
+    ]
+    prior_denials = await _list_frappe_docs(
+        "SM Denial",
+        filters=json.dumps(prior_filters),
+        fields='["name","claim"]',
+        limit=0,
+    )
+
+    payer_claims = {}
+    for claim in claims:
+        payer_name = claim.get("payer") or "Unknown"
+        if payer_name not in payer_claims:
+            payer_claims[payer_name] = 0
+        payer_claims[payer_name] += 1
+
+    payer_denied = {}
+    prior_payer_denied = {}
+
+    carc_counts = {}
+    cpt_denied = {}
+    by_ai = {cat: {"count": 0} for cat in AI_CATEGORIES}
+    resolution_days = {cat: [] for cat in AI_CATEGORIES if cat != "pending"}
+
+    denied_claim_names = set()
+    for denial in denials:
+        claim_name = denial.get("claim")
+        claim = claims_by_name.get(claim_name, {})
+        payer_name = claim.get("payer") or "Unknown"
+        cpt_code = claim.get("cpt_code") or "Unknown"
+        ai_cat = denial.get("ai_category") or "pending"
+
+        denied_claim_names.add(claim_name)
+
+        if payer_name not in payer_denied:
+            payer_denied[payer_name] = 0
+        payer_denied[payer_name] += 1
+
+        carc_list = denial.get("carc_codes") or []
+        for carc_entry in carc_list:
+            code = carc_entry.get("carc_code", "")
+            desc = carc_entry.get("carc_description", "")
+            if code not in carc_counts:
+                carc_counts[code] = {"carc_code": code, "carc_description": desc, "occurrence_count": 0}
+            carc_counts[code]["occurrence_count"] += 1
+
+        if cpt_code not in cpt_denied:
+            cpt_denied[cpt_code] = 0
+        cpt_denied[cpt_code] += 1
+
+        if ai_cat in by_ai:
+            by_ai[ai_cat]["count"] += 1
+
+        if ai_cat in resolution_days:
+            claim_state = claim.get("canonical_state", "")
+            if claim_state in TERMINAL_CLAIM_STATES:
+                denial_date_str = denial.get("denial_date")
+                state_changed_str = claim.get("state_changed_at")
+                if denial_date_str and state_changed_str:
+                    d_denial = datetime.strptime(str(denial_date_str)[:10], "%Y-%m-%d").date()
+                    d_resolved = datetime.strptime(str(state_changed_str)[:10], "%Y-%m-%d").date()
+                    days_to_resolve = (d_resolved - d_denial).days
+                    if days_to_resolve >= 0:
+                        resolution_days[ai_cat].append(days_to_resolve)
+
+    for denial in prior_denials:
+        claim_name = denial.get("claim")
+        claim = claims_by_name.get(claim_name, {})
+        payer_name = claim.get("payer") or "Unknown"
+        if payer_name not in prior_payer_denied:
+            prior_payer_denied[payer_name] = 0
+        prior_payer_denied[payer_name] += 1
+
+    total_denials = len(denials)
+
+    denial_rate_by_payer = []
+    all_payer_names = set(list(payer_denied.keys()) + list(payer_claims.keys()))
+    for payer_name in all_payer_names:
+        total = payer_claims.get(payer_name, 0)
+        denied = payer_denied.get(payer_name, 0)
+        if denied == 0:
+            continue
+        rate = round((denied / total) * 100, 1) if total > 0 else 0.0
+
+        prior_denied = prior_payer_denied.get(payer_name, 0)
+        prior_rate = round((prior_denied / total) * 100, 1) if total > 0 else 0.0
+
+        diff = rate - prior_rate
+        if diff > 2:
+            trend = "up"
+        elif diff < -2:
+            trend = "down"
+        else:
+            trend = "flat"
+
+        denial_rate_by_payer.append({
+            "payer_name": payer_name,
+            "total_claims": total,
+            "total_denied": denied,
+            "denial_rate_pct": rate,
+            "denial_rate_prior_period_pct": prior_rate,
+            "trend": trend,
+        })
+
+    denial_rate_by_payer.sort(key=lambda x: x["denial_rate_pct"], reverse=True)
+
+    cpt_total_claims = {}
+    for claim in claims:
+        cpt = claim.get("cpt_code") or "Unknown"
+        if cpt not in cpt_total_claims:
+            cpt_total_claims[cpt] = 0
+        cpt_total_claims[cpt] += 1
+
+    denial_rate_by_cpt = []
+    for cpt_code, denied_count in cpt_denied.items():
+        total = cpt_total_claims.get(cpt_code, 0)
+        rate = round((denied_count / total) * 100, 1) if total > 0 else 0.0
+        denial_rate_by_cpt.append({
+            "cpt_code": cpt_code,
+            "total_claims": total,
+            "total_denied": denied_count,
+            "denial_rate_pct": rate,
+        })
+    denial_rate_by_cpt.sort(key=lambda x: x["denial_rate_pct"], reverse=True)
+    denial_rate_by_cpt = denial_rate_by_cpt[:10]
+
+    top_carc_codes = sorted(carc_counts.values(), key=lambda x: x["occurrence_count"], reverse=True)[:10]
+    for carc in top_carc_codes:
+        carc["pct_of_all_denials"] = round((carc["occurrence_count"] / total_denials) * 100, 1) if total_denials > 0 else 0.0
+
+    by_ai_category = {}
+    for cat in AI_CATEGORIES:
+        count = by_ai[cat]["count"]
+        by_ai_category[cat] = {
+            "count": count,
+            "pct_of_denials": round((count / total_denials) * 100, 1) if total_denials > 0 else 0.0,
+        }
+
+    avg_days = {}
+    for cat in ["correctable", "appealable", "terminal"]:
+        days_list = resolution_days[cat]
+        avg_days[cat] = round(sum(days_list) / len(days_list), 1) if days_list else None
+
+    return {
+        "denial_rate_by_payer": denial_rate_by_payer,
+        "denial_rate_by_cpt": denial_rate_by_cpt,
+        "top_carc_codes": top_carc_codes,
+        "by_ai_category": by_ai_category,
+        "avg_days_denial_to_resolution": avg_days,
+        "total_denials_in_period": total_denials,
+        "as_of": datetime.now(timezone.utc).isoformat(),
+    }
