@@ -587,3 +587,186 @@ async def test_tasks_assign_invalid_user_returns_422():
     assert resp.status_code == 422
     body = resp.json()
     assert "_server_messages" in body.get("detail", {})
+
+
+# --- WKBD-001: update_mode and task_mode filter tests ---
+
+WATCHING_TASK = {
+    **SAMPLE_FULL_TASK,
+    "name": "TASK-00010",
+    "task_mode": "watching",
+    "snooze_until": None,
+}
+
+ACTIVE_TASK = {
+    **SAMPLE_FULL_TASK,
+    "name": "TASK-00011",
+    "task_mode": "active",
+    "snooze_until": None,
+}
+
+
+@pytest.mark.anyio
+async def test_update_mode_to_watching():
+    """POST /api/modules/tasks/update_mode changes mode to watching."""
+    mock = _make_write_mock({"TASK-00011": ACTIVE_TASK})
+    with patch("modules.tasks.routes.httpx.AsyncClient", return_value=mock):
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as client:
+            resp = await client.post(
+                "/api/modules/tasks/update_mode",
+                json={"task_id": "TASK-00011", "task_mode": "watching"},
+            )
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["task"]["task_mode"] == "watching"
+
+
+@pytest.mark.anyio
+async def test_update_mode_to_snoozed_with_future_date():
+    """POST /api/modules/tasks/update_mode to snoozed with future date succeeds."""
+    mock = _make_write_mock({"TASK-00011": ACTIVE_TASK})
+    with patch("modules.tasks.routes.httpx.AsyncClient", return_value=mock):
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as client:
+            resp = await client.post(
+                "/api/modules/tasks/update_mode",
+                json={
+                    "task_id": "TASK-00011",
+                    "task_mode": "snoozed",
+                    "snooze_until": "2099-01-01T09:00:00",
+                },
+            )
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["task"]["task_mode"] == "snoozed"
+    assert data["task"]["snooze_until"] == "2099-01-01T09:00:00"
+
+
+@pytest.mark.anyio
+async def test_update_mode_invalid_mode_returns_422():
+    """POST /api/modules/tasks/update_mode with invalid mode returns 422."""
+    mock = _make_write_mock({"TASK-00011": ACTIVE_TASK})
+    with patch("modules.tasks.routes.httpx.AsyncClient", return_value=mock):
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as client:
+            resp = await client.post(
+                "/api/modules/tasks/update_mode",
+                json={"task_id": "TASK-00011", "task_mode": "invalid_mode"},
+            )
+    assert resp.status_code == 422
+    assert "Invalid task_mode" in resp.json()["detail"]
+
+
+@pytest.mark.anyio
+async def test_update_mode_snoozed_without_date_returns_422():
+    """POST /api/modules/tasks/update_mode snoozed without snooze_until returns 422."""
+    mock = _make_write_mock({"TASK-00011": ACTIVE_TASK})
+    with patch("modules.tasks.routes.httpx.AsyncClient", return_value=mock):
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as client:
+            resp = await client.post(
+                "/api/modules/tasks/update_mode",
+                json={"task_id": "TASK-00011", "task_mode": "snoozed"},
+            )
+    assert resp.status_code == 422
+    assert "snooze_until required" in resp.json()["detail"]
+
+
+@pytest.mark.anyio
+async def test_update_mode_snoozed_past_date_returns_422():
+    """POST /api/modules/tasks/update_mode snoozed with past date returns 422."""
+    mock = _make_write_mock({"TASK-00011": ACTIVE_TASK})
+    with patch("modules.tasks.routes.httpx.AsyncClient", return_value=mock):
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as client:
+            resp = await client.post(
+                "/api/modules/tasks/update_mode",
+                json={
+                    "task_id": "TASK-00011",
+                    "task_mode": "snoozed",
+                    "snooze_until": "2020-01-01T09:00:00",
+                },
+            )
+    assert resp.status_code == 422
+    assert "snooze_until must be a future datetime" in resp.json()["detail"]
+
+
+@pytest.mark.anyio
+async def test_update_mode_not_found_returns_404():
+    """POST /api/modules/tasks/update_mode for missing task returns 404."""
+    mock = _make_write_mock({})
+    with patch("modules.tasks.routes.httpx.AsyncClient", return_value=mock):
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as client:
+            resp = await client.post(
+                "/api/modules/tasks/update_mode",
+                json={"task_id": "TASK-99999", "task_mode": "watching"},
+            )
+    assert resp.status_code == 404
+    assert resp.json()["detail"]["error"] == "task_not_found"
+
+
+@pytest.mark.anyio
+async def test_update_mode_to_active_with_assignment():
+    """POST /api/modules/tasks/update_mode to active includes assignment fields."""
+    mock = _make_write_mock({"TASK-00010": WATCHING_TASK})
+    with patch("modules.tasks.routes.httpx.AsyncClient", return_value=mock):
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as client:
+            resp = await client.post(
+                "/api/modules/tasks/update_mode",
+                json={
+                    "task_id": "TASK-00010",
+                    "task_mode": "active",
+                    "assigned_user": "billing@willow.com",
+                },
+            )
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["task"]["task_mode"] == "active"
+    assert data["task"]["assigned_user"] == "billing@willow.com"
+
+
+@pytest.mark.anyio
+async def test_tasks_list_filter_by_task_mode():
+    """GET /api/modules/tasks/list?task_mode=watching filters correctly."""
+    task_active = {**SAMPLE_TASKS[0], "task_mode": "active"}
+    task_watching = {**SAMPLE_TASKS[1], "task_mode": "watching", "assigned_user": "dev@willow.com"}
+
+    async def _mock_get(url, **kwargs):
+        params = kwargs.get("params", {})
+        filters_str = params.get("filters", "[]")
+        filters = json.loads(filters_str) if isinstance(filters_str, str) else filters_str
+        tasks = [task_active, task_watching]
+        for f in filters:
+            field, op, val = f[0], f[1], f[2]
+            if op == "=":
+                tasks = [t for t in tasks if t.get(field) == val]
+            elif op == "in":
+                tasks = [t for t in tasks if t.get(field) in val]
+            elif op == "not in":
+                tasks = [t for t in tasks if t.get(field) not in val]
+        return _mock_response(200, {"data": tasks})
+
+    mock_client = AsyncMock()
+    mock_client.get = _mock_get
+    mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+    mock_client.__aexit__ = AsyncMock(return_value=None)
+
+    with patch("modules.tasks.routes.httpx.AsyncClient", return_value=mock_client):
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as client:
+            resp = await client.get("/api/modules/tasks/list?task_mode=watching")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert len(data["tasks"]) == 1
+    assert data["tasks"][0]["task_mode"] == "watching"

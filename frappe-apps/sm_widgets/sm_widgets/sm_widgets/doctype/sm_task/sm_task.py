@@ -6,6 +6,7 @@ from frappe.utils import now_datetime
 class SMTask(Document):
     def before_save(self):
         self.validate_status_reason()
+        self.validate_snooze_until()
         self.set_lifecycle_timestamps()
         self.track_state_change()
         self.track_assignment_change()
@@ -15,6 +16,13 @@ class SMTask(Document):
         if self.canonical_state in ("Blocked", "Failed") and not reason:
             frappe.throw(
                 "Status Reason is required when Status is Blocked or Failed",
+                frappe.ValidationError
+            )
+
+    def validate_snooze_until(self):
+        if self.task_mode == "snoozed" and not self.snooze_until:
+            frappe.throw(
+                "snooze_until is required when task_mode is snoozed",
                 frappe.ValidationError
             )
 

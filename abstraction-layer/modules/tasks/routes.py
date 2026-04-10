@@ -56,6 +56,14 @@ class AddCommentBody(BaseModel):
     comment: str
 
 
+class UpdateModeBody(BaseModel):
+    task_id: str
+    task_mode: str
+    snooze_until: Optional[str] = None
+    assigned_user: Optional[str] = None
+    assigned_role: Optional[str] = None
+
+
 class CompleteTaskBody(BaseModel):
     task_id: str
     completion_note: Optional[str] = None
@@ -71,7 +79,7 @@ RESOLVED_STATES = ("Completed", "Canceled", "Failed")
 LIST_FIELDS = [
     "name", "title", "task_type", "canonical_state", "priority",
     "assigned_user", "assigned_role", "due_at", "source_system",
-    "related_crm_record", "creation",
+    "related_crm_record", "creation", "task_mode",
 ]
 
 
@@ -82,6 +90,9 @@ def _headers():
     }
 
 
+VALID_TASK_MODES = ("active", "watching", "snoozed")
+
+
 def _build_filters(
     view: str,
     user_email: str,
@@ -89,6 +100,7 @@ def _build_filters(
     canonical_state: Optional[str],
     priority: Optional[str],
     include_resolved: bool,
+    task_mode: Optional[str] = None,
 ) -> list:
     """Build Frappe filter arrays for the list endpoint."""
     filters = []
@@ -107,6 +119,9 @@ def _build_filters(
 
     if priority:
         filters.append(["priority", "=", priority])
+
+    if task_mode:
+        filters.append(["task_mode", "=", task_mode])
 
     return filters
 
@@ -143,13 +158,14 @@ async def tasks_list(
     view: str = "mine",
     canonical_state: Optional[str] = None,
     priority: Optional[str] = None,
+    task_mode: Optional[str] = None,
     sort_by: str = "due_at",
     sort_order: str = "asc",
     include_resolved: bool = False,
     include_completed: bool = False,
     user: dict = Depends(get_current_user),
 ):
-    """List SM Task records filtered by view, state, and priority."""
+    """List SM Task records filtered by view, state, priority, and task_mode."""
     VALID_VIEWS = {"mine", "role", "all"}
     if view not in VALID_VIEWS:
         raise HTTPException(status_code=400, detail=f"Invalid view '{view}'. Must be one of: {', '.join(VALID_VIEWS)}")
@@ -160,16 +176,17 @@ async def tasks_list(
     user_roles = user.get("roles", [])
 
     if view == "all":
-        # Fetch all tasks (no user/role filter) — small-business workboard shows everything
         all_filters = _build_filters(
             "all", user_email, user_roles,
             canonical_state, priority, effective_include_resolved,
+            task_mode=task_mode,
         )
         tasks = [_enrich_task_list_item(t) for t in await _fetch_tasks(all_filters, sort_by, sort_order)]
     else:
         filters = _build_filters(
             view, user_email, user_roles,
             canonical_state, priority, effective_include_resolved,
+            task_mode=task_mode,
         )
         tasks = [_enrich_task_list_item(t) for t in await _fetch_tasks(filters, sort_by, sort_order)]
 
@@ -381,6 +398,79 @@ async def tasks_add_comment(
         updated_task = put_resp.json().get("data", {})
 
     return {"comments": updated_task.get("comments", [])}
+
+
+@router.post("/update_mode")
+async def tasks_update_mode(
+    body: UpdateModeBody,
+    user: dict = Depends(get_current_user),
+):
+    """Update task_mode on an SM Task (active, watching, snoozed)."""
+    from datetime import datetime
+
+    # Validate task_mode value
+    if body.task_mode not in VALID_TASK_MODES:
+        raise HTTPException(
+            status_code=422,
+            detail=f"Invalid task_mode '{body.task_mode}'. Must be one of: {', '.join(VALID_TASK_MODES)}",
+        )
+
+    # Validate snooze_until for snoozed mode
+    if body.task_mode == "snoozed":
+        if not body.snooze_until:
+            raise HTTPException(
+                status_code=422,
+                detail="snooze_until required when task_mode is snoozed",
+            )
+        try:
+            snooze_dt = datetime.fromisoformat(body.snooze_until)
+        except (ValueError, TypeError):
+            raise HTTPException(
+                status_code=422,
+                detail="snooze_until must be a valid ISO datetime",
+            )
+        if snooze_dt <= datetime.now():
+            raise HTTPException(
+                status_code=422,
+                detail="snooze_until must be a future datetime",
+            )
+
+    async with httpx.AsyncClient(base_url=FRAPPE_URL, headers=_headers()) as client:
+        # Load current task
+        get_resp = await client.get(
+            f"/api/resource/SM Task/{body.task_id}",
+            timeout=15,
+        )
+        if get_resp.status_code == 404:
+            raise HTTPException(status_code=404, detail={"error": "task_not_found"})
+        get_resp.raise_for_status()
+
+        # Build update payload
+        update = {"task_mode": body.task_mode}
+        if body.task_mode == "snoozed":
+            update["snooze_until"] = body.snooze_until
+        else:
+            update["snooze_until"] = None
+
+        # If transitioning TO active, include optional assignment fields
+        if body.task_mode == "active":
+            if body.assigned_user is not None:
+                update["assigned_user"] = body.assigned_user
+            if body.assigned_role is not None:
+                update["assigned_role"] = body.assigned_role
+
+        # Save
+        put_resp = await client.put(
+            f"/api/resource/SM Task/{body.task_id}",
+            json=update,
+            timeout=15,
+        )
+        if put_resp.status_code >= 400:
+            raise HTTPException(status_code=422, detail=put_resp.json())
+        put_resp.raise_for_status()
+        updated_task = put_resp.json().get("data", {})
+
+    return {"task": updated_task}
 
 
 @router.get("/users")

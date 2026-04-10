@@ -83,6 +83,29 @@
       "default": "__user"
     },
     {
+      "fieldname": "section_mode",
+      "label": "Task Mode",
+      "fieldtype": "Section Break"
+    },
+    {
+      "fieldname": "task_mode",
+      "label": "Task Mode",
+      "fieldtype": "Select",
+      "reqd": 1,
+      "options": "active\nwatching\nsnoozed",
+      "default": "active",
+      "in_list_view": 1,
+      "in_standard_filter": 1,
+      "description": "active = intervention required. watching = visibility only, no action needed. snoozed = deferred until snooze_until date."
+    },
+    {
+      "fieldname": "snooze_until",
+      "label": "Snooze Until",
+      "fieldtype": "Datetime",
+      "reqd": 0,
+      "description": "Required when task_mode = snoozed. Scheduler flips mode to active when this datetime passes."
+    },
+    {
       "fieldname": "section_state",
       "label": "State & Lifecycle",
       "fieldtype": "Section Break"
