@@ -1702,3 +1702,110 @@ async def ar_summary(
         "by_state": by_state,
         "as_of": datetime.now(timezone.utc).isoformat(),
     }
+
+
+ACTIVE_PIPELINE_STATES = [
+    "submitted", "adjudicating", "denied", "in_appeal", "partial_paid", "patient_balance",
+]
+
+AGING_BUCKETS = ["0_30", "31_60", "61_90", "over_90"]
+
+VALID_MEASURES = ("state", "billing")
+
+
+def _bucket_for_days(days: int) -> str:
+    if days <= 30:
+        return "0_30"
+    elif days <= 60:
+        return "31_60"
+    elif days <= 90:
+        return "61_90"
+    else:
+        return "over_90"
+
+
+@router.get("/ar/aging")
+async def ar_aging(
+    site: str = Query(..., description="Frappe site name for tenant isolation"),
+    measure: str = Query("state", description="Age measure: 'state' or 'billing'"),
+    state: Optional[str] = Query(None, description="Filter to a specific canonical_state"),
+    payer: Optional[str] = Query(None, description="Filter to a specific SM Payer name"),
+):
+    if measure not in VALID_MEASURES:
+        raise HTTPException(status_code=422, detail=f"Invalid measure '{measure}'. Must be 'state' or 'billing'.")
+
+    filters = [["canonical_state", "in", ACTIVE_PIPELINE_STATES]]
+    if state:
+        filters.append(["canonical_state", "=", state])
+    if payer:
+        filters.append(["payer", "=", payer])
+
+    fields = '["name","canonical_state","claim_charge_amount","payer","state_changed_at","submission_date","is_overdue"]'
+    claims = await _list_frappe_docs(
+        "SM Claim",
+        filters=json.dumps(filters),
+        fields=fields,
+        limit=0,
+    )
+
+    today = datetime.now().date()
+    buckets = {
+        b: {"total_claims": 0, "total_billed": 0.0, "by_payer": {}}
+        for b in AGING_BUCKETS
+    }
+    missing_submission_date = 0
+    overdue_total = 0
+
+    for claim in claims:
+        billed = float(claim.get("claim_charge_amount") or 0)
+        payer_name = claim.get("payer") or "Unknown"
+        is_overdue = int(claim.get("is_overdue") or 0)
+
+        if measure == "billing":
+            date_str = claim.get("submission_date")
+            if not date_str:
+                missing_submission_date += 1
+                continue
+        else:
+            date_str = claim.get("state_changed_at")
+            if not date_str:
+                continue
+
+        ref_date = datetime.strptime(str(date_str)[:10], "%Y-%m-%d").date()
+        days = (today - ref_date).days
+        bucket = _bucket_for_days(days)
+
+        buckets[bucket]["total_claims"] += 1
+        buckets[bucket]["total_billed"] += billed
+
+        payer_data = buckets[bucket]["by_payer"]
+        if payer_name not in payer_data:
+            payer_data[payer_name] = {"payer_name": payer_name, "claim_count": 0, "total_billed": 0.0, "overdue_count": 0}
+        payer_data[payer_name]["claim_count"] += 1
+        payer_data[payer_name]["total_billed"] += billed
+        payer_data[payer_name]["overdue_count"] += is_overdue
+
+        overdue_total += is_overdue
+
+    aging = {}
+    for b in AGING_BUCKETS:
+        by_payer_list = sorted(
+            buckets[b]["by_payer"].values(),
+            key=lambda p: p["total_billed"],
+            reverse=True,
+        )
+        for p in by_payer_list:
+            p["total_billed"] = round(p["total_billed"], 2)
+        aging[b] = {
+            "total_claims": buckets[b]["total_claims"],
+            "total_billed": round(buckets[b]["total_billed"], 2),
+            "by_payer": by_payer_list,
+        }
+
+    return {
+        "measure": measure,
+        "aging": aging,
+        "missing_submission_date": missing_submission_date,
+        "overdue_total": overdue_total,
+        "as_of": datetime.now(timezone.utc).isoformat(),
+    }
