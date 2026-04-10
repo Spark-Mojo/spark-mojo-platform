@@ -5,28 +5,19 @@
   "doctype": "DocType",
   "engine": "InnoDB",
   "field_order": [
-    "denial",
     "claim",
+    "denial",
     "appeal_level",
-    "appeal_date",
-    "appeal_method",
-    "ai_generated_letter",
-    "final_letter",
-    "supporting_documents",
-    "canonical_state",
-    "outcome_date",
-    "recovered_amount",
-    "payer_response"
+    "submitted_date",
+    "payer_deadline",
+    "days_until_deadline",
+    "appeal_letter",
+    "supporting_docs",
+    "result",
+    "result_date",
+    "result_notes"
   ],
   "fields": [
-    {
-      "fieldname": "denial",
-      "fieldtype": "Link",
-      "label": "Denial",
-      "options": "SM Denial",
-      "reqd": 1,
-      "in_list_view": 1
-    },
     {
       "fieldname": "claim",
       "fieldtype": "Link",
@@ -36,70 +27,72 @@
       "in_list_view": 1
     },
     {
-      "fieldname": "appeal_level",
-      "fieldtype": "Select",
-      "label": "Appeal Level",
-      "options": "first_level\nsecond_level\nexternal_review",
+      "fieldname": "denial",
+      "fieldtype": "Link",
+      "label": "Denial",
+      "options": "SM Denial",
       "reqd": 1,
       "in_list_view": 1
     },
     {
-      "fieldname": "appeal_date",
-      "fieldtype": "Date",
-      "label": "Appeal Date",
-      "reqd": 1
-    },
-    {
-      "fieldname": "appeal_method",
+      "fieldname": "appeal_level",
       "fieldtype": "Select",
-      "label": "Appeal Method",
-      "options": "fax\nportal\nmail\nelectronic",
+      "label": "Appeal Level",
+      "options": "1\n2",
+      "default": "1",
+      "reqd": 1,
+      "in_list_view": 1
+    },
+    {
+      "fieldname": "submitted_date",
+      "fieldtype": "Date",
+      "label": "Submitted Date"
+    },
+    {
+      "fieldname": "payer_deadline",
+      "fieldtype": "Date",
+      "label": "Payer Deadline",
       "reqd": 1
     },
     {
-      "fieldname": "ai_generated_letter",
-      "fieldtype": "Text Editor",
-      "label": "AI Generated Letter"
+      "fieldname": "days_until_deadline",
+      "fieldtype": "Int",
+      "label": "Days Until Deadline",
+      "read_only": 1
     },
     {
-      "fieldname": "final_letter",
-      "fieldtype": "Text Editor",
-      "label": "Final Letter"
+      "fieldname": "appeal_letter",
+      "fieldtype": "Long Text",
+      "label": "Appeal Letter"
     },
     {
-      "fieldname": "supporting_documents",
+      "fieldname": "supporting_docs",
       "fieldtype": "Attach",
       "label": "Supporting Documents"
     },
     {
-      "fieldname": "canonical_state",
+      "fieldname": "result",
       "fieldtype": "Select",
-      "label": "Status",
-      "options": "draft\nsubmitted\nunder_review\nwon\nlost\nno_response",
-      "reqd": 1,
-      "default": "draft",
+      "label": "Result",
+      "options": "pending\nwon\nlost",
+      "default": "pending",
       "in_list_view": 1
     },
     {
-      "fieldname": "outcome_date",
+      "fieldname": "result_date",
       "fieldtype": "Date",
-      "label": "Outcome Date"
+      "label": "Result Date"
     },
     {
-      "fieldname": "recovered_amount",
-      "fieldtype": "Currency",
-      "label": "Recovered Amount"
-    },
-    {
-      "fieldname": "payer_response",
-      "fieldtype": "Text",
-      "label": "Payer Response"
+      "fieldname": "result_notes",
+      "fieldtype": "Small Text",
+      "label": "Result Notes"
     }
   ],
   "index_web_pages_for_search": 0,
   "is_submittable": 0,
   "links": [],
-  "modified": "2026-04-04 00:00:00.000000",
+  "modified": "2026-04-10 00:00:00.000000",
   "modified_by": "Administrator",
   "module": "SM Billing",
   "name": "SM Appeal",
