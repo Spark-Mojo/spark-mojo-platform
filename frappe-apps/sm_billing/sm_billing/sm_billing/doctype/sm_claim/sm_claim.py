@@ -35,6 +35,7 @@ class SMClaim(Document):
         trigger_type: str,
         reason: str = "",
         trigger_reference: str = "",
+        metadata: dict = None,
     ) -> None:
         # 1. Validate to_state is a known state
         if to_state not in VALID_TRANSITIONS:
@@ -94,7 +95,66 @@ class SMClaim(Document):
             }
         ).insert(ignore_permissions=True)
 
-        # 8. Do NOT call frappe.db.commit() - caller's responsibility
+        # 8. Post-transition hooks
+        if from_state == "adjudicating" and to_state == "denied":
+            self._on_denied(metadata or {})
+
+        # 9. Do NOT call frappe.db.commit() - caller's responsibility
+
+    def _on_denied(self, metadata: dict) -> None:
+        """Create SM Denial record after adjudicating -> denied transition."""
+        carc_str = metadata.get("carc_codes", "")
+        rarc_str = metadata.get("rarc_codes", "")
+
+        carc_rows = []
+        if carc_str:
+            for code in carc_str.split(","):
+                code = code.strip()
+                if code:
+                    carc_rows.append({
+                        "carc_code": code,
+                        "carc_description": "",
+                    })
+
+        if not carc_rows:
+            carc_rows.append({
+                "carc_code": "UNKNOWN",
+                "carc_description": "CARC code not provided by ERA",
+            })
+
+        rarc_rows = []
+        if rarc_str:
+            for code in rarc_str.split(","):
+                code = code.strip()
+                if code:
+                    rarc_rows.append({
+                        "rarc_code": code,
+                        "rarc_description": "",
+                    })
+
+        carc_descriptions = [r["carc_code"] for r in carc_rows]
+        summary = metadata.get(
+            "denial_reason_summary",
+            "Denial reason: " + ", ".join(carc_descriptions),
+        )
+
+        denial_date = metadata.get("denial_date", frappe.utils.today())
+
+        try:
+            frappe.get_doc({
+                "doctype": "SM Denial",
+                "claim": self.name,
+                "denial_date": denial_date,
+                "carc_codes": carc_rows,
+                "rarc_codes": rarc_rows if rarc_rows else [],
+                "denial_reason_summary": summary,
+                "ai_category": "pending",
+            }).insert(ignore_permissions=True)
+        except Exception:
+            frappe.log_error(
+                title=f"Failed to create SM Denial for {self.name}",
+                message=frappe.get_traceback(),
+            )
 
 
 @frappe.whitelist()
@@ -105,14 +165,25 @@ def api_transition_state(
     reason: str = "",
     trigger_reference: str = "",
     changed_by: str = "",
+    metadata: str = "",
 ):
     """Whitelisted API to call transition_state() on an SM Claim.
 
     Used by the abstraction layer for webhook-driven state transitions.
+    metadata is a JSON string containing optional context for post-transition hooks.
     """
+    import json as _json
+
     doc = frappe.get_doc("SM Claim", claim_name)
     if not changed_by:
         changed_by = frappe.session.user
+
+    meta = {}
+    if metadata:
+        try:
+            meta = _json.loads(metadata) if isinstance(metadata, str) else metadata
+        except (ValueError, TypeError):
+            pass
 
     doc.transition_state(
         to_state=to_state,
@@ -120,6 +191,7 @@ def api_transition_state(
         trigger_type=trigger_type,
         reason=reason,
         trigger_reference=trigger_reference,
+        metadata=meta,
     )
     doc.save(ignore_permissions=True)
     frappe.db.commit()

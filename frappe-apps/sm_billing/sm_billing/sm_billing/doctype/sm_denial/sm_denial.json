@@ -1,27 +1,22 @@
 {
   "actions": [],
   "autoname": "DEN-.YYYY.MM.-.####",
-  "creation": "2026-04-04 00:00:00.000000",
+  "creation": "2026-04-10 00:00:00.000000",
   "doctype": "DocType",
   "engine": "InnoDB",
   "field_order": [
     "claim",
-    "era",
     "denial_date",
+    "denial_reason_summary",
+    "appeal_deadline",
+    "section_carc_rarc",
     "carc_codes",
     "rarc_codes",
-    "denied_amount",
+    "section_ai",
     "ai_category",
-    "ai_subcategory",
-    "ai_plain_english",
-    "ai_root_cause",
     "ai_appealable",
-    "ai_appeal_priority",
-    "ai_confidence",
-    "canonical_state",
-    "appeal_deadline",
-    "assigned_to",
-    "notes"
+    "ai_action",
+    "ai_confidence"
   ],
   "fields": [
     {
@@ -33,106 +28,80 @@
       "in_list_view": 1
     },
     {
-      "fieldname": "era",
-      "fieldtype": "Link",
-      "label": "ERA",
-      "options": "SM ERA"
-    },
-    {
       "fieldname": "denial_date",
       "fieldtype": "Date",
       "label": "Denial Date",
       "reqd": 1,
+      "default": "Today",
       "in_list_view": 1
+    },
+    {
+      "fieldname": "denial_reason_summary",
+      "fieldtype": "Small Text",
+      "label": "Denial Reason Summary",
+      "reqd": 1
+    },
+    {
+      "fieldname": "appeal_deadline",
+      "fieldtype": "Date",
+      "label": "Appeal Deadline",
+      "reqd": 1
+    },
+    {
+      "fieldname": "section_carc_rarc",
+      "fieldtype": "Section Break",
+      "label": "CARC / RARC Codes"
     },
     {
       "fieldname": "carc_codes",
-      "fieldtype": "Data",
+      "fieldtype": "Table",
       "label": "CARC Codes",
-      "reqd": 1,
-      "length": 100
+      "options": "SM Denial CARC Code",
+      "reqd": 1
     },
     {
       "fieldname": "rarc_codes",
-      "fieldtype": "Data",
+      "fieldtype": "Table",
       "label": "RARC Codes",
-      "length": 100
+      "options": "SM Denial RARC Code"
     },
     {
-      "fieldname": "denied_amount",
-      "fieldtype": "Currency",
-      "label": "Denied Amount",
-      "reqd": 1,
-      "in_list_view": 1
+      "fieldname": "section_ai",
+      "fieldtype": "Section Break",
+      "label": "AI Classification"
     },
     {
       "fieldname": "ai_category",
       "fieldtype": "Select",
       "label": "AI Category",
-      "options": "\neligibility\nauthorization\nmedical_necessity\ncoding_error\nmodifier_error\ntimely_filing\nduplicate\ncoordination_of_benefits\ncredentialing\nother"
-    },
-    {
-      "fieldname": "ai_subcategory",
-      "fieldtype": "Data",
-      "label": "AI Subcategory",
-      "length": 128
-    },
-    {
-      "fieldname": "ai_plain_english",
-      "fieldtype": "Text",
-      "label": "AI Plain English"
-    },
-    {
-      "fieldname": "ai_root_cause",
-      "fieldtype": "Text",
-      "label": "AI Root Cause"
+      "options": "pending\ncorrectable\nappealable\nterminal",
+      "default": "pending",
+      "read_only": 1
     },
     {
       "fieldname": "ai_appealable",
       "fieldtype": "Check",
-      "label": "AI Appealable"
+      "label": "AI Appealable",
+      "default": "0",
+      "read_only": 1
     },
     {
-      "fieldname": "ai_appeal_priority",
-      "fieldtype": "Select",
-      "label": "AI Appeal Priority",
-      "options": "\nhigh\nmedium\nlow\ndo_not_appeal"
+      "fieldname": "ai_action",
+      "fieldtype": "Small Text",
+      "label": "AI Recommended Action",
+      "read_only": 1
     },
     {
       "fieldname": "ai_confidence",
       "fieldtype": "Float",
-      "label": "AI Confidence"
-    },
-    {
-      "fieldname": "canonical_state",
-      "fieldtype": "Select",
-      "label": "Status",
-      "options": "new\nreviewing\nappeal_in_progress\nappeal_submitted\nappeal_won\nappeal_lost\nwritten_off",
-      "reqd": 1,
-      "default": "new",
-      "in_list_view": 1
-    },
-    {
-      "fieldname": "appeal_deadline",
-      "fieldtype": "Date",
-      "label": "Appeal Deadline"
-    },
-    {
-      "fieldname": "assigned_to",
-      "fieldtype": "Data",
-      "label": "Assigned To",
-      "length": 256
-    },
-    {
-      "fieldname": "notes",
-      "fieldtype": "Text",
-      "label": "Notes"
+      "label": "AI Confidence",
+      "read_only": 1
     }
   ],
   "index_web_pages_for_search": 0,
   "is_submittable": 0,
   "links": [],
-  "modified": "2026-04-04 00:00:00.000000",
+  "modified": "2026-04-10 00:00:00.000000",
   "modified_by": "Administrator",
   "module": "SM Billing",
   "name": "SM Denial",

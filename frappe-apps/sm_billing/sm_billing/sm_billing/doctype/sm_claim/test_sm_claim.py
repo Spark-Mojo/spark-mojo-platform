@@ -30,20 +30,28 @@ def _throw(msg, exc=None):
 
 frappe_mock.throw = _throw
 
-# frappe.utils.now_datetime
+# frappe.utils.now_datetime / today
 frappe_utils = types.ModuleType("frappe.utils")
 _FAKE_NOW = datetime(2026, 4, 6, 12, 0, 0)
 frappe_utils.now_datetime = lambda: _FAKE_NOW
+frappe_utils.today = lambda: "2026-04-06"
 frappe_mock.utils = frappe_utils
 
-# frappe.get_doc — returns a mock doc whose .insert() we can inspect
+# frappe.log_error / frappe.get_traceback / frappe.whitelist
+frappe_mock.log_error = mock.MagicMock()
+frappe_mock.get_traceback = lambda: "mock traceback"
+frappe_mock.whitelist = lambda *args, **kwargs: (lambda fn: fn)
+
+# frappe.get_doc — tracks all created docs
+_created_docs = []
 _last_state_log = {}
 
 def _get_doc(data):
+    _created_docs.append(data)
     _last_state_log.clear()
     _last_state_log.update(data)
     m = mock.MagicMock()
-    m.insert = mock.MagicMock()
+    m.insert = mock.MagicMock(return_value=m)
     return m
 
 frappe_mock.get_doc = _get_doc
@@ -187,3 +195,107 @@ class TestTransitionState:
         claim = _make_claim()
         with pytest.raises(_ValidationError, match="Unknown trigger_type: fax"):
             claim.transition_state("validated", changed_by="system", trigger_type="fax")
+
+
+class TestOnDenied:
+    """Test _on_denied() post-transition hook — creates SM Denial record."""
+
+    def setup_method(self):
+        _created_docs.clear()
+        frappe_mock.log_error.reset_mock()
+
+    def test_denied_transition_creates_sm_denial(self):
+        claim = _make_claim(canonical_state="adjudicating")
+        metadata = {
+            "carc_codes": "CO-45",
+            "rarc_codes": "N-100",
+            "denial_reason_summary": "Charges exceed fee schedule",
+        }
+        claim.transition_state(
+            "denied",
+            changed_by="webhook",
+            trigger_type="webhook_835",
+            metadata=metadata,
+        )
+        assert claim.canonical_state == "denied"
+        denial_docs = [d for d in _created_docs if d.get("doctype") == "SM Denial"]
+        assert len(denial_docs) == 1
+        denial = denial_docs[0]
+        assert denial["claim"] == "CLM-2026-0001"
+        assert denial["denial_reason_summary"] == "Charges exceed fee schedule"
+        assert denial["ai_category"] == "pending"
+        assert len(denial["carc_codes"]) == 1
+        assert denial["carc_codes"][0]["carc_code"] == "CO-45"
+        assert len(denial["rarc_codes"]) == 1
+        assert denial["rarc_codes"][0]["rarc_code"] == "N-100"
+
+    def test_denied_transition_multiple_carc_codes(self):
+        claim = _make_claim(canonical_state="adjudicating")
+        metadata = {"carc_codes": "CO-45, PR-1, OA-23"}
+        claim.transition_state(
+            "denied",
+            changed_by="webhook",
+            trigger_type="webhook_835",
+            metadata=metadata,
+        )
+        denial_docs = [d for d in _created_docs if d.get("doctype") == "SM Denial"]
+        assert len(denial_docs[0]["carc_codes"]) == 3
+
+    def test_denied_transition_no_carc_codes_uses_unknown(self):
+        claim = _make_claim(canonical_state="adjudicating")
+        claim.transition_state(
+            "denied",
+            changed_by="webhook",
+            trigger_type="webhook_835",
+            metadata={},
+        )
+        denial_docs = [d for d in _created_docs if d.get("doctype") == "SM Denial"]
+        assert denial_docs[0]["carc_codes"][0]["carc_code"] == "UNKNOWN"
+
+    def test_denied_transition_no_metadata_uses_defaults(self):
+        claim = _make_claim(canonical_state="adjudicating")
+        claim.transition_state(
+            "denied",
+            changed_by="webhook",
+            trigger_type="webhook_835",
+        )
+        denial_docs = [d for d in _created_docs if d.get("doctype") == "SM Denial"]
+        assert len(denial_docs) == 1
+        assert denial_docs[0]["carc_codes"][0]["carc_code"] == "UNKNOWN"
+        assert "Denial reason:" in denial_docs[0]["denial_reason_summary"]
+
+    def test_denied_transition_failure_logged_not_raised(self):
+        """SM Denial creation failure should be logged, not crash the transition."""
+        original_get_doc = frappe_mock.get_doc
+        call_count = [0]
+
+        def _failing_get_doc(data):
+            call_count[0] += 1
+            # Let the state log creation succeed (first call), fail on SM Denial (second call)
+            if data.get("doctype") == "SM Denial":
+                raise Exception("DB error")
+            return original_get_doc(data)
+
+        frappe_mock.get_doc = _failing_get_doc
+
+        claim = _make_claim(canonical_state="adjudicating")
+        # Should not raise despite SM Denial creation failing
+        claim.transition_state(
+            "denied",
+            changed_by="webhook",
+            trigger_type="webhook_835",
+        )
+        assert claim.canonical_state == "denied"
+        frappe_mock.log_error.assert_called_once()
+
+        frappe_mock.get_doc = original_get_doc
+
+    def test_non_denied_transition_does_not_create_denial(self):
+        claim = _make_claim(canonical_state="adjudicating")
+        claim.transition_state(
+            "paid",
+            changed_by="webhook",
+            trigger_type="webhook_835",
+        )
+        denial_docs = [d for d in _created_docs if d.get("doctype") == "SM Denial"]
+        assert len(denial_docs) == 0
