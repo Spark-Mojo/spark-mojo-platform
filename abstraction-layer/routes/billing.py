@@ -795,20 +795,34 @@ STC_MANUAL_REVIEW = {"E0", "A4"}
 
 
 async def _transition_claim_state(
-    claim_name: str, to_state: str, trigger_reference: str, reason: str
+    claim_name: str,
+    to_state: str,
+    trigger_reference: str,
+    reason: str,
+    trigger_type: str = "webhook_277ca",
+    paid_amount_at_change: Optional[float] = None,
+    adjustment_amount_at_change: Optional[float] = None,
+    patient_responsibility_at_change: Optional[float] = None,
 ) -> dict:
     """Call the Frappe whitelisted transition_state API."""
+    payload = {
+        "claim_name": claim_name,
+        "to_state": to_state,
+        "trigger_type": trigger_type,
+        "reason": reason,
+        "trigger_reference": trigger_reference,
+        "changed_by": "System",
+    }
+    if paid_amount_at_change is not None:
+        payload["paid_amount_at_change"] = paid_amount_at_change
+    if adjustment_amount_at_change is not None:
+        payload["adjustment_amount_at_change"] = adjustment_amount_at_change
+    if patient_responsibility_at_change is not None:
+        payload["patient_responsibility_at_change"] = patient_responsibility_at_change
     async with httpx.AsyncClient(base_url=FRAPPE_URL, headers=_frappe_headers()) as client:
         resp = await client.post(
             "/api/method/sm_billing.sm_billing.sm_billing.doctype.sm_claim.sm_claim.api_transition_state",
-            json={
-                "claim_name": claim_name,
-                "to_state": to_state,
-                "trigger_type": "webhook_277ca",
-                "reason": reason,
-                "trigger_reference": trigger_reference,
-                "changed_by": "System",
-            },
+            json=payload,
             timeout=15,
         )
         resp.raise_for_status()
@@ -1029,11 +1043,13 @@ async def stedi_835_webhook(request_body: dict):
     era_date = era_data.get("paymentDate")
 
     # 5. Auto-post payments and create denials/tasks
+    check_eft = era_data.get("checkOrEftNumber", transaction_id)
     for line in era_lines:
         if line["match_status"] == "matched" and not line["is_denied"]:
-            # Payment auto-posting
+            # Payment auto-posting with state machine integration (BILL-012)
             try:
                 claim = await _read_frappe_doc("SM Claim", line["claim"])
+                current_state = claim.get("canonical_state", "")
                 existing_paid = float(claim.get("paid_amount") or 0)
                 existing_adj = float(claim.get("adjustment_amount") or 0)
                 existing_pr = float(claim.get("patient_responsibility") or 0)
@@ -1045,24 +1061,55 @@ async def stedi_835_webhook(request_body: dict):
                 net_expected = charge - new_adj
                 if net_expected > 0 and new_paid >= net_expected:
                     new_state = "paid"
+                    reason = "835 ERA: full payment posted"
                 elif new_paid > 0:
                     new_state = "partial_paid"
+                    reason = "835 ERA: partial payment posted"
                 else:
-                    new_state = claim.get("canonical_state", "adjudicating")
+                    new_state = current_state
+                    reason = "835 ERA: zero payment posted"
 
+                # Always post payment amounts to the claim
                 await _update_frappe_doc("SM Claim", line["claim"], {
                     "paid_amount": new_paid,
                     "adjustment_amount": new_adj,
                     "patient_responsibility": new_pr,
                     "adjudication_date": era_date,
-                    "canonical_state": new_state,
                 })
+
+                # Only transition state if claim is in adjudicating
+                if current_state == "adjudicating" and new_state != current_state:
+                    try:
+                        await _transition_claim_state(
+                            claim_name=line["claim"],
+                            to_state=new_state,
+                            trigger_reference=check_eft,
+                            reason=reason,
+                            trigger_type="webhook_835",
+                            paid_amount_at_change=line["paid_amount"],
+                            adjustment_amount_at_change=line["adjustment_amount"],
+                            patient_responsibility_at_change=line["patient_responsibility"],
+                        )
+                    except Exception as te:
+                        logger.error("835 ERA: transition failed for %s: %s", line["claim"], te)
+                elif current_state != "adjudicating":
+                    logger.warning(
+                        "835 ERA: claim %s in state '%s', not adjudicating — payment posted, no transition",
+                        line["claim"], current_state,
+                    )
             except Exception as exc:
                 logger.error("Failed to auto-post payment for %s: %s", line["claim"], exc)
 
         elif line["match_status"] == "matched" and line["is_denied"]:
-            # Create SM Denial
+            # Create SM Denial with state machine integration (BILL-012)
             try:
+                current_state = None
+                try:
+                    claim_doc = await _read_frappe_doc("SM Claim", line["claim"])
+                    current_state = claim_doc.get("canonical_state", "")
+                except Exception:
+                    pass
+
                 denial_data = {
                     "doctype": "SM Denial",
                     "claim": line["claim"],
@@ -1078,11 +1125,26 @@ async def stedi_835_webhook(request_body: dict):
                     denial_data["appeal_deadline"] = deadline.strftime("%Y-%m-%d")
                 await _create_frappe_doc("SM Denial", denial_data)
 
-                # Also update claim state to denied
-                await _update_frappe_doc("SM Claim", line["claim"], {
-                    "canonical_state": "denied",
-                    "adjudication_date": era_date,
-                })
+                # Transition claim state via state machine
+                if current_state == "adjudicating":
+                    try:
+                        await _transition_claim_state(
+                            claim_name=line["claim"],
+                            to_state="denied",
+                            trigger_reference=check_eft,
+                            reason="835 ERA: denied — CARC " + (line["carc_codes"] or "unknown"),
+                            trigger_type="webhook_835",
+                            paid_amount_at_change=0.0,
+                            adjustment_amount_at_change=line["adjustment_amount"],
+                            patient_responsibility_at_change=0.0,
+                        )
+                    except Exception as te:
+                        logger.error("835 ERA: transition to denied failed for %s: %s", line["claim"], te)
+                elif current_state and current_state != "adjudicating":
+                    logger.warning(
+                        "835 ERA: claim %s in state '%s', not adjudicating — denial created, no transition",
+                        line["claim"], current_state,
+                    )
             except Exception as exc:
                 logger.error("Failed to create SM Denial for %s: %s", line["claim"], exc)
 

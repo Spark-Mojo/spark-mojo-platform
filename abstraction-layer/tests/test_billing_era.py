@@ -174,6 +174,9 @@ def _make_835_mock_post(url, **kwargs):
         resp.json.return_value = {"data": {"name": "DEN-2026.04-0001"}}
     elif "/api/resource/SM Task" in url_str:
         resp.json.return_value = {"data": {"name": "TASK-001"}}
+    elif "api_transition_state" in url_str:
+        body = kwargs.get("json", {})
+        resp.json.return_value = {"message": {"status": "ok", "new_state": body.get("to_state", "")}}
     else:
         resp.json.return_value = {"data": {}}
 
@@ -230,7 +233,7 @@ class TestWebhook835:
 
     @patch("routes.billing.httpx.AsyncClient")
     def test_835_matched_payment_updates_claim(self, MockClient, client):
-        """Matched payment auto-posts and updates claim state."""
+        """Matched payment auto-posts amounts and transitions state via state machine."""
         # Use a single matched claim for simpler verification
         single_835 = {
             **SYNTHETIC_835_RESPONSE,
@@ -263,9 +266,14 @@ class TestWebhook835:
             resp.raise_for_status = MagicMock()
             return resp
 
+        post_calls = []
+        def mock_post(url, **kwargs):
+            post_calls.append({"url": str(url), "json": kwargs.get("json", {})})
+            return _make_835_mock_post(url, **kwargs)
+
         MockClient.return_value = _build_mock_client(
             get_side_effect=mock_get,
-            post_side_effect=_make_835_mock_post,
+            post_side_effect=mock_post,
             put_side_effect=mock_put,
         )
 
@@ -275,16 +283,27 @@ class TestWebhook835:
         })
         assert resp.status_code == 200
 
-        # Verify claim update call was made
-        claim_updates = [c for c in put_calls if "SM Claim" in c["url"]]
+        # Verify payment amounts posted to claim (without canonical_state - that goes via transition)
+        claim_updates = [c for c in put_calls if "SM Claim/CLM-202604-0001" in c["url"]]
         assert len(claim_updates) >= 1
         update_data = claim_updates[0]["json"]
         assert update_data["paid_amount"] == 170.00
-        assert update_data["canonical_state"] == "paid"
+        assert "canonical_state" not in update_data
+
+        # Verify state transition via transition_state API
+        transition_calls = [c for c in post_calls if "api_transition_state" in c["url"]]
+        assert len(transition_calls) == 1
+        t_data = transition_calls[0]["json"]
+        assert t_data["claim_name"] == "CLM-202604-0001"
+        assert t_data["to_state"] == "paid"
+        assert t_data["trigger_type"] == "webhook_835"
+        assert t_data["paid_amount_at_change"] == 170.00
+        assert t_data["adjustment_amount_at_change"] == 30.00
+        assert t_data["patient_responsibility_at_change"] == 30.00
 
     @patch("routes.billing.httpx.AsyncClient")
     def test_835_partial_payment(self, MockClient, client):
-        """Partial payment sets canonical_state to partial_paid."""
+        """Partial payment transitions to partial_paid via state machine."""
         partial_835 = {
             **SYNTHETIC_835_RESPONSE,
             "claimPayments": [{
@@ -315,19 +334,15 @@ class TestWebhook835:
             resp.raise_for_status = MagicMock()
             return resp
 
-        put_calls = []
-        def mock_put(url, **kwargs):
-            put_calls.append({"url": str(url), "json": kwargs.get("json", {})})
-            resp = MagicMock()
-            resp.status_code = 200
-            resp.json.return_value = {"data": {"name": "updated"}}
-            resp.raise_for_status = MagicMock()
-            return resp
+        post_calls = []
+        def mock_post(url, **kwargs):
+            post_calls.append({"url": str(url), "json": kwargs.get("json", {})})
+            return _make_835_mock_post(url, **kwargs)
 
         MockClient.return_value = _build_mock_client(
             get_side_effect=mock_get,
-            post_side_effect=_make_835_mock_post,
-            put_side_effect=mock_put,
+            post_side_effect=mock_post,
+            put_side_effect=_make_835_mock_put,
         )
 
         resp = client.post("/api/webhooks/stedi/835", json={
@@ -336,8 +351,10 @@ class TestWebhook835:
         })
         assert resp.status_code == 200
 
-        claim_updates = [c for c in put_calls if "SM Claim" in c["url"] and "canonical_state" in c.get("json", {})]
-        assert any(c["json"]["canonical_state"] == "partial_paid" for c in claim_updates)
+        transition_calls = [c for c in post_calls if "api_transition_state" in c["url"]]
+        assert len(transition_calls) == 1
+        assert transition_calls[0]["json"]["to_state"] == "partial_paid"
+        assert transition_calls[0]["json"]["trigger_type"] == "webhook_835"
 
     @patch("routes.billing.httpx.AsyncClient")
     def test_835_denial_detection(self, MockClient, client):
@@ -374,24 +391,18 @@ class TestWebhook835:
                 resp.json.return_value = {"data": {"name": "ERA-2026.04-0001"}}
             elif "/api/resource/SM Denial" in url_str:
                 resp.json.return_value = {"data": {"name": "DEN-2026.04-0001"}}
+            elif "api_transition_state" in url_str:
+                body = kwargs.get("json", {})
+                resp.json.return_value = {"message": {"status": "ok", "new_state": body.get("to_state", "")}}
             else:
                 resp.json.return_value = {"data": {}}
-            resp.raise_for_status = MagicMock()
-            return resp
-
-        put_calls = []
-        def mock_put(url, **kwargs):
-            put_calls.append({"url": str(url), "json": kwargs.get("json", {})})
-            resp = MagicMock()
-            resp.status_code = 200
-            resp.json.return_value = {"data": {"name": "updated"}}
             resp.raise_for_status = MagicMock()
             return resp
 
         MockClient.return_value = _build_mock_client(
             get_side_effect=mock_get,
             post_side_effect=mock_post,
-            put_side_effect=mock_put,
+            put_side_effect=_make_835_mock_put,
         )
 
         resp = client.post("/api/webhooks/stedi/835", json={
@@ -410,9 +421,14 @@ class TestWebhook835:
         assert denial_data["carc_codes"] == "4"
         assert denial_data["appeal_deadline"] == "2026-07-04"  # 90 days from 2026-04-05
 
-        # Verify claim state updated to denied
-        claim_puts = [c for c in put_calls if "SM Claim" in c["url"] and "canonical_state" in c.get("json", {})]
-        assert any(c["json"]["canonical_state"] == "denied" for c in claim_puts)
+        # Verify claim state transitioned to denied via state machine (BILL-012)
+        transition_calls = [c for c in post_calls if "api_transition_state" in c["url"]]
+        assert len(transition_calls) == 1
+        t_data = transition_calls[0]["json"]
+        assert t_data["claim_name"] == "CLM-202604-0002"
+        assert t_data["to_state"] == "denied"
+        assert t_data["trigger_type"] == "webhook_835"
+        assert t_data["paid_amount_at_change"] == 0.0
 
     @patch("routes.billing.httpx.AsyncClient")
     def test_835_unmatched_creates_task(self, MockClient, client):
