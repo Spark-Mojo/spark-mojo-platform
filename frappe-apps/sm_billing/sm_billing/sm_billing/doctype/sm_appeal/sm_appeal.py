@@ -48,6 +48,7 @@ class SMAppeal(Document):
     def after_insert(self):
         self._transition_claim_to_in_appeal()
         self._create_workboard_task()
+        self._generate_appeal_letter()
 
     def _transition_claim_to_in_appeal(self):
         claim_doc = frappe.get_doc("SM Claim", self.claim)
@@ -91,3 +92,70 @@ class SMAppeal(Document):
                 title=f"Failed to create workboard task for appeal {self.name}",
                 message=frappe.get_traceback(),
             )
+
+    def _generate_appeal_letter(self):
+        try:
+            from sm_billing.sm_billing.appeal_letter_generator import generate_appeal_letter
+
+            denial_doc = frappe.get_doc("SM Denial", self.denial)
+            claim_doc = frappe.get_doc("SM Claim", self.claim)
+
+            carc_codes = [c.strip() for c in (denial_doc.carc_codes or "").split(",") if c.strip()]
+            rarc_codes = [c.strip() for c in (denial_doc.rarc_codes or "").split(",") if c.strip()]
+
+            cpt_codes = []
+            if hasattr(claim_doc, "claim_lines") and claim_doc.claim_lines:
+                cpt_codes = [line.cpt_code for line in claim_doc.claim_lines if line.cpt_code]
+
+            letter = generate_appeal_letter(
+                carc_codes=carc_codes,
+                rarc_codes=rarc_codes,
+                payer_name=claim_doc.payer or "",
+                cpt_codes=cpt_codes,
+                service_date=str(claim_doc.date_of_service) if claim_doc.date_of_service else "",
+                appeal_level=int(self.appeal_level or 1),
+                denial_reason_summary=denial_doc.denial_reason_summary or "",
+            )
+
+            frappe.db.set_value("SM Appeal", self.name, "appeal_letter", letter)
+            logger.debug(
+                "Appeal letter generated for appeal %s, length %d chars",
+                self.name,
+                len(letter),
+            )
+
+            self._add_task_comment()
+
+        except Exception as e:
+            logger.warning("Failed to generate appeal letter for %s: %s", self.name, str(e))
+            fallback = (
+                f"[Appeal letter generation failed - please draft manually. "
+                f"Denial reason: {getattr(frappe.get_doc('SM Denial', self.denial), 'denial_reason_summary', 'Unknown') if self.denial else 'Unknown'}]"
+            )
+            try:
+                frappe.db.set_value("SM Appeal", self.name, "appeal_letter", fallback)
+            except Exception:
+                pass
+
+    def _add_task_comment(self):
+        try:
+            tasks = frappe.get_all(
+                "SM Task",
+                filters={
+                    "source_object_id": self.name,
+                    "task_type": "appeal_submission",
+                },
+                fields=["name"],
+                limit=1,
+            )
+            if tasks:
+                task_doc = frappe.get_doc("SM Task", tasks[0].name)
+                comments = frappe.parse_json(task_doc.comments or "[]")
+                comments.append({
+                    "user": frappe.session.user,
+                    "timestamp": str(frappe.utils.now()),
+                    "comment": "AI-generated appeal letter ready for review. Open the appeal record to edit and approve.",
+                })
+                frappe.db.set_value("SM Task", tasks[0].name, "comments", frappe.as_json(comments))
+        except Exception as e:
+            logger.warning("Failed to add comment to task for appeal %s: %s", self.name, str(e))
