@@ -1,575 +1,397 @@
 # Test 02: Spec Writing — Scores
 
+Scored: 2026-04-09
+Scorer: Claude Opus 4.6 (1M context)
+
 ---
 
-## RUN A — CRM Contact Create Endpoint
-
----
-
-MODEL: model-alpha | TEST: 02 | RUN: A
+## MODEL: model-alpha | TEST: 02 | RUN: A
 Completeness of Sections: 3/5
-Evidence: Has Objective, Acceptance Criteria, Technical Implementation, Code Snippets, Guardrails Compliance, and Open Questions. Missing explicit Files To Create/Modify section, test section is absent (no unit or integration test specifications), and edge cases section is absent.
-Failure classification: CORRECTABLE
-
+  Evidence: Has Objective, Acceptance Criteria (Gherkin), Technical Implementation with code, Guardrails Compliance, Open Questions. Missing a dedicated Files section and a structured Tests section with unit/integration/edge cases.
 Test Specificity: 2/5
-Evidence: No test section exists at all. The Gherkin acceptance criteria describe behaviors but do not specify function names, test inputs, expected outputs, or edge cases. No unit tests, no integration tests, no edge case enumeration.
-Failure classification: FUNDAMENTAL
-
-API Specification Quality: 4/5
-Evidence: Request fields listed with types, response JSON example provided with field mapping. Status codes are limited (only 200 mentioned, no 400/422/502 error response schemas). Missing explicit error state schemas.
-Failure classification: CORRECTABLE
-
-Guardrail Compliance: 5/5
-Evidence: Explicit Guardrails Compliance section addresses MAL-only rule, native DocType usage, no TypeScript, timeline event via Communication, n8n boundary. SM prefix awareness shown. CRM timeline event fully specified.
-Failure classification: N/A
-
-Acceptance Criteria Quality: 3/5
-Evidence: Gherkin scenarios cover happy path, vocabulary resolution, timeline event, and vocabulary fallback. However, criteria are not independently verifiable by command — no curl commands, no specific assertions on status codes for error states, and missing error-path criteria (missing first_name, Frappe failure).
-Failure classification: CORRECTABLE
-
-TOTAL: 17/25
-Notable strength: Clean, well-structured vocabulary resolution and Frappe Communication field specification.
-Notable failure: Complete absence of any test section — an implementing agent has zero test guidance.
-
----
-
-MODEL: model-beta | TEST: 02 | RUN: A
-Completeness of Sections: 5/5
-Evidence: Contains Purpose, Platform Guardrails Compliance, Architecture, Endpoint Specification (4.1-4.5), Implementation Guide (5.1-5.4), Vocabulary Resolution Detail, CRM Timeline Event Detail, Error Handling Summary, Acceptance Criteria (AC-1 through AC-10), Testing (manual + automated), Out of Scope, Definition of Done. Every required section is present and substantive.
-Failure classification: N/A
-
-Test Specificity: 5/5
-Evidence: Manual testing section provides exact curl commands with expected verification steps for 4 scenarios (AC-1, AC-2, AC-3, AC-8). Automated tests specify function names (test_create_contact_success, test_create_contact_missing_first_name, test_create_contact_blank_first_name), exact mock return values, request bodies, and assertion lines. Edge cases explicitly covered (blank first_name, unknown fields, timeline failure).
-Failure classification: N/A
-
-API Specification Quality: 5/5
-Evidence: Request schema has explicit field table with types, required flags, validation rules, and max lengths. Response schemas for success (201), validation error (400), and Frappe error (502) all fully specified with example JSON. Field notes table explains each response field's source. Status codes are correct (201 for creation).
-Failure classification: N/A
-
-Guardrail Compliance: 5/5
-Evidence: Dedicated "Platform Guardrails Compliance" table checks all rules. Spec Gate answers (Workflow, CRM Timeline, Right Level) all addressed. MAL-only rule explicitly stated. CRM timeline event specified via Communication DocType with all fields. SM prefix awareness shown. Allowlist pattern prevents internal field injection.
-Failure classification: N/A
-
-Acceptance Criteria Quality: 5/5
-Evidence: 10 independently verifiable ACs with Given/When/Then format. Each includes specific request body, expected HTTP status, and exact response field assertions. Covers happy path (AC-1, AC-2), validation errors (AC-3, AC-4), timeline event verification (AC-5), vocabulary (AC-6, AC-7), unknown fields (AC-8), Frappe errors (AC-9), and timeline failure resilience (AC-10).
-Failure classification: N/A
-
-TOTAL: 25/25
-Notable strength: Exceptional depth — the Frappe Contact child table note (Section 5.4) and multiple Frappe client patterns (Section 5.3) show deep domain awareness that would prevent real implementation pitfalls.
-Notable failure: None.
-
----
-
-MODEL: model-gamma | TEST: 02 | RUN: A
-Completeness of Sections: 4/5
-Evidence: Has Metadata, Spec Gates, Architecture & Constraints, API Contract (request/response/errors), Implementation Guide with code, Acceptance Criteria, Testing Strategy, Deployment. Missing dedicated edge cases section; testing strategy is a table but lacks specificity.
-Failure classification: CORRECTABLE
-
-Test Specificity: 3/5
-Evidence: Testing Strategy table lists 5 test types (Unit create_contact, Unit get_person_label, Integration, Validation, Security) with brief assertion descriptions. However, tests lack specific function names, input payloads, expected response bodies, or mock configurations. "Verify return structure" is too vague to implement directly.
-Failure classification: CORRECTABLE
-
-API Specification Quality: 4/5
-Evidence: Request body has JSON example with field validation rules in a collapsed section. Response examples for 201, 400, 409, 429, 500 are all provided with JSON bodies. However, 429 rate limiting is not requested in the prompt and the metadata field in the request introduces unrequested complexity. Field types are clear.
-Failure classification: CORRECTABLE
-
-Guardrail Compliance: 5/5
-Evidence: Explicit Spec Gates section answers all three gates. Routing Contract stated. SM prefix awareness shown. No TypeScript or hardcoded colors noted. CRM Timeline via Communication DocType fully specified. Evaluation order correctly identified as Level 1 native.
-Failure classification: N/A
-
-Acceptance Criteria Quality: 3/5
-Evidence: 9 checkbox criteria provided. Most are verifiable ("returns 201", "returns 400"), but some are subjective or vague ("Code passes flake8/ruff linting", "All string labels use vocabulary_label dynamic resolution"). Missing error-state criteria for timeline failure and Frappe connection failure.
-Failure classification: CORRECTABLE
-
-TOTAL: 19/25
-Notable strength: Spec Gates section is exemplary — crisp, direct answers to all three mandatory gates with correct architectural reasoning.
-Notable failure: Testing strategy is too high-level for direct implementation without further interpretation.
-
----
-
-MODEL: model-delta | TEST: 02 | RUN: A
-Completeness of Sections: 5/5
-Evidence: Contains Platform Gates (all 3), Background and Context, What to Build, Request/Response Contracts, Processing Logic (5 steps), CRM Timeline Event field spec, Files to Create/Modify, Acceptance Criteria (AC-1 through AC-12), Test Instructions (6 tests), Out of Scope, Notes for Implementing Agent (10 notes). Exceptionally comprehensive.
-Failure classification: N/A
-
-Test Specificity: 5/5
-Evidence: 6 manual tests with exact curl commands, specific request bodies, and explicit "Verify" checks for each. Test 6 includes a Frappe console query to verify Communication records. Tests cover happy path minimal, happy path full, missing first_name, blank last_name, unauthenticated request, and Communication record verification. Each test specifies expected HTTP status and response field checks.
-Failure classification: N/A
-
-API Specification Quality: 5/5
-Evidence: Request contract has explicit field table with types, required flags, validation rules. Processing logic is step-by-step with exact Frappe API calls. Response contracts for success (200), validation error (422), and server error (500) all specified with JSON examples. CRM Timeline Event has its own dedicated field-value table. Child table handling for email_ids/phone_nos is explicitly addressed.
-Failure classification: N/A
-
-Guardrail Compliance: 5/5
-Evidence: All three Platform Gates answered with clear reasoning. MAL-only rule stated ("React never calls Frappe"). SM prefix awareness shown. CRM timeline event specified with Communication DocType fields. communication_type="Other" to avoid Frappe email-send path is a sophisticated platform-aware choice. Notes for Implementing Agent section contains 10 contextual guardrails.
-Failure classification: N/A
-
-Acceptance Criteria Quality: 5/5
-Evidence: 12 independently verifiable ACs. Each specifies exact HTTP method, request body, expected status code, and response field checks. Covers endpoint reachable (AC-1), Contact in Frappe (AC-2), document ID returned (AC-3), blank first_name (AC-4), missing first_name (AC-5), blank last_name (AC-6), timeline written (AC-7), vocabulary in timeline (AC-8), missing vocabulary default (AC-9), timeline failure non-fatal (AC-10), auth enforced (AC-11), route in OpenAPI docs (AC-12).
-Failure classification: N/A
-
-TOTAL: 25/25
-Notable strength: The "Notes for Implementing Agent" section (10 numbered items) is uniquely valuable — it anticipates real implementation pitfalls (Frappe child tables, FrappeClient pattern, SM Site Registry not seeded, Communication minimum fields) and provides actionable resolution guidance.
-Notable failure: None.
-
----
-
-MODEL: model-epsilon | TEST: 02 | RUN: A
-Completeness of Sections: 5/5
-Evidence: Contains Overview (with does/does not), Workflow Gate, Functional Requirements (endpoint, request, response, vocabulary, timeline, consent status, duplicate detection), Data Model, Architecture (call flow, responsibility matrix), Acceptance Criteria (15 ACs), Error Handling, File Changes, Open Questions, Definition of Done. Exhaustive coverage.
-Failure classification: N/A
-
-Test Specificity: 3/5
-Evidence: Acceptance criteria are well-specified (15 ACs with verification methods like "Integration test" or "Frappe DB verification"), but there are no actual test implementations, no function names, no mock configurations, and no curl commands. The spec tells you what to test but not how to write the tests.
-Failure classification: CORRECTABLE
-
-API Specification Quality: 5/5
-Evidence: Request schema fully specified with field types, validation rules (email format, date validation), and custom_fields wrapper pattern. Response schemas for 201, 409, 422, and 401 all provided with JSON examples. Frappe REST API calls table (Section 5.5) maps every action to method and endpoint. Field validation rules are explicit (date must be in past, email format).
-Failure classification: N/A
-
-Guardrail Compliance: 4/5
-Evidence: MAL-only rule stated. SM prefix awareness shown. CRM timeline via Communication DocType specified. However, the spec introduces duplicate detection (Section 3.7) and consent status computation (Section 3.6) which are explicitly out of scope per the prompt ("No duplicate detection"). This over-scopes beyond the story definition, though guardrails themselves are respected.
-Failure classification: DOMAIN
-
-Acceptance Criteria Quality: 4/5
-Evidence: 15 ACs with verification methods. Most are independently verifiable ("returns HTTP 201", "returns HTTP 409", "returns HTTP 422"). However, some test methods are vague ("Integration test", "Frappe DB verification") and AC-13 (consent status) and AC-6/7/8 (duplicate detection) test features not requested in the prompt. The over-scoping dilutes the acceptance criteria's precision.
-Failure classification: CORRECTABLE
-
-TOTAL: 21/25
-Notable strength: The architecture section with call flow diagram and responsibility matrix is the most detailed of all models — it precisely maps every concern to its owning layer.
-Notable failure: Significant scope creep — duplicate detection and consent status computation are explicitly out of scope per the prompt but are specified as if required.
-
----
-
-MODEL: model-zeta | TEST: 02 | RUN: A
-Completeness of Sections: 3/5
-Evidence: Has Context & Workflow, Acceptance Criteria, Technical Specification (with code), Data Contract, Testing Requirements, Security, Dependencies, and Implementation Notes. Missing dedicated Files to Create/Modify section (only mentioned inline). CRM Timeline event section is within the code but not a standalone specification section. Missing edge cases section.
-Failure classification: CORRECTABLE
-
-Test Specificity: 3/5
-Evidence: Testing Requirements section has 4 unit test scenarios with descriptions and one integration test with curl command. Tests describe what to assert ("Assert 200", "Assert response includes name") but lack specific mock configurations, exact expected values, or function-level detail. Integration test curl command is provided but verification steps are brief.
-Failure classification: CORRECTABLE
-
+  Evidence: No test section at all. Gherkin scenarios describe behavior but provide no pytest function names, no mock patterns, no edge case listing. An implementing agent has zero test guidance.
 API Specification Quality: 3/5
-Evidence: Request and response schemas are provided but have gaps. Request schema uses "string (optional)" type annotations rather than explicit Pydantic types. Response schema is present but uses string type annotations like "string|null" rather than formal JSON. Error responses are listed briefly (400, 401, 500) without JSON bodies for each. No explicit validation rules beyond "required" noted.
-Failure classification: CORRECTABLE
-
+  Evidence: Request fields listed with types in Pydantic model. Response JSON example provided. However, only 200 status shown (not 201 for creation). No explicit 400/422/500 response body schemas. Missing field validation rules (max length, format).
 Guardrail Compliance: 4/5
-Evidence: Platform Guardrails section explicitly lists MAL routing rule, native DocType usage, SM prefix awareness, and evaluation order. CRM Timeline event is specified via Communication DocType with correct fields. However, communication_type="System" is non-standard for Frappe (not a valid enum value in most versions), which could cause implementation issues.
-Failure classification: DOMAIN
-
+  Evidence: Explicitly states MAL-only rule, uses native Contact DocType, mentions CRM timeline via Communication, notes n8n boundary. Does not mention SM prefix awareness (though not directly applicable here).
 Acceptance Criteria Quality: 3/5
-Evidence: 7 functional requirement items serve as acceptance criteria but are high-level ("Returns 400 Bad Request if both first_name and last_name are missing"). They mix requirements with criteria. Missing specific Given/When/Then format or independently verifiable test commands. Missing error-state criteria for timeline failure and vocabulary fallback.
-Failure classification: CORRECTABLE
+  Evidence: Four Gherkin scenarios cover happy path, vocabulary, timeline, and fallback. Missing error state scenarios (missing first_name, Frappe error, timeline failure). Not independently verifiable by command.
+TOTAL: 15/25
+Notable strength: Clear vocabulary resolution logic with fallback behavior well-specified.
+Notable failure: Complete absence of a test section makes this unimplementable without spec amendments.
 
+---
+
+## MODEL: model-beta | TEST: 02 | RUN: A
+Completeness of Sections: 5/5
+  Evidence: Has Purpose, Platform Guardrails, Architecture, Endpoint Specification (request/response/errors), Implementation Guide with pseudocode, Vocabulary detail, CRM Timeline detail, Error Handling summary, 10 Acceptance Criteria, Testing (manual + automated), Out of Scope, Definition of Done. Exceptionally complete.
+Test Specificity: 5/5
+  Evidence: Manual test section with 4 curl commands and verify steps. Automated test section with 3 pytest functions showing mock patterns, assertions, and status code checks. Edge cases explicitly listed (AC-4 blank first_name, AC-8 unknown fields, AC-10 timeline failure).
+API Specification Quality: 5/5
+  Evidence: Request schema with field table (type, required, validation, max chars). Response schemas for 201, 400, and 502 with full JSON bodies. Field notes table explaining each response field's source. 201 status code correct for creation. Allowlist pattern documented.
+Guardrail Compliance: 5/5
+  Evidence: Explicit guardrail compliance table with 6 entries. Spec Gate answers for all 3 gates. MAL-only stated. Native DocType confirmed. SM prefix awareness noted. CRM timeline via Communication specified with detailed fields.
+Acceptance Criteria Quality: 5/5
+  Evidence: 10 numbered ACs, each with Given/When/Then format and specific assertions. Covers happy path (AC-1, AC-2), validation errors (AC-3, AC-4), timeline (AC-5), vocabulary (AC-6, AC-7), security (AC-8), upstream errors (AC-9), and graceful degradation (AC-10). Each independently verifiable.
+TOTAL: 25/25
+Notable strength: The Frappe Contact child tables note (Section 5.4) shows deep platform knowledge and saves implementer hours of debugging.
+Notable failure: None.
+
+---
+
+## MODEL: model-gamma | TEST: 02 | RUN: A
+Completeness of Sections: 1/5
+  Evidence: Output is a full story decomposition table (31 stories) and dependency graph, not a spec for CRM-003. No endpoint definition, no API schema, no tests, no acceptance criteria for the specific story. Wrong deliverable entirely.
+Test Specificity: 0/5
+  Evidence: No tests of any kind. The output is a story decomposition, not a story spec.
+API Specification Quality: 0/5
+  Evidence: No API specification present. The table row for CRM-003 mentions "POST /api/modules/crm/contacts/create" but provides no schema, no error states, no response format.
+Guardrail Compliance: 1/5
+  Evidence: The story table mentions "Writes Contact creation activity" for CRM-003 and lists spec gate answers in table columns. But there is no actual guardrail compliance analysis or detailed spec content.
+Acceptance Criteria Quality: 0/5
+  Evidence: No acceptance criteria for CRM-003. The output is an index, not a spec.
+TOTAL: 2/25
+Notable strength: The dependency graph and parallel execution groups show strong systems thinking.
+Notable failure: Produced the wrong deliverable entirely -- a story decomposition instead of a story spec for CRM-003.
+
+---
+
+## MODEL: model-delta | TEST: 02 | RUN: A
+Completeness of Sections: 5/5
+  Evidence: Has Platform Gates (all 3 answered), Background/Context, What to Build (endpoint, request, processing logic, timeline, response), full code with helpers, Files to Create/Modify, 12 Acceptance Criteria, 6 Test Instructions with curl commands, Out of Scope, Notes for Implementing Agent. Comprehensive.
+Test Specificity: 4/5
+  Evidence: Six numbered test instructions with curl commands, expected results, and verification steps including Frappe console query (Test 6). However, no pytest unit test code -- only manual/integration tests. Edge cases covered (blank last_name, missing first_name, unauthenticated).
+API Specification Quality: 5/5
+  Evidence: Request contract table with field types, required flags, and validation rules. Response contracts for 200, 422, and 500 with JSON examples. Child table handling (email_ids, phone_nos) explicitly addressed. Field mapping documented precisely.
+Guardrail Compliance: 5/5
+  Evidence: All three Platform Gates answered thoroughly with explanations. MAL-only rule stated explicitly. Native Contact DocType confirmed. SM prefix noted. Communication DocType fields specified exactly (communication_type="Other", communication_medium="Other" to avoid email-send path -- very precise).
+Acceptance Criteria Quality: 5/5
+  Evidence: 12 numbered ACs covering endpoint reachability (AC-1), Frappe verification (AC-2), document ID format (AC-3), validation errors (AC-4,5,6), timeline (AC-7,8), vocabulary (AC-9), timeline failure (AC-10), auth (AC-11), OpenAPI docs (AC-12). Each independently verifiable.
+TOTAL: 24/25
+Notable strength: The "Notes for Implementing Agent" section (10 numbered notes) is exceptional -- anticipates real implementation pitfalls like frappe.local.site being illustrative, child table patterns, and REST vs Python API differences.
+Notable failure: No pytest unit test code (manual tests only).
+
+---
+
+## MODEL: model-epsilon | TEST: 02 | RUN: A
+Completeness of Sections: 4/5
+  Evidence: Has Overview, Workflow Gate, Functional Requirements (endpoint, request, response, vocabulary, timeline, consent status, duplicate detection), Data Model, Architecture, Acceptance Criteria (15 ACs), Error Handling, File Changes, Open Questions, Definition of Done. Very thorough but includes scope creep (duplicate detection, consent status computation) not in the story brief.
+Test Specificity: 2/5
+  Evidence: No dedicated test section with pytest functions. The 15 acceptance criteria say "Integration test" or "Frappe DB verification" as test method but provide no test code, no mock patterns, no function signatures.
+API Specification Quality: 4/5
+  Evidence: Request body with JSON example and field table. Response schemas for 201, 409, 422, 401 with JSON examples. Field types specified. However, the custom_fields wrapper adds complexity not in the original brief and the 409 Conflict response is scope creep.
+Guardrail Compliance: 4/5
+  Evidence: Spec Gate answers provided. MAL-only stated. SM prefix used. CRM timeline via Communication specified. However, the spec adds duplicate detection (out of scope per brief) and a Frappe server script hook for consent computation, which goes beyond what was asked.
+Acceptance Criteria Quality: 4/5
+  Evidence: 15 ACs covering many scenarios including custom fields, consent status, and duplicates. Each has a test method column. However, the ACs include items from scope-crept features (AC-6/7/8 for duplicates, AC-13 for consent status) which were not in the story brief.
+TOTAL: 18/25
+Notable strength: Deep domain knowledge -- the consent status computation hook and custom_fields wrapper show understanding of the healthcare vertical.
+Notable failure: Significant scope creep -- adds duplicate detection (CRM-011), consent status computation, and custom fields handling that the brief explicitly scoped to separate stories.
+
+---
+
+## MODEL: model-zeta | TEST: 02 | RUN: A
+Completeness of Sections: 4/5
+  Evidence: Has Context & Workflow, Acceptance Criteria, Technical Specification (code), Data Contract (request/response schemas), Testing Requirements, Security, Dependencies, Implementation Notes. Missing a dedicated Files section and Platform Gates are implicit rather than explicit.
+Test Specificity: 3/5
+  Evidence: Testing section has 4 unit test descriptions (Success Path, Default Vocabulary, Validation Failure, Custom Fields) with mock patterns described. Integration test with curl command. But no pytest function signatures, no edge case for timeline failure or Frappe error.
+API Specification Quality: 3/5
+  Evidence: Request and response schemas documented with JSON type annotations. Error responses listed (400, 401, 500). But only 200 status for creation (not 201). Response schema puts person_label inside data object rather than as a separate vocabulary/meta field. Missing detailed field validation rules.
+Guardrail Compliance: 4/5
+  Evidence: Platform Guardrails section with compliance table. MAL-only stated. Native Contact DocType confirmed. SM prefix noted. CRM timeline via Communication with communication_type="System" and JSON content. Custom fields passthrough via extra="allow" is permissive.
+Acceptance Criteria Quality: 2/5
+  Evidence: 7 acceptance criteria in section 2 are high-level functional requirements, not independently verifiable test criteria. "Returns 200 OK with body" is not specific enough. Missing error state ACs, timeline failure AC, vocabulary fallback AC.
 TOTAL: 16/25
-Notable strength: Clean code implementation with good inline documentation and proper FastAPI patterns.
-Notable failure: Acceptance criteria and tests lack the specificity needed for an implementing agent to verify without interpretation.
+Notable strength: Clean code organization with proper separation of concerns in the implementation.
+Notable failure: Acceptance criteria are requirements statements, not verifiable test criteria. Missing error state coverage.
 
 ---
 
-## RUN B — Claim State Query Endpoint
-
----
-
-MODEL: model-alpha | TEST: 02 | RUN: B
+## MODEL: model-alpha | TEST: 02 | RUN: B
 Completeness of Sections: 5/5
-Evidence: Contains Summary, Acceptance Criteria table (8 ACs), API Contract (request/response/errors), Technical Design with code, Edge Cases table, Test Cases (7 detailed), Out of Scope, Implementation Notes, Files to Modify, Definition of Done. All required sections present and substantive.
-Failure classification: N/A
-
-Test Specificity: 5/5
-Evidence: 7 test cases with Given/And/When/Then format, each specifying exact claim_id, expected HTTP status, and expected JSON response body. TC-2 covers terminal state (empty valid_transitions), TC-3 covers empty canonical_state (null), TC-5 covers empty claim_id, TC-6 covers unknown state. TC-7 verifies header forwarding. Each test is directly implementable.
-Failure classification: N/A
-
+  Evidence: Has Summary, Acceptance Criteria table, full API Contract (request/response/errors), Technical Design with code, Edge Cases table, 7 Test Cases, Out of Scope, Implementation Notes, Files to Modify, Definition of Done. All required sections present.
+Test Specificity: 4/5
+  Evidence: 7 test cases with Given/When/Then format, specific response JSON, and edge cases (terminal state, empty canonical_state, unknown state, site header). Missing pytest function signatures but test scenarios are precise and implementable.
 API Specification Quality: 5/5
-Evidence: Request format, path parameters, headers all specified in tables. Response schema for 200, 400, 404 each with example JSON. Field types table (string, string|null, list[string]). Pydantic response model defined. Status codes correct. Example responses included for all states.
-Failure classification: N/A
-
+  Evidence: Request with path params and headers table. Success response 200 with field types table. Error responses for 400 and 404 with JSON bodies. Response model defined as Pydantic. Optional null for current_state documented.
 Guardrail Compliance: 5/5
-Evidence: Explicitly states "Does not call transition_state()" multiple times. Imports only VALID_TRANSITIONS. MAL routing at /api/modules/billing/. SM prefix awareness (SM Claim). CRM timeline addressed as N/A for read endpoint with "CRM timeline event logging future consideration — this is a read operation." X-Frappe-Site-Name forwarding specified.
-Failure classification: N/A
+  Evidence: Imports VALID_TRANSITIONS from controller (not re-implements). Explicitly states "Do not import transition_state." Read-only behavior documented as AC-8. MAL routing correct.
+Acceptance Criteria Quality: 4/5
+  Evidence: 8 ACs covering endpoint, state match, transitions match, terminal state, 404, 400, site header forwarding, and no-mutation guarantee. Each independently verifiable. Missing AC for unknown state gracefully returning empty list.
+TOTAL: 23/25
+Notable strength: Edge cases table is thorough -- covers whitespace claim_id, empty canonical_state, unknown state value, and Frappe 5xx propagation.
+Notable failure: Missing explicit mention that VALID_TRANSITIONS should be imported (not copied) -- the Implementation Notes say to follow the import pattern but the code shows inline helper.
 
+---
+
+## MODEL: model-beta | TEST: 02 | RUN: B
+Completeness of Sections: 5/5
+  Evidence: Purpose, Spec Gates (all 3), API Contract, Pydantic model, VALID_TRANSITIONS handling (Section 5 with explicit copy instruction), Implementation with code, Files Changed, Acceptance Criteria (12 ACs), Test Plan (unit + integration), Out of Scope, Risks & Mitigations, Architectural Compliance.
+Test Specificity: 5/5
+  Evidence: 5 unit tests with pytest function signatures, assertions, and specific test data. 7 integration test scenarios in table format. Unit tests verify dict structure, target validity, response model defaults. Integration tests cover happy path, 404, whitespace, site header, terminal state, idempotency.
+API Specification Quality: 5/5
+  Evidence: Full request/response tables with types. Success 200 with JSON example. Error 400 and 404 with JSON bodies and 500 with standard error. Response field descriptions clear. Pydantic model with field types.
+Guardrail Compliance: 5/5
+  Evidence: Key insight: correctly identifies that MAL cannot import from sm_billing directly (separate process) and instructs to copy VALID_TRANSITIONS with source citation. This is a critical architectural awareness. Explicit "do NOT import transition_state." Architectural compliance table with 6 rules checked.
 Acceptance Criteria Quality: 5/5
-Evidence: 8 ACs plus 10-item Definition of Done checklist. Each AC specifies exact HTTP status, response body content, and verification method. Covers happy path, terminal state, empty claim_id (400), missing claim (404), unknown state (empty list), site header forwarding, and read-only guarantee (no transition_state calls). All independently verifiable.
-Failure classification: N/A
-
+  Evidence: 12 ACs covering functional behavior, state matching, terminal states, errors, site header with/without, no-mutation, no-transition-state import, dict match verification, response model types. Each has explicit verification method.
 TOTAL: 25/25
-Notable strength: Edge Cases table is exceptionally thorough — covers 8 specific scenarios with expected behavior for each, including whitespace claim_id, null canonical_state, and unknown state values.
+Notable strength: Section 5 correctly identifies that FastAPI MAL runs in a separate process from Frappe and cannot import sm_billing directly -- proposes copying the dict with source citation. This level of architectural awareness is exceptional.
 Notable failure: None.
 
 ---
 
-MODEL: model-beta | TEST: 02 | RUN: B
-Completeness of Sections: 5/5
-Evidence: Contains Purpose, Spec Gates (all 3), API Contract, Pydantic Response Model, VALID_TRANSITIONS handling (Section 5), Endpoint Implementation with code, Implementation Notes, Files Changed, Acceptance Criteria (12 ACs), Test Plan (unit + integration), Out of Scope, Risks & Mitigations, Architectural Compliance. Comprehensive.
-Failure classification: N/A
-
-Test Specificity: 5/5
-Evidence: 5 unit tests with exact function names, input values, and assertions (test_valid_transitions_dict_has_all_states, test_valid_transitions_values_are_lists_of_strings, test_valid_transitions_targets_are_known_states, test_response_model_fields, test_response_model_defaults_empty_transitions). Integration test table specifies 7 scenarios with method, expected status. Highly implementable.
-Failure classification: N/A
-
-API Specification Quality: 5/5
-Evidence: Request/response fully specified with tables. All three error states (400, 404, 500) with JSON bodies. Pydantic model defined. Field descriptions table. Example JSON for success response. Status codes correct. VALID_TRANSITIONS handling addressed with instruction to copy from source.
-Failure classification: N/A
-
-Guardrail Compliance: 5/5
-Evidence: Spec Gates section addresses all 3 gates — Gate 2 explicitly states "no CRM timeline write" with justification. MAL routing confirmed. SM prefix awareness. Architectural Compliance table maps 6 rules to compliance status. Explicit instruction to NOT import transition_state. VALID_TRANSITIONS correctly handled as copy with source citation.
-Failure classification: N/A
-
-Acceptance Criteria Quality: 5/5
-Evidence: 12 ACs with verification methods. Covers claim found (AC-1), state matches Frappe (AC-2), transitions match VALID_TRANSITIONS (AC-3), terminal state (AC-4), 404 (AC-5), 400 whitespace (AC-6), header forwarded (AC-7), header absent still works (AC-8), no mutation (AC-9), no transition_state import (AC-10), dict matches source (AC-11), response model correct (AC-12). All independently verifiable.
-Failure classification: N/A
-
-TOTAL: 25/25
-Notable strength: The VALID_TRANSITIONS Section 5 instruction — copy the dict with source citation, block if source file not found — is a uniquely practical approach to the cross-process import problem.
-Notable failure: None.
-
----
-
-MODEL: model-gamma | TEST: 02 | RUN: B
+## MODEL: model-gamma | TEST: 02 | RUN: B
 Completeness of Sections: 4/5
-Evidence: Contains Metadata, Context & Scope, Architecture, Endpoint Specification, Data Contracts with Pydantic model, Implementation Details, Testing Requirements table, Acceptance Criteria checklist. Missing a dedicated CRM Timeline section (though addressed inline as "ZERO calls" since read-only). Testing section is a brief table.
-Failure classification: CORRECTABLE
-
+  Evidence: Has Metadata, Context & Scope, Architecture, Endpoint Specification, Data Contracts, Implementation Details, Testing Requirements, Acceptance Criteria, Smoke Test, Out of Scope. Missing explicit Platform Gates section (though compliance is implied). Uses emoji headers.
 Test Specificity: 3/5
-Evidence: Testing Requirements table has 6 test cases with Input and Expected Result columns, but descriptions are brief ("Valid site header, claim_id='DRAFT-CLAIM-01'" → "200 with canonical_state='draft'"). No function names, no mock setups, no assertion code, no curl commands. "Mutation Prevention" test says "ASSERT: transition_state() or PUT/POST to Frappe is NEVER called" but doesn't specify how to verify.
-Failure classification: CORRECTABLE
-
-API Specification Quality: 5/5
-Evidence: Route, parameters, response codes all in tables. Pydantic response model defined. JSON examples for request and response. Error detail formats specified for 400, 404, 422. Handler logic flow described step-by-step. Response codes table is comprehensive.
-Failure classification: N/A
-
-Guardrail Compliance: 5/5
-Evidence: Platform Guardrails stated in metadata. Architecture table explicitly notes "STRICTLY READ-ONLY. Zero write operations." MAL routing confirmed. SM prefix awareness. Import from VALID_TRANSITIONS noted with fallback strategy. CRM timeline correctly addressed as N/A for read-only.
-Failure classification: N/A
-
-Acceptance Criteria Quality: 4/5
-Evidence: 10 checkbox criteria covering endpoint deployment, response schema, 400, 404, site header forwarding, VALID_TRANSITIONS usage, zero calls to transition_state, unit test coverage, linting, and PR link. Most are verifiable. "PR includes link to BILL-010 dependency confirmation" is process-oriented rather than functionally verifiable. Missing terminal state (empty list) criterion.
-Failure classification: CORRECTABLE
-
-TOTAL: 21/25
-Notable strength: Architecture alignment table precisely maps each layer to its implementation detail with clear stack boundaries.
-Notable failure: Testing section lacks the specificity for direct implementation — it describes what to test but not how.
-
----
-
-MODEL: model-delta | TEST: 02 | RUN: B
-Completeness of Sections: 5/5
-Evidence: Contains What This Story Delivers, Platform Gates (all 3), One File specification, Endpoint Specification, Code Changes (exact line-by-line: 5.1 import, 5.2 state machine import, 5.3 constant, 5.4 model, 5.5 route), Multi-site Header Behaviour, Error Response Table, Explicit Non-behaviours (10 items), Acceptance Criteria (16 items), Smoke Test. Exceptionally detailed.
-Failure classification: N/A
-
-Test Specificity: 4/5
-Evidence: Smoke test section provides 4 curl commands with expected shapes and HTTP codes. Acceptance criteria serve as test specifications with exact values ("canonical_state field on the Frappe document for that claim — verified by direct Frappe fetch"). However, no unit test code is provided, and verification relies on manual curl + code review rather than automated test implementations.
-Failure classification: CORRECTABLE
-
-API Specification Quality: 5/5
-Evidence: Endpoint specification in a clear table. Pydantic response model with field descriptions. Error response table covers 5 conditions with exact HTTP status, detail message, and condition. Response field descriptions are precise. Code implementation includes exact variable names, httpx calls, and header handling.
-Failure classification: N/A
-
-Guardrail Compliance: 5/5
-Evidence: Gate 2 explicitly addresses CRM timeline with justification ("reading claim state is not a business event"). Gate 3 correctly identifies this as a thin HTTP wrapper. Explicit Non-behaviours section lists 10 things NOT to do, including "Calling transition_state()" and "Writing to the CRM timeline." VALID_TRANSITIONS imported from source, not redefined. MAL routing confirmed.
-Failure classification: N/A
-
-Acceptance Criteria Quality: 5/5
-Evidence: 16 independently verifiable criteria. Each specifies exact condition and expected result. Covers claim found (AC matching Frappe doc), 404, 400 whitespace, site header present, site header absent, terminal state, empty canonical_state, transition_state not imported, VALID_TRANSITIONS imported from source, ClaimStateResponse defined, Request import added, constant defined, no existing endpoint modified, all code in one file. Extraordinarily thorough.
-Failure classification: N/A
-
-TOTAL: 24/25
-Notable strength: The Explicit Non-behaviours section (10 items with "why not in scope") is a standout feature that prevents scope creep — uniquely valuable for an implementing agent.
-Notable failure: Missing automated unit test code, though the 16 acceptance criteria partially compensate.
-
----
-
-MODEL: model-epsilon | TEST: 02 | RUN: B
-Completeness of Sections: 4/5
-Evidence: Contains Context & Background, Functional Requirements, Technical Approach, Implementation Notes with Pydantic model, Acceptance Criteria (8 functional + 4 non-functional), Test Scenarios (unit + integration), File Changes, Out of Scope, Open Questions. CRM Timeline addressed in Section 1.4. Missing a dedicated edge cases section.
-Failure classification: CORRECTABLE
-
-Test Specificity: 4/5
-Evidence: Unit tests provide actual pytest code with mock configurations, function names (test_get_claim_state_success, test_get_claim_state_not_found, test_get_claim_state_missing_claim_id, test_get_claim_state_unknown_state), and assertions. Integration test with site header forwarding also coded. However, the unknown state test asserts 422, which contradicts the prompt's expected behavior (should return 200 with empty list, not 422).
-Failure classification: DOMAIN
-
+  Evidence: 6 test cases in a table with Input/Expected columns. Covers valid query, missing param, non-existent claim, unknown state, missing site header, mutation prevention. No pytest function signatures, no mock patterns, no assertions code.
 API Specification Quality: 4/5
-Evidence: Endpoint, path parameters, headers, and response schemas are well-specified with JSON examples. Error responses cover 400, 404, 422. However, the 422 for "State Not in VALID_TRANSITIONS" is a design error — the prompt says nothing about rejecting unknown states, and other models correctly return 200 with empty transitions. The queried_at field is an addition not requested.
-Failure classification: DOMAIN
-
+  Evidence: Route, parameters, response codes, Pydantic model, JSON example all present. Field named valid_next_states (different from other models' valid_transitions). Missing explicit field type annotations in response table.
 Guardrail Compliance: 4/5
-Evidence: MAL-only rule stated. SM prefix awareness. Read-only constraint emphasized. CRM timeline correctly addressed as N/A. However, the spec proposes returning 422 for unknown states, which adds write-like validation semantics to a read endpoint and contradicts the prompt's "Return the list of valid next states from VALID_TRANSITIONS[current_state]" — which implies graceful fallback, not rejection.
-Failure classification: DOMAIN
+  Evidence: States VALID_TRANSITIONS import from controller with fallback note. "STRICTLY READ-ONLY" with zero write operations emphasized. MAL routing correct. Missing explicit spec gate answers (implied but not structured).
+Acceptance Criteria Quality: 3/5
+  Evidence: 10 checkbox items covering deployment, schema, error codes, header forwarding, zero mutations, unit tests, linting. Some are process criteria (linting, PR link) rather than functional verification. Missing specific claim state value assertions.
+TOTAL: 18/25
+Notable strength: Import fallback strategy -- notes that if sm_billing is not importable from the FastAPI venv, a constant copy with TODO is acceptable.
+Notable failure: Acceptance criteria mix process items (linting, PR links) with functional criteria, reducing verifiability.
 
+---
+
+## MODEL: model-delta | TEST: 02 | RUN: B
+Completeness of Sections: 5/5
+  Evidence: Has What This Story Delivers, Platform Gates (all 3 answered thoroughly), One File instruction, Endpoint Specification, exact Code Changes (5 subsections with import modifications, constant, model, route), Multi-site Header Behaviour, Error Response Table, Explicit Non-behaviours, 16 Acceptance Criteria, Smoke Test section. Extremely thorough.
+Test Specificity: 4/5
+  Evidence: 4 smoke test curl commands with expected output. No pytest function signatures but the 16 acceptance criteria are precise enough to generate tests from. Edge cases covered in Error Response Table (5 scenarios). Missing formal unit test code.
+API Specification Quality: 5/5
+  Evidence: Endpoint table with method, URL, path param, router, response model, auth. Response model with 3 fields precisely typed. Error table with 5 conditions/statuses/messages. Pydantic ClaimStateResponse defined with field descriptions.
+Guardrail Compliance: 5/5
+  Evidence: Imports VALID_TRANSITIONS from controller. Explicit "Do not import transition_state." Section 8 "Explicit Non-behaviours" lists 10 things NOT to do -- exceptional guardrail enforcement. Platform Gates all answered with justification.
+Acceptance Criteria Quality: 5/5
+  Evidence: 16 ACs covering every aspect: endpoint returns 200, canonical_state matches Frappe, valid_transitions matches exactly, 404, 400, site header present/absent, terminal state, empty string state, transition_state not imported, VALID_TRANSITIONS imported (not redefined), ClaimStateResponse defined, Request imported, constant present, no existing endpoints modified, all code in one file. Extraordinarily specific and verifiable.
+TOTAL: 24/25
+Notable strength: Section 8 "Explicit Non-behaviours" (10 items) is a masterclass in scope containment -- tells the implementing agent exactly what NOT to build.
+Notable failure: No pytest unit test code (smoke tests only).
+
+---
+
+## MODEL: model-epsilon | TEST: 02 | RUN: B
+Completeness of Sections: 4/5
+  Evidence: Has Context, Functional Requirements, Technical Approach, Implementation Notes, Acceptance Criteria (8 functional + 4 non-functional), Test Scenarios (unit + integration), File Changes, Out of Scope, Open Questions, Sign-Off. Solid structure. Missing explicit Platform Gates.
+Test Specificity: 4/5
+  Evidence: 4 unit tests with pytest code showing mock patterns, AsyncMock, patch, specific assertions. Integration test with mock. Edge case for unknown state returning 422 (debatable design choice). Function names and assertions explicit.
+API Specification Quality: 4/5
+  Evidence: Endpoint, path params, headers, response schemas for 200/400/404/422 with JSON examples. Pydantic model with queried_at timestamp (extra field not in brief). However, the 422 for unknown state is a design choice that conflicts with graceful degradation (other models return empty list).
+Guardrail Compliance: 4/5
+  Evidence: Imports VALID_TRANSITIONS from controller. Explicitly states "does NOT call transition_state()." MAL routing correct. However, returns 422 for unknown state instead of graceful empty list, which could cause frontend breakage on stale data.
+Acceptance Criteria Quality: 3/5
+  Evidence: 8 functional ACs and 4 non-functional ACs. AC-05 (422 for unknown state) is a debatable design choice. NF-01 (response time < 200ms) is not verifiable in the spec context. Missing AC for empty canonical_state. ACs use "Unit test" or "Code review" as verification but not all are independently verifiable.
+TOTAL: 19/25
+Notable strength: Unit test code with proper async mock patterns (AsyncMock, patch) is copy-paste ready.
+Notable failure: Returning 422 for an unknown state is a questionable design choice -- all other models correctly return empty transitions as graceful degradation.
+
+---
+
+## MODEL: model-zeta | TEST: 02 | RUN: B
+Completeness of Sections: 4/5
+  Evidence: Has Header metadata, Context & Constraints, Acceptance Criteria, API Specification, Implementation Details with code, Test Strategy, Out of Scope, Dependencies Checklist, References. Missing explicit Platform Gates (though constraints cover the ground).
+Test Specificity: 3/5
+  Evidence: 5 unit test scenarios described (happy path, empty claim_id, missing doc, unknown state, site header). Integration test mentioned. But no pytest function signatures, no mock code, no assertion patterns. Test descriptions are behavioral, not implementable.
+API Specification Quality: 4/5
+  Evidence: Endpoint, headers, path params, response model (Pydantic), error responses table (400, 404, 422). Field named valid_next_states. JSON example absent from response. 422 for missing header is appropriate.
+Guardrail Compliance: 5/5
+  Evidence: Imports VALID_TRANSITIONS from controller (explicit instruction). "DO NOT USE IN THIS ENDPOINT" for transition_state in bold. MAL routing, SM prefix, multi-tenancy all addressed. Clean separation of concerns.
+Acceptance Criteria Quality: 3/5
+  Evidence: 9 ACs covering existence, site resolution, validation, lookup, 404, state retrieval, transition lookup, read-only guarantee, response contract. Good coverage but stated as functional requirements rather than specific verifiable assertions. Missing terminal state AC and empty state AC.
+TOTAL: 19/25
+Notable strength: The Dependencies Checklist with checkboxes confirming BILL-010, SM Claim DocType, and multi-site infrastructure is a practical touch.
+Notable failure: Test strategy lacks implementation-ready detail -- no function signatures, no mock patterns.
+
+---
+
+## MODEL: model-alpha | TEST: 02 | RUN: C
+Completeness of Sections: 3/5
+  Evidence: Output is primarily Python code with inline docstring spec comments. Has constants, Pydantic models, helper functions, both endpoints, and DocType definition. Missing formal sections: no structured Acceptance Criteria, no Test section, no Platform Gates, no Out of Scope section.
+Test Specificity: 0/5
+  Evidence: No test section, no test code, no test descriptions of any kind. Pure implementation code.
+API Specification Quality: 4/5
+  Evidence: Both GET and PUT endpoints defined with path params, headers, Pydantic models, response models. Error handling for 400, 404. Three-tier cascade correctly implemented with per-channel source tracking. DocType definition included. But spec is embedded in code, not formal documentation.
+Guardrail Compliance: 4/5
+  Evidence: SM prefix on DocType (SM User Notification Preferences). MAL routing at /api/modules/admin/. Three-tier cascade (platform, site, user) correctly implemented. CRM timeline not mentioned (correctly -- this is a settings endpoint). However, delivering code instead of a spec document is itself a format compliance failure.
+Acceptance Criteria Quality: 0/5
+  Evidence: No acceptance criteria section. The code is the implicit spec, but no independently verifiable criteria are listed.
+TOTAL: 11/25
+Notable strength: The three-tier cascade resolution logic with per-channel source tracking (email_source, sms_source, in_app_source) is correctly implemented.
+Notable failure: Delivered implementation code instead of a specification document. No tests, no acceptance criteria, no formal structure.
+
+---
+
+## MODEL: model-beta | TEST: 02 | RUN: C
+Completeness of Sections: 5/5
+  Evidence: Has Objective, Spec Gates (all 3), Domain Model (events, channels, preference shape, platform defaults, site overrides, user overrides), Three-Tier Merge Logic with algorithm, full API Contract (GET and PUT), Pydantic Models, Endpoint Implementation Logic (GET flow, PUT flow, deep merge helper), Frappe DocType Definition, Error Handling table, 12 Acceptance Criteria, 11 Test Plan entries, Implementation Notes (router registration, Frappe patterns, site override loading, non-goals), File Inventory. Exceptionally comprehensive.
+Test Specificity: 5/5
+  Evidence: 11 tests in table format: 7 unit tests (merge function, deep merge, validation for events/channels/non-bool) and 4 integration tests (404 user, 200 platform-only, sequential PUT merge, 400 no-write). Each has test name, type, and notes. Pure function tests for merge logic enable unit testing without mocks.
+API Specification Quality: 5/5
+  Evidence: GET and PUT fully specified with headers, path params, response 200 with JSON examples showing per-channel enabled+source structure. Error responses for 400 (invalid event key, invalid channel key), 404, 502 with JSON examples. Partial PUT merge behavior explicitly documented. "No delete-key semantic in v1" noted.
+Guardrail Compliance: 5/5
+  Evidence: Spec Gates all answered. SM prefix on DocType. MAL routing under /api/modules/admin/. CRM timeline correctly noted as N/A (settings action). Three-tier cascade correctly described with user > site > platform priority. No direct Frappe calls from React.
+Acceptance Criteria Quality: 5/5
+  Evidence: 12 ACs in Given/When/Then format. AC-1 through AC-5 cover GET (full resolution, platform-only, site overrides, user overrides, no-doc-200). AC-6 through AC-12 cover PUT (create, merge, invalid event, invalid channel, non-bool, resolved response). Each independently verifiable. AC-8 specifically tests merge behavior (existing + new).
+TOTAL: 25/25
+Notable strength: The merge algorithm section with pure-function signature and pseudocode is perfectly testable. The deep merge helper for PUT is precisely specified.
+Notable failure: None.
+
+---
+
+## MODEL: model-gamma | TEST: 02 | RUN: C
+Completeness of Sections: 5/5
+  Evidence: Has Summary with Platform Guardrail Checklist, Domain Model (events, channels, cascade), New DocType (SM User Notification Preferences with fields), API Specification (GET and PUT with full details), Site Registry Integration, Implementation Details (file location, Pydantic models, helper functions, CRM timeline), Test Specifications (8 GET tests, 10 PUT tests), Security, Deployment Notes, Acceptance Criteria checklist (17 items). Extremely thorough.
+Test Specificity: 5/5
+  Evidence: 8 GET tests (G-01 through G-08) and 10 PUT tests (P-01 through P-10) in table format with Setup, Input, and Expected columns. Covers platform-only, site overrides, user overrides, three-tier cascade, null semantics, invalid keys, empty body, full preference object, CRM activity log. Highly specific.
+API Specification Quality: 5/5
+  Evidence: GET and PUT fully specified with headers, path params, response 200 with JSON examples showing per-channel value+source structure. Error responses for 400 (invalid event, invalid channel, empty body, non-bool), 404, 500. PUT null semantics documented (4.4.1). Validation rules explicit.
+Guardrail Compliance: 5/5
+  Evidence: Platform Guardrail Checklist with all 3 gates answered. SM prefix on DocType. MAL routing. CRM timeline write on PUT (debatable but documented). Three-tier cascade with null semantics for override removal. Security considerations noted.
+Acceptance Criteria Quality: 5/5
+  Evidence: 17 checkbox ACs covering GET resolution, 404, three-tier merge, PUT create/update/merge/null, validation, error messages, header respect, Frappe patterns, SM prefix, CRM activity, no stack traces, all tests pass. Comprehensive and independently verifiable.
+TOTAL: 25/25
+Notable strength: PUT null semantics (Section 4.4.1) for removing user overrides is a sophisticated design choice that other models miss entirely.
+Notable failure: None.
+
+---
+
+## MODEL: model-delta | TEST: 02 | RUN: C
+Completeness of Sections: 4/5
+  Evidence: Output is primarily Python code with an extensive docstring spec (Platform Gates, Evaluation Order, Architecture Compliance, Business Logic, DocType definition). Has both endpoints, Pydantic models, helper functions, acceptance criteria in comments, manual testing guide in comments, out of scope in comments. The spec content is present but embedded in code comments rather than structured markdown.
+Test Specificity: 3/5
+  Evidence: Manual testing guide with 7 curl commands and expected results (in comments). No pytest unit tests. Acceptance criteria (12 ACs in comments) describe testable behavior but provide no test code. The manual tests are specific and cover key scenarios.
+API Specification Quality: 4/5
+  Evidence: Both GET and PUT endpoints defined with Pydantic models for request/response. Response model includes value+source per channel. Error handling for 404 (user not found), 400 (invalid keys), 502 (Frappe error). Three-tier cascade with isinstance checks for type safety. But formal API documentation is in code, not structured tables.
+Guardrail Compliance: 5/5
+  Evidence: All 3 Platform Gates answered in docstring. Evaluation Order check (4 levels analyzed). Architecture compliance notes. SM prefix on DocType. MAL routing. ADMIN-001 dependency flagged as blocker. CRM timeline correctly noted as N/A. Exceptionally thorough compliance analysis.
 Acceptance Criteria Quality: 4/5
-Evidence: 8 functional ACs with verification methods. Covers 200, 400, 404, 422, queried_at timestamp, site header, and no transition_state calls. Most are verifiable. AC-05 (422 for unknown state) is incorrect per the prompt requirements. Non-functional criteria (response time, existing helper usage) are nice additions.
-Failure classification: DOMAIN
-
+  Evidence: 12 ACs in comments covering GET 404, GET 200 with 18 values, platform-only defaults, site override with source, user override with source, partial PUT, full PUT idempotent, bad event key 400, bad channel key 400, PUT 404, header requirement, self-contained file. Specific and verifiable but embedded in code comments.
 TOTAL: 20/25
-Notable strength: Actual pytest code with mocks and assertions makes the test section immediately implementable.
-Notable failure: The 422 error for unknown states is a design error — the prompt implies graceful degradation (empty list), not rejection.
+Notable strength: The Evaluation Order Check (Section in docstring) analyzing 4 levels of the evaluation hierarchy is unique among all models and shows deep platform awareness. The ADMIN-001 blocker flag is also excellent.
+Notable failure: Delivered as Python code with spec-in-comments rather than a structured specification document. Note from James says model failed with reasoning enabled and required multiple re-prompts.
 
 ---
 
-MODEL: model-zeta | TEST: 02 | RUN: B
-Completeness of Sections: 4/5
-Evidence: Contains Header metadata, Context & Constraints, Acceptance Criteria (9 items), API Specification, Implementation Details with code, Test Strategy, Out of Scope, Dependencies Checklist, References. Missing dedicated CRM Timeline section (addressed implicitly by the read-only nature). Missing edge cases section.
-Failure classification: CORRECTABLE
-
+## MODEL: model-epsilon | TEST: 02 | RUN: C
+Completeness of Sections: 5/5
+  Evidence: Has Overview (summary, motivation, workflow, CRM timeline, right level), Technical Design (architecture diagram, storage, events, channels, three-tier cascade with code, API endpoints for GET and PUT), New DocType (with child table design), Frappe Integration (user check, site lookup, CRUD, merge algorithm), Acceptance Criteria (15 ACs), Out of Scope, File Plan. Very thorough formal spec.
 Test Specificity: 3/5
-Evidence: Test Strategy section has 5 unit test scenarios with brief descriptions and one integration test. Scenarios describe what to verify but lack function names, mock setups, exact expected values, or assertion code. "Happy Path: Valid claim_id with valid state → Returns 200 with correct state and transitions list" is too high-level for direct implementation.
-Failure classification: CORRECTABLE
-
+  Evidence: 15 ACs with test method column (curl/MAL test suite, schema assertion, integration test, unit test). But no pytest function signatures, no mock patterns, no test code. Test methods are descriptive not implementable.
 API Specification Quality: 5/5
-Evidence: Endpoint, headers, path parameters all in tables. Response model with Pydantic code. Error responses table with 3 status codes, conditions, and response bodies. JSON examples provided. Field types explicit. Implementation code shows exact httpx pattern with site header forwarding.
-Failure classification: N/A
-
-Guardrail Compliance: 5/5
-Evidence: Context section explicitly states "DO NOT USE IN THIS ENDPOINT" for transition_state. MAL routing confirmed at /api/modules/billing/. SM prefix awareness (SM Claim). Read-only guarantee stated. Multi-tenancy via X-Frappe-Site-Name addressed. Platform Guardrails rules cited by number.
-Failure classification: N/A
-
+  Evidence: GET and PUT fully specified with path params, headers, response 200 with JSON showing value+tier per channel. Error responses for 400 (missing header, invalid events, invalid channels) and 404 with JSON. Validation rules listed. Partial PUT documented.
+Guardrail Compliance: 4/5
+  Evidence: Workflow, CRM Timeline, Right Level all addressed. SM prefix on DocType. MAL routing. However, uses a child table (SM Notification Preference Item) for user preferences instead of JSON field -- this is a valid design choice but adds bench migrate complexity that other models avoid, and the spec notes this will be harder to extend.
 Acceptance Criteria Quality: 4/5
-Evidence: 9 acceptance criteria cover endpoint existence, site resolution, validation (400), document lookup, not found (404), state retrieval, transition lookup, read-only guarantee, and response contract. Most are verifiable. Missing specific terminal state (empty list) criterion and empty canonical_state criterion. Criteria are statement-form rather than Given/When/Then.
-Failure classification: CORRECTABLE
-
+  Evidence: 15 ACs covering GET resolution, tier sources, site override, user override, 404, 400, PUT create/update, invalid keys, partial PUT, header usage. AC-14 (DocType in README) is process not functional. Each has a test method. Missing null/removal semantics for user overrides.
 TOTAL: 21/25
-Notable strength: Implementation code is clean and directly usable — the _read_frappe_doc_with_site helper with site header forwarding is a practical pattern.
-Notable failure: Test strategy lacks the specificity to implement tests without further interpretation.
+Notable strength: The child table design (SM Notification Preference Item) is a legitimate alternative architecture with per-row event/channel storage, showing the model considered structured data options.
+Notable failure: Child table approach adds bench migrate complexity for new events/channels, contradicting the size-S story constraint.
 
 ---
 
-## RUN C — User Notification Preferences Endpoints
-
----
-
-MODEL: model-alpha | TEST: 02 | RUN: C
+## MODEL: model-zeta | TEST: 02 | RUN: C
 Completeness of Sections: 3/5
-Evidence: The output is raw Python code, not a story spec. It contains implementation code for both endpoints, Pydantic models, helper functions, platform defaults, validation, and a DocType definition dict at the bottom. However, it lacks traditional spec sections: no "What To Build" prose, no Acceptance Criteria section, no Test section, no Architecture Constraints section, no Files To Create/Modify section, no Out of Scope section. The code IS the spec.
-Failure classification: FUNDAMENTAL
-
-Test Specificity: 1/5
-Evidence: No tests are specified anywhere in the output. No unit tests, no integration tests, no edge case enumeration. The code is implementation, not specification.
-Failure classification: FUNDAMENTAL
-
+  Evidence: Output is primarily Python code with docstring spec comments. Has constants, Pydantic models, helper functions, both endpoints, DocType definition in comments. Missing formal sections: no structured Acceptance Criteria, no Test section, no Platform Gates, no Out of Scope as standalone sections. Code is truncated at the end.
+Test Specificity: 0/5
+  Evidence: No test section, no test code, no test descriptions. Pure implementation code, and the code is truncated before completion.
 API Specification Quality: 4/5
-Evidence: Both endpoints are fully implemented with Pydantic models, correct path parameters, X-Frappe-Site-Name header handling, error responses (400, 404), and the three-tier merge logic with source tracking. Response models include tier source per channel. However, since this is code not spec, the API contract is implicit in the code rather than explicitly documented.
-Failure classification: CORRECTABLE
-
-Guardrail Compliance: 4/5
-Evidence: MAL routing pattern followed. SM prefix used for DocType ("SM User Notification Preferences"). Three-tier cascade correctly specified (not two tiers). CRM timeline is not addressed at all — no mention of N/A or justification. Platform defaults defined as Python dict in endpoint file per prompt.
-Failure classification: CORRECTABLE
-
-Acceptance Criteria Quality: 1/5
-Evidence: No acceptance criteria exist. The output is pure implementation code with no verification criteria, no checklist, no Given/When/Then scenarios.
-Failure classification: FUNDAMENTAL
-
-TOTAL: 13/25
-Notable strength: The three-tier merge implementation with per-channel source tracking is correct and complete — the _resolve_preferences function properly handles all cascade scenarios.
-Notable failure: Output is implementation code, not a story spec — missing all spec-format sections (acceptance criteria, tests, architecture constraints, out of scope).
-
----
-
-MODEL: model-beta | TEST: 02 | RUN: C
-Completeness of Sections: 5/5
-Evidence: Contains Objective, Spec Gates (all 3), Domain Model (events, channels, preference shape, platform defaults, site overrides, user overrides), Three-Tier Merge Logic with algorithm, API Contract (GET and PUT fully specified), Pydantic Models, Endpoint Implementation Logic (GET flow, PUT flow, deep merge helper), Frappe DocType Definition, Error Handling table, Acceptance Criteria (12 ACs), Test Plan (11 tests), Implementation Notes, File Inventory. Every required section is present.
-Failure classification: N/A
-
-Test Specificity: 5/5
-Evidence: 11 tests specified with unique IDs (T-1 through T-11). T-1 through T-7 are unit tests with specific inputs, setup conditions, and expected outcomes (e.g., "T-3: resolve_preferences with user overriding a site-overridden pair — User wins, source is 'user'"). T-8 through T-11 are integration tests with specific mock conditions. Validation rejection tests (T-5, T-6, T-7) specify the exact invalid input and expected behavior.
-Failure classification: N/A
-
-API Specification Quality: 5/5
-Evidence: Both GET and PUT endpoints fully specified with headers, path parameters, request body schema, and response schemas. Response shows per-channel enabled + source structure. Error states for 400 (invalid event, invalid channel, non-bool value), 404 (user not found), and 502 (backend unavailable) all specified with example JSON. PUT merge behavior explicitly documented. Deep merge helper code provided.
-Failure classification: N/A
-
-Guardrail Compliance: 5/5
-Evidence: Spec Gates section addresses all 3 — Gate 2 explicitly states "No CRM timeline write. Changing a preference is a settings action, not a customer interaction event." MAL-only routing confirmed. SM prefix used correctly ("SM User Notification Preferences"). Three-tier cascade correctly specified with all three tiers. Platform defaults defined as Python dict in endpoint file.
-Failure classification: N/A
-
-Acceptance Criteria Quality: 5/5
-Evidence: 12 ACs in Given/When/Then format. AC-1 through AC-6 cover GET (resolved prefs, platform only, site overrides, user overrides, no user doc = 200 not 404, nonexistent user = 404). AC-7 through AC-12 cover PUT (creates doc, merges existing, rejects invalid event, rejects invalid channel, rejects non-bool, returns resolved prefs). Each is independently verifiable with specific assertions.
-Failure classification: N/A
-
-TOTAL: 25/25
-Notable strength: The merge logic section (Section 4) with pseudocode algorithm and the deep merge helper (Section 7.3) provide unambiguous implementation guidance for the most complex part of the story.
-Notable failure: None.
-
----
-
-MODEL: model-gamma | TEST: 02 | RUN: C
-Completeness of Sections: 5/5
-Evidence: Contains Summary, Platform Guardrail Checklist (all 3 gates), Domain Model (events, channels, cascade), New DocType definition, API Specification (GET and PUT fully specified), Site Registry Integration, Implementation Details (file location, Pydantic models, helper functions), Test Specifications (GET: 8 tests, PUT: 10 tests), Security Considerations, Deployment Notes, Acceptance Criteria checklist (17 items). Comprehensive.
-Failure classification: N/A
-
-Test Specificity: 5/5
-Evidence: GET tests (G-01 through G-08) and PUT tests (P-01 through P-10) each have Setup, Input, and Expected columns. G-01: "No site overrides, no user overrides → 200. All 6 events × 3 channels with source: platform." P-03: "Remove user override with null → email key removed from user doc, resolved value falls back." P-06: "Invalid value type → 400 with descriptive error." Tests are specific enough to implement directly.
-Failure classification: N/A
-
-API Specification Quality: 5/5
-Evidence: Both endpoints fully specified. GET response shows per-channel {value, source} structure with full JSON example for all 6 events. PUT request body, validation rules, and null semantics (Section 4.4.1) all specified. Error responses for 400 (3 variants), 404, and 500 with JSON examples. PUT merge behavior explicitly documented with "partial update, not full replacement" noted.
-Failure classification: N/A
-
-Guardrail Compliance: 4/5
-Evidence: Platform Guardrail Checklist addresses all 3 gates. Gate 2 mentions writing CRM activity timeline for PUT operations, which is an addition beyond what the prompt requires (prompt says nothing about CRM timeline for preference changes). MAL routing confirmed. SM prefix correctly used. Three-tier cascade correctly specified. However, the CRM timeline write for preference changes adds scope beyond the prompt.
-Failure classification: CORRECTABLE
-
-Acceptance Criteria Quality: 5/5
-Evidence: 17 checkbox acceptance criteria covering GET resolution (3 ACs), PUT create/update (3 ACs), PUT validation (3 ACs), PUT null values, both endpoints site header, MAL pattern, SM prefix, CRM timeline, error responses, and all tests passing. Each is independently verifiable. Comprehensive coverage of both endpoints and all error states.
-Failure classification: N/A
-
-TOTAL: 24/25
-Notable strength: The null semantics in Section 4.4.1 for removing user overrides is a thoughtful UX detail that no other model addresses, and the 18-test plan is the most comprehensive.
-Notable failure: Adding CRM timeline writes for preference changes introduces scope beyond the prompt (though it's a reasonable addition).
-
----
-
-MODEL: model-delta | TEST: 02 | RUN: C
-Completeness of Sections: 4/5
-Evidence: Contains Mandatory Spec Gates, Evaluation Order Check, Architecture Compliance Notes, Business Logic (three-tier cascade), DocType definition, and full implementation code with acceptance criteria in comments. Manual testing guide with 7 curl commands. Out of scope noted. However, the spec is delivered as a Python file with inline comments rather than a structured markdown document, making sections harder to navigate.
-Failure classification: CORRECTABLE
-
-Test Specificity: 4/5
-Evidence: Manual Testing Guide section provides 7 curl commands with exact expected results (e.g., "Expected: HTTP 200, all 18 source fields = 'platform'", "Expected: HTTP 404", "Expected: HTTP 400, errors list contains 'Unknown event key'"). However, no automated unit tests are specified, and tests rely entirely on manual verification via curl.
-Failure classification: CORRECTABLE
-
-API Specification Quality: 5/5
-Evidence: Both endpoints fully implemented with Pydantic models showing per-channel {value, source} response structure. Request validation handles event keys and channel keys with descriptive errors. Both GET and PUT have explicit headers, path parameters, and error handling. PUT deep-merge behavior is implemented correctly. Site header forwarding via _site_header helper.
-Failure classification: N/A
-
-Guardrail Compliance: 5/5
-Evidence: All 3 Spec Gates answered with reasoning. Evaluation Order Check explicitly walks through 4 levels (native Frappe → community → third-party → custom build). Architecture Compliance Notes check 5 rules. MAL routing confirmed. SM prefix used correctly. CRM timeline addressed as N/A with justification ("settings action, not customer-interaction event"). Three-tier cascade correctly specified.
-Failure classification: N/A
-
-Acceptance Criteria Quality: 4/5
-Evidence: 12 acceptance criteria in inline comments (AC-1 through AC-12). Cover GET 404, GET 200 with all 18 values, platform defaults, site override with source, user override with source, PUT partial, PUT full, PUT invalid event (400), PUT invalid channel (400), PUT 404, header requirement, and self-contained file. Most are verifiable. Format as inline code comments reduces discoverability.
-Failure classification: CORRECTABLE
-
-TOTAL: 22/25
-Notable strength: The Evaluation Order Check (Section walking through native → community → third-party → custom with verdicts for each) is unique and demonstrates rigorous architectural reasoning.
-Notable failure: Spec delivered as Python implementation file rather than structured story spec document — acceptance criteria and tests buried in code comments.
-
----
-
-MODEL: model-epsilon | TEST: 02 | RUN: C
-Completeness of Sections: 5/5
-Evidence: Contains Overview (with workflow, CRM timeline, right level), Technical Design (architecture diagram, storage table, events, channels, cascade with algorithm), API Endpoints (GET and PUT fully specified), New DocType definition with child table, Frappe Integration Details (user check, site lookup, CRUD, merge algorithm), Acceptance Criteria (15 ACs), Out of Scope, File Plan. Comprehensive structured spec.
-Failure classification: N/A
-
-Test Specificity: 3/5
-Evidence: Acceptance criteria table has 15 items with Test Method column, but methods are brief ("curl / MAL test suite", "Response schema assertion", "Integration test with seeded site override"). No actual test code, no function names, no mock configurations. The merge algorithm code in Section 3.4 is testable but no test implementations are provided. AC-14 ("listed in platform/README.md") is a manual documentation check.
-Failure classification: CORRECTABLE
-
-API Specification Quality: 5/5
-Evidence: Both endpoints fully specified. GET response with full JSON example showing all 6 events × 3 channels with {value, tier} structure. PUT request body with validation rules. Error responses for 400 (invalid event, invalid channel), 404 with JSON examples. PUT response matches GET format. DocType defined with child table (SM Notification Preference Item). Site Registry integration pattern described.
-Failure classification: N/A
-
-Guardrail Compliance: 5/5
-Evidence: Section 1.3-1.5 address all 3 gates (workflow N/A, CRM timeline N/A with justification, right level = universal). MAL routing confirmed. SM prefix used correctly ("SM User Notification Preferences", "SM Notification Preference Item"). Three-tier cascade correctly specified. Platform defaults as Python dict. X-Frappe-Site-Name header used for all site identification.
-Failure classification: N/A
-
-Acceptance Criteria Quality: 4/5
-Evidence: 15 ACs with test methods. Covers GET resolution (AC-01 through AC-07), PUT operations (AC-08 through AC-13), and infrastructure (AC-14, AC-15). Most are verifiable. AC-14 ("listed in platform/README.md") is documentation-oriented rather than functional. Some test methods are vague ("Integration test with seeded site override"). Missing specific terminal/edge case criteria.
-Failure classification: CORRECTABLE
-
-TOTAL: 22/25
-Notable strength: The child table approach for SM Notification Preference Item (Section 2.7) is a legitimate alternative design that leverages Frappe's native DocType patterns, though the prompt suggests JSON field storage.
-Notable failure: Tests lack specificity — no function names, mock configurations, or automated test code provided.
-
----
-
-MODEL: model-zeta | TEST: 02 | RUN: C
-Completeness of Sections: 3/5
-Evidence: Output is primarily Python implementation code with docstring-level documentation. Contains domain constants, Pydantic models, helper functions, and endpoint implementations. DocType spec is in a docstring comment. Missing traditional spec sections: no standalone Acceptance Criteria section, no Test section, no Architecture Constraints section as prose, no Out of Scope section, no CRM Timeline discussion. Missing import for os module.
-Failure classification: FUNDAMENTAL
-
-Test Specificity: 1/5
-Evidence: No tests are specified anywhere in the output. No unit tests, no integration tests, no edge cases, no curl commands. The output is purely implementation code.
-Failure classification: FUNDAMENTAL
-
-API Specification Quality: 4/5
-Evidence: Both endpoints implemented with Pydantic models, correct routing, site header forwarding, and validation. Response models include resolved preferences and source maps. PUT request validation catches invalid events and channels. However, the response is truncated (code cuts off mid-function), and the API contract is implicit in code rather than explicitly documented.
-Failure classification: CORRECTABLE
-
+  Evidence: Both GET and PUT endpoints defined with Pydantic models. Response includes resolved_preferences and preference_sources as separate objects. Error handling for 404 and 400. Three-tier cascade implemented. But output is truncated and formal API docs are in code, not structured documentation.
 Guardrail Compliance: 3/5
-Evidence: MAL routing pattern followed. SM prefix used. Platform defaults defined as Python dict. Three-tier cascade implemented. However, no CRM timeline discussion (not even N/A justification), no explicit guardrails section, and no spec gates addressed. The missing os import would cause a runtime error.
-Failure classification: CORRECTABLE
-
-Acceptance Criteria Quality: 1/5
-Evidence: No acceptance criteria exist in the output. The code implies functionality but provides no verification criteria, no checklist, and no testable assertions.
-Failure classification: FUNDAMENTAL
-
-TOTAL: 12/25
-Notable strength: The _resolve_preferences function correctly implements the three-tier cascade with proper type checking (isinstance(site_val, bool)) that guards against malformed data.
-Notable failure: Output is truncated implementation code with no spec-format sections — no acceptance criteria, no tests, no gates, no out of scope.
+  Evidence: SM prefix on DocType. MAL routing implied. VALID_EVENTS and VALID_CHANNELS defined. But no Platform Gates, no explicit MAL-only statement, no CRM timeline discussion. DocType field is named "user" (Link to User) rather than "user_email" (Data) -- inconsistent with other models.
+Acceptance Criteria Quality: 0/5
+  Evidence: No acceptance criteria of any kind. Code is truncated before any could appear.
+TOTAL: 10/25
+Notable strength: The _resolve_preferences function with separate resolved/sources tuple return is clean architecture.
+Notable failure: Output is truncated code with no spec structure. No acceptance criteria, no tests, no formal documentation.
 
 ---
 
-## MODEL SUMMARIES
+## MODEL: model-alpha | TEST: 02 SUMMARY
+Run A: 15 | Run B: 23 | Run C: 11
+Mean: 16.3 | Range: 12 | Consistency: Low
+
+Consistency narrative: Dramatic variance across runs. Run B (claim state query -- simpler scope) produced a strong spec. Run A and Run C degraded significantly, with Run C delivering code instead of a spec document. The model appears to struggle with scope management on feature-rich stories.
+Dominant strength: When the scope is constrained (Run B), produces thorough edge case analysis and well-structured API contracts.
+Dominant weakness: Delivers implementation code instead of specification documents on complex prompts, and omits test sections entirely.
+Prompt engineering note: Add: "Your output MUST be a markdown specification document, NOT Python code. You must include sections titled 'Acceptance Criteria' and 'Test Plan' with numbered, independently verifiable items."
 
 ---
 
-MODEL: model-alpha | TEST: 02 SUMMARY
-Run A: 17 | Run B: 25 | Run C: 13
-Mean: 18.3 | Range: 12 | Consistency: Low
-High = range 0-1 | Medium = range 2 | Low = range 3+
-
-Consistency narrative: Massive variance driven by output format instability. Run B (claim state query) produced an exemplary structured spec, while Run C (notification preferences) produced raw implementation code with no spec sections at all. Run A fell in between with adequate structure but missing tests. The model appears to lose spec-writing discipline on more complex prompts.
-Dominant strength: When structured (Run B), produces thorough edge case analysis and well-formatted API contracts.
-Dominant weakness: Inconsistent output format — sometimes produces code instead of specs, and omits test sections entirely.
-Prompt engineering note: Add explicit instruction "Output a markdown story spec document with named sections, NOT implementation code."
-
----
-
-MODEL: model-beta | TEST: 02 SUMMARY
+## MODEL: model-beta | TEST: 02 SUMMARY
 Run A: 25 | Run B: 25 | Run C: 25
 Mean: 25.0 | Range: 0 | Consistency: High
-High = range 0-1 | Medium = range 2 | Low = range 3+
 
-Consistency narrative: Perfect consistency across all three runs. Every run produced a comprehensive, well-structured spec with all required sections, specific tests, complete API schemas, full guardrail compliance, and verifiable acceptance criteria. The model reliably produces the same quality regardless of prompt complexity (simple create, read-only query, or multi-endpoint cascade).
-Dominant strength: Relentlessly comprehensive and structured — every section is present, every error state is covered, and every test is specific enough to implement directly.
-Dominant weakness: None observed. Specs are occasionally very long, but length does not reduce quality.
-Prompt engineering note: None needed — this model requires no compensating instructions for spec writing.
-
----
-
-MODEL: model-gamma | TEST: 02 SUMMARY
-Run A: 19 | Run B: 21 | Run C: 24
-Mean: 21.3 | Range: 5 | Consistency: Low
-High = range 0-1 | Medium = range 2 | Low = range 3+
-
-Consistency narrative: Improved significantly across runs — Run A had weaker tests and acceptance criteria, Run B improved with better API specification, and Run C was near-excellent with 18 tests and 17 acceptance criteria. The model appears to perform better on more structured prompts (Run C had explicit cascade logic to spec). Emoji usage in section headers is a minor style concern.
-Dominant strength: Spec Gates / guardrail compliance sections are consistently strong with correct architectural reasoning across all runs.
-Dominant weakness: Test specificity varies — sometimes high-level tables, sometimes detailed scenarios. Inconsistent depth.
-Prompt engineering note: Add "Include at least 5 unit tests with function names, mock configurations, and expected assertions."
+Consistency narrative: Perfect scores across all three runs with zero variance. Consistently produces exceptionally complete specs with all required sections, detailed test plans, precise API contracts, thorough guardrail compliance, and independently verifiable acceptance criteria regardless of story complexity.
+Dominant strength: Comprehensive spec structure with every section present and substantive. Test plans combine unit and integration tests. Deep platform awareness (Frappe child tables, MAL process separation, merge semantics).
+Dominant weakness: None observed.
+Prompt engineering note: None needed. This model consistently produces production-quality specs.
 
 ---
 
-MODEL: model-delta | TEST: 02 SUMMARY
-Run A: 25 | Run B: 24 | Run C: 22
-Mean: 23.7 | Range: 3 | Consistency: Low
-High = range 0-1 | Medium = range 2 | Low = range 3+
+## MODEL: model-gamma | TEST: 02 SUMMARY
+Run A: 2 | Run B: 18 | Run C: 25
+Mean: 15.0 | Range: 23 | Consistency: Low
 
-Consistency narrative: Consistently strong but declined slightly on Run C, which was delivered as a Python implementation file with acceptance criteria in code comments rather than a structured markdown spec. Runs A and B were exemplary structured documents. The model may shift to implementation mode when the prompt describes complex logic (three-tier cascade).
-Dominant strength: "Notes for Implementing Agent" and "Explicit Non-behaviours" sections are uniquely valuable across all runs — they prevent real implementation pitfalls and scope creep.
-Dominant weakness: Tendency to drift toward implementation code on complex prompts (Run C), reducing spec discoverability.
-Prompt engineering note: Add "Output format must be a markdown document, not a Python file. All acceptance criteria must be in a dedicated markdown section."
-
----
-
-MODEL: model-epsilon | TEST: 02 SUMMARY
-Run A: 21 | Run B: 20 | Run C: 22
-Mean: 21.0 | Range: 2 | Consistency: Medium
-High = range 0-1 | Medium = range 2 | Low = range 3+
-
-Consistency narrative: Stable performance across all three runs with a narrow 2-point range. Consistently strong on API specification and architecture documentation but consistently weak on test specificity (always describes what to test but rarely provides implementable test code). Run A had scope creep (duplicate detection, consent status). Run B had a domain error (422 for unknown states).
-Dominant strength: Architecture documentation — call flow diagrams, responsibility matrices, and Frappe REST API call tables are consistently the most detailed.
-Dominant weakness: Test specificity — across all runs, tests describe scenarios at a table level but never provide function names, mock setups, or assertion code.
-Prompt engineering note: Add "Include pytest code for at least 3 unit tests with mock configurations and explicit assertions."
+Consistency narrative: Extreme variance. Run A produced the wrong deliverable entirely (story decomposition instead of story spec). Run B was adequate. Run C was exceptional. The model's quality appears inversely correlated with story simplicity -- it performed best on the most complex prompt (Run C) and worst on the simplest (Run A).
+Dominant strength: On complex multi-system stories, produces exhaustive specifications with detailed test matrices and sophisticated design choices (null semantics, CRM activity logging).
+Dominant weakness: May misinterpret the task entirely on simpler prompts, producing the wrong deliverable type.
+Prompt engineering note: Add: "Your output MUST be a single story spec for story ID [X]. Do NOT produce a story decomposition, dependency graph, or story list. Produce exactly one spec document for exactly one story."
 
 ---
 
-MODEL: model-zeta | TEST: 02 SUMMARY
-Run A: 16 | Run B: 21 | Run C: 12
-Mean: 16.3 | Range: 9 | Consistency: Low
-High = range 0-1 | Medium = range 2 | Low = range 3+
+## MODEL: model-delta | TEST: 02 SUMMARY
+Run A: 24 | Run B: 24 | Run C: 20
+Mean: 22.7 | Range: 4 | Consistency: Medium
 
-Consistency narrative: Extreme variance — Run B was solid (21/25) while Run C was the lowest score in the entire bakeoff (12/25). Run A was below-threshold (16/25). The model produces acceptable specs for simple read endpoints but degrades severely on complex multi-endpoint prompts, shifting to raw implementation code with no spec structure. Run C was also truncated.
-Dominant strength: When structured (Run B), produces clean implementation code patterns that are directly usable.
-Dominant weakness: Inconsistent output format — tends to produce code instead of specs, omits acceptance criteria and tests, and truncates on complex prompts.
-Prompt engineering note: Add explicit instruction "You MUST output a markdown spec document with these required sections: What To Build, API Specification, Acceptance Criteria (numbered list), Test Plan (with function names), Out of Scope. Do NOT output implementation code."
+Consistency narrative: Consistently strong across all runs with moderate variance. Run C scored lower because the model delivered code-with-spec-comments instead of a structured spec document (noted: model had reasoning loop issues and required re-prompting). Runs A and B demonstrate excellent spec quality with detailed implementation guidance.
+Dominant strength: Exceptional scope containment -- "Notes for Implementing Agent" (Run A) and "Explicit Non-behaviours" (Run B) are unique differentiators that prevent implementing agents from going off-track. Platform Gates are always thoroughly answered.
+Dominant weakness: Tends toward code output rather than pure spec documents, especially under duress. Manual tests only -- no pytest unit test code.
+Prompt engineering note: Add: "Output format MUST be structured markdown with headers, not Python code with embedded comments. Include a 'Unit Tests' subsection with pytest function signatures."
+
+---
+
+## MODEL: model-epsilon | TEST: 02 SUMMARY
+Run A: 18 | Run B: 19 | Run C: 21
+Mean: 19.3 | Range: 3 | Consistency: Medium
+
+Consistency narrative: Consistent mid-range performance with low variance. All runs pass the threshold. The model reliably produces complete specs but has recurring weaknesses: scope creep (Run A adds duplicate detection), questionable design choices (Run B returns 422 for unknown state), and no pytest code in test sections.
+Dominant strength: Structured document output with all required sections. Reasonable API specification quality across all runs.
+Dominant weakness: Test sections describe what to test but never provide implementable test code. Scope creep on feature-rich stories.
+Prompt engineering note: Add: "Do NOT add features, error codes, or behaviors not described in the story brief. If you believe something is missing, flag it in an 'Open Questions' section rather than implementing it. Include pytest code in the test section."
+
+---
+
+## MODEL: model-zeta | TEST: 02 SUMMARY
+Run A: 16 | Run B: 19 | Run C: 10
+Mean: 15.0 | Range: 9 | Consistency: Low
+
+Consistency narrative: Declining quality as story complexity increases. Run B (constrained scope) was adequate. Run A was borderline. Run C delivered truncated code with no spec structure. The model tends toward implementation output rather than specification documents.
+Dominant strength: Clean API specification quality on mid-complexity stories. Dependencies checklists are a practical touch.
+Dominant weakness: Delivers code instead of specs on complex prompts. Output truncation on the longest story. No test sections in any run.
+Prompt engineering note: Add: "Output a MARKDOWN SPECIFICATION DOCUMENT, not Python code. Include a mandatory 'Tests' section with pytest function signatures and a mandatory 'Acceptance Criteria' section with numbered criteria. Do not truncate your output."
+
+---
+
+# FINAL LEADERBOARD
+
+| Model | Run A | Run B | Run C | Mean | Range | Consistency |
+|-------|-------|-------|-------|------|-------|-------------|
+| model-beta | 25 | 25 | 25 | **25.0** | 0 | High |
+| model-delta | 24 | 24 | 20 | **22.7** | 4 | Medium |
+| model-epsilon | 18 | 19 | 21 | **19.3** | 3 | Medium |
+| model-alpha | 15 | 23 | 11 | **16.3** | 12 | Low |
+| model-gamma | 2 | 18 | 25 | **15.0** | 23 | Low |
+| model-zeta | 16 | 19 | 10 | **15.0** | 9 | Low |
+
+**Pass threshold (18/25):**
+- model-beta: PASS all 3 runs
+- model-delta: PASS all 3 runs
+- model-epsilon: PASS all 3 runs
+- model-alpha: PASS 1 of 3 runs (Run B only)
+- model-gamma: PASS 2 of 3 runs (Run B, Run C)
+- model-zeta: PASS 1 of 3 runs (Run B only)

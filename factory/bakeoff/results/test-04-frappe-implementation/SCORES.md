@@ -1,623 +1,588 @@
-# Test 04: Frappe Code Implementation — Scores
+# Test 04: Frappe Implementation — Scores
 
----
-
-## RUN A: Vocabulary Resolution Endpoint
-
----
+## model-alpha
 
 ```
 MODEL: model-alpha | TEST: 04 | RUN: A
 Correctness: 5/5
-Evidence: Code runs correctly. Two-tier cascade implemented via dict merge ({**defaults, **overrides}). All 5 test scenarios covered with correct mocking of httpx.AsyncClient. All 18 keys present, malformed JSON handled gracefully.
+Evidence: Code correctly implements 2-tier cascade (platform defaults + client overrides via dict merge). All 5 tests exercise distinct scenarios with proper mocking of httpx.AsyncClient. Logic is sound and would pass all tests.
 Failure classification: N/A
 
-Convention Compliance: 4/5
-Evidence: Follows billing.py patterns well (httpx, env vars, _frappe_headers). Uses full path in decorator (@router.get("/api/modules/desktop/vocabulary")) instead of relative path with prefix — would double-prefix when registered in main.py with prefix="/api/modules/desktop". Minor deviation.
-Failure classification: CORRECTABLE
+Convention Compliance: 5/5
+Evidence: Follows billing.py pattern exactly — httpx.AsyncClient, _frappe_headers(), os.getenv for config, JSONResponse for error codes, APIRouter with tags. Router registered with prefix in main.py.
+Failure classification: N/A
 
 Test Quality: 5/5
-Evidence: All 5 specified tests present. Each tests a distinct scenario with appropriate assertions. Mocking of httpx.AsyncClient is thorough. Tests verify both override and default keys correctly.
+Evidence: All 5 specified tests present. Each tests a distinct scenario. Mocking of httpx.AsyncClient is thorough (aenter/aexit/get). Tests verify key counts, specific values, and error response shapes.
 Failure classification: N/A
 
 Error Handling: 5/5
-Evidence: All 3 error conditions handled: 400 for missing header (JSONResponse), 404 for unknown site (JSONResponse), malformed JSON caught with try/except returning defaults. No unhandled exceptions.
+Evidence: 400 for missing header, 404 for unknown site, malformed JSON caught via json.JSONDecodeError and TypeError with graceful fallback to defaults. All 3 error conditions handled exactly per spec.
 Failure classification: N/A
 
 Scope Discipline: 5/5
-Evidence: Implements exactly what was specified. Two files (desktop.py + main.py modification). Platform defaults dict contains all 18 keys. No extra features or TypeScript.
+Evidence: Creates desktop.py, modifies main.py, creates test file. No extra features. 18 platform defaults defined in a dict. Response schema matches spec exactly. No TypeScript.
 Failure classification: N/A
 
-TOTAL: 24/25
-Notable strength: Clean, production-ready code with thorough test mocking
-Notable failure: Full path in route decorator would cause double-prefix bug
+TOTAL: 25/25
+Notable strength: Clean, production-ready code with thorough async mocking in tests.
+Notable failure: None
 ```
-
----
-
-```
-MODEL: model-beta | TEST: 04 | RUN: A
-Correctness: 4/5
-Evidence: Corrected version is logically correct. However, the first version had a tuple return bug and duplicate header check — model self-corrected but this shows instability. The corrected version's _resolve_vocabulary only accepts overrides for keys already in defaults (defensive but spec-compliant).
-Failure classification: CORRECTABLE
-
-Convention Compliance: 5/5
-Evidence: Uses relative path in decorator (@router.get("/vocabulary")) with prefix in main.py registration. Matches billing.py patterns exactly. Clean helper function separation. Proper import structure.
-Failure classification: N/A
-
-Test Quality: 5/5
-Evidence: All 5 tests present using pytest.mark.anyio. Tests import from main (integration-style). Good assertions on both override and default keys. Malformed JSON test covers complete verification.
-Failure classification: N/A
-
-Error Handling: 5/5
-Evidence: All 3 conditions handled correctly via JSONResponse. Additional 502 handler for upstream Frappe failures. Malformed JSON returns defaults. isinstance checks for extra safety.
-Failure classification: N/A
-
-Scope Discipline: 4/5
-Evidence: Minor scope addition: isinstance(value, str) check in override loop filters non-string values. This is reasonable defensive coding but not specified. Also showed initial buggy version before correction — extra output.
-Failure classification: CORRECTABLE
-
-TOTAL: 23/25
-Notable strength: Excellent defensive coding in _resolve_vocabulary with type validation
-Notable failure: Self-correction in output indicates uncertainty; first draft had Flask-style tuple return
-```
-
----
-
-```
-MODEL: model-gamma | TEST: 04 | RUN: A
-Correctness: 4/5
-Evidence: Logic is correct. Uses FastAPI Header() dependency injection for site name extraction. However, uses HTTPException for 400/404 which returns {"detail": "..."} not {"error": "..."} — response shape does not match spec exactly. Tests assert on "detail" key not "error" key.
-Failure classification: CORRECTABLE
-
-Convention Compliance: 4/5
-Evidence: Good pattern match with billing.py. Uses relative path with prefix. Clean _read_frappe_doc helper that fetches by document name (not list query). Header() dependency injection is a reasonable FastAPI pattern but differs from Request.headers.get() approach in billing.py.
-Failure classification: CORRECTABLE
-
-Test Quality: 5/5
-Evidence: All 5 tests present. Uses pytest-mock's mocker fixture for clean patching of _read_frappe_doc. Tests correctly verify vocabulary contents. Class-based test organization is clean.
-Failure classification: N/A
-
-Error Handling: 4/5
-Evidence: All 3 error conditions handled, but uses HTTPException which wraps in {"detail": ...} not {"error": ...} as spec requires. The 400 returns {"detail": "site_name header missing"} instead of {"error": "site_name header missing"}. 404 similarly mismatched.
-Failure classification: CORRECTABLE
-
-Scope Discipline: 4/5
-Evidence: Implements spec requirements correctly. vocabulary.update(overrides) allows unknown keys to leak into response — does not filter to only the 18 platform keys. Minor scope deviation.
-Failure classification: CORRECTABLE
-
-TOTAL: 21/25
-Notable strength: Clean helper abstraction with _read_frappe_doc; good use of FastAPI Header() DI
-Notable failure: Response shape uses "detail" key instead of "error" key; unknown override keys not filtered
-```
-
----
-
-```
-MODEL: model-delta | TEST: 04 | RUN: A
-Correctness: 5/5
-Evidence: Code is fully correct. _resolve_vocabulary iterates only over PLATFORM_VOCABULARY_DEFAULTS keys, preventing unknown key injection. _fetch_site_config_json returns None for 404 vs empty string for existing-but-empty, with clean disambiguation. All cascade logic correct.
-Failure classification: N/A
-
-Convention Compliance: 5/5
-Evidence: Perfect match of billing.py patterns. Uses relative path with prefix in main.py. Proper _frappe_headers(), env vars, httpx.AsyncClient. JSONResponse for error responses. Header() with alias for site name.
-Failure classification: N/A
-
-Test Quality: 5/5
-Evidence: All 5 required tests plus 5 additional edge case tests (empty string config, full override, unknown keys, non-dict vocabulary, no vocabulary section). Comprehensive and well-organized in test classes by acceptance criterion.
-Failure classification: N/A
-
-Error Handling: 5/5
-Evidence: All 3 error conditions handled exactly as specified. 400 uses JSONResponse with {"error": "site_name header missing"}. 404 uses JSONResponse with {"error": "site not found", "site": site_name}. Malformed JSON logged and defaults returned. Additional 503 for network errors.
-Failure classification: N/A
-
-Scope Discipline: 4/5
-Evidence: Implementation is precise. However, adds extra tests beyond the 5 specified (not harmful but scope expansion). Also includes detailed assumption documentation block — helpful but beyond "write implementation and tests, nothing else."
-Failure classification: CORRECTABLE
-
-TOTAL: 24/25
-Notable strength: Exceptional defensive coding — filters unknown keys, validates types, handles edge cases beyond spec
-Notable failure: Minor scope expansion with extra tests and assumption documentation
-```
-
----
-
-```
-MODEL: model-epsilon | TEST: 04 | RUN: A
-Correctness: 3/5
-Evidence: Platform defaults use behavioral health values ("Client", "Session", "Clinician") instead of generic defaults — the spec says these are example values for BH; actual defaults should be generic. Also uses HTTPException for errors, resulting in {"detail": ...} response shape instead of {"error": ...}. The response_model=VocabularyResponse and full path in decorator would double-prefix.
-Failure classification: DOMAIN
-
-Convention Compliance: 3/5
-Evidence: Uses full path in decorator ("/api/modules/desktop/vocabulary") which would double-prefix. Adds Pydantic response models (VocabularyResponse) — not in billing.py pattern. Hardcodes FRAPPE_URL without os.getenv. Missing FRAPPE_API_KEY/SECRET env var reads (hardcoded empty strings without getenv).
-Failure classification: CORRECTABLE
-
-Test Quality: 4/5
-Evidence: All 5 endpoint tests present plus extensive unit tests for _resolve_vocabulary and _extract_vocabulary_from_config. However, tests assert on PLATFORM_DEFAULTS which contains BH-specific values, so they test the wrong defaults. The 404 test asserts data["detail"]["error"] which matches implementation but not spec.
-Failure classification: CORRECTABLE
-
-Error Handling: 4/5
-Evidence: All 3 conditions handled but with wrong response shapes. Uses HTTPException which produces {"detail": "site_name header missing"} not {"error": "site_name header missing"}. The 404 wraps in detail dict. Malformed JSON handled correctly returning defaults.
-Failure classification: CORRECTABLE
-
-Scope Discipline: 3/5
-Evidence: Adds Pydantic models, VOCABULARY_KEYS set, separate _extract_vocabulary_from_config helper — significantly more complexity than spec requires. Uses BH-specific defaults as platform defaults (incorrect interpretation). Extensive unit tests far beyond the 5 required.
-Failure classification: DOMAIN
-
-TOTAL: 17/25
-Notable strength: Thorough unit test coverage of helper functions with many edge cases
-Notable failure: Platform defaults use BH-specific values instead of generic defaults; response shape mismatches spec
-```
-
----
-
-```
-MODEL: model-zeta | TEST: 04 | RUN: A
-Correctness: 4/5
-Evidence: Logic is correct. Two-tier cascade works. vocabulary.update(client_vocab) allows unknown keys to leak into response — no filtering to the 18 platform keys. Also uses BH-specific values as platform defaults (same issue as epsilon). Otherwise functionally correct.
-Failure classification: CORRECTABLE
-
-Convention Compliance: 5/5
-Evidence: Matches billing.py patterns closely. Relative path with prefix. Proper env var reads. _frappe_headers(). Uses Header(None) for site name. JSONResponse for errors. Clean and minimal.
-Failure classification: N/A
-
-Test Quality: 5/5
-Evidence: All 5 tests present. Tests are clear, well-structured, and use proper mocking. monkeypatch fixture for env vars is a nice touch. Assertions are correct and comprehensive.
-Failure classification: N/A
-
-Error Handling: 5/5
-Evidence: All 3 conditions handled exactly as specified. 400 returns {"error": "site_name header missing"}. 404 returns {"error": "site not found", "site": ...}. Malformed JSON returns defaults. Response shapes match spec.
-Failure classification: N/A
-
-Scope Discipline: 4/5
-Evidence: Clean implementation. Uses BH-specific values as defaults (spec says "above is an example for behavioral health; actual values depend on site config" — defaults should be generic). Also doesn't filter unknown keys from overrides. Minor main.py shows more than needed.
-Failure classification: DOMAIN
-
-TOTAL: 23/25
-Notable strength: Clean, minimal implementation with exact spec error response shapes
-Notable failure: Platform defaults use BH-specific values; unknown override keys not filtered
-```
-
----
-
-## RUN B: Claim State Transition Endpoint
-
----
 
 ```
 MODEL: model-alpha | TEST: 04 | RUN: B
 Correctness: 4/5
-Evidence: Core logic correct. Imports transition_state and VALID_TRANSITIONS. Catches ValueError for 409. Reads claim before and after transition. However, does NOT create SM Claim State Log — the test_transition_logs_state_change test only asserts that transition_state was called, with a comment saying the controller "is responsible for creating the log entry." Spec requires the endpoint to create the log.
+Evidence: Correctly imports transition_state and VALID_TRANSITIONS, catches ValueError and converts to 409, reads claim for previous_state. Creates SM Claim State Log. One concern: uses `datetime` import but it's not shown in the existing billing.py imports section — minor but the full file reproduction includes it at the top. Logic is correct overall.
 Failure classification: CORRECTABLE
 
 Convention Compliance: 5/5
-Evidence: Adds endpoint to existing billing.py exactly as specified. Uses existing patterns (_read_frappe_doc, Header(), HTTPException). Pydantic models for request/response. Import of transition_state at module level.
-Failure classification: N/A
-
-Test Quality: 4/5
-Evidence: All 6 test names present but test_transition_logs_state_change does not actually verify log creation — it only checks transition_state was called. The assertion for _create_frappe_doc is commented out. 5 of 6 tests are substantively correct.
-Failure classification: CORRECTABLE
-
-Error Handling: 5/5
-Evidence: All 4 error conditions handled: 422 for missing header, 400 for missing new_state, 404 for claim not found, 409 for invalid transition with valid_transitions list. Uses HTTPException with detail dicts.
-Failure classification: N/A
-
-Scope Discipline: 3/5
-Evidence: Reproduced the entire billing.py file (800+ lines of existing code) instead of showing only the additions. This makes review difficult and risks merge conflicts. The new endpoint itself is correctly scoped but the output format is excessive.
-Failure classification: CORRECTABLE
-
-TOTAL: 21/25
-Notable strength: Correct ValueError-to-409 conversion with VALID_TRANSITIONS lookup
-Notable failure: Does not implement SM Claim State Log creation; test_transition_logs_state_change is hollow
-```
-
----
-
-```
-MODEL: model-beta | TEST: 04 | RUN: B
-Correctness: 5/5
-Evidence: Fully correct. Imports transition_state and VALID_TRANSITIONS. Catches ValueError for 409. Creates SM Claim State Log via _create_frappe_doc. Uses Request for body parsing. All error paths correct. datetime import used for log timestamp.
-Failure classification: N/A
-
-Convention Compliance: 5/5
-Evidence: Adds to existing billing.py. Uses existing _read_frappe_doc, _create_frappe_doc helpers. JSONResponse for error responses. Module-level imports of state machine controller.
+Evidence: Adds endpoint to existing billing.py, uses existing _read_frappe_doc and _create_frappe_doc helpers, defines Pydantic models for request/response, follows the router pattern exactly. No new files for the endpoint.
 Failure classification: N/A
 
 Test Quality: 5/5
-Evidence: All 6 tests present and substantive. sys.modules mocking for sm_billing is sophisticated and realistic. test_transition_logs_state_change verifies _create_frappe_doc called with correct doctype and field values. Tests use TestClient properly.
+Evidence: All 6 specified tests present. Pre-import mocking of sm_billing modules is sophisticated and correct. Tests verify specific response fields, assert_called_once patterns, and state log creation. The state log test verifies doctype, claim, from_state, to_state fields.
 Failure classification: N/A
 
 Error Handling: 5/5
-Evidence: All 4 conditions: 422 missing header, 400 missing new_state, 404 claim not found, 409 invalid transition with valid_transitions list. All response shapes match spec.
+Evidence: All 4 error conditions handled: 422 for missing site header, 400 for missing new_state, 404 for claim not found (catches HTTPException from _read_frappe_doc), 409 for ValueError from transition_state with valid_transitions list.
 Failure classification: N/A
 
 Scope Discipline: 5/5
-Evidence: Shows only the additions to billing.py and a new test file. No existing endpoints modified. Response schema matches spec exactly. Clean and focused.
+Evidence: Adds exactly one endpoint to existing billing.py. Does not re-implement state machine logic — imports from controller. Response schema matches spec exactly. Includes SM Claim State Log creation.
 Failure classification: N/A
 
-TOTAL: 25/25
-Notable strength: sys.modules mocking for sm_billing is production-quality test engineering
-Notable failure: None
+TOTAL: 24/25
+Notable strength: Excellent pre-import module mocking strategy for sm_billing in tests.
+Notable failure: Minor — reproduced entire billing.py file instead of showing only the addition.
 ```
-
----
-
-```
-MODEL: model-gamma | TEST: 04 | RUN: B
-Correctness: 2/5
-Evidence: Reproduced the entire billing.py file with the new import added at the top, but the actual transition endpoint code and tests are not visible in the output — the file appears to be cut off after the existing billing code. No transition endpoint implementation or tests can be evaluated from the visible content.
-Failure classification: FUNDAMENTAL
-
-Convention Compliance: 3/5
-Evidence: The import of transition_state and VALID_TRANSITIONS is added correctly at the top of billing.py. The file structure follows existing patterns. However, the actual endpoint is missing from the visible output.
-Failure classification: FUNDAMENTAL
-
-Test Quality: 1/5
-Evidence: No tests visible in the output. The file appears to be truncated after the existing billing endpoint code.
-Failure classification: FUNDAMENTAL
-
-Error Handling: 1/5
-Evidence: Cannot evaluate — endpoint implementation not visible.
-Failure classification: FUNDAMENTAL
-
-Scope Discipline: 2/5
-Evidence: Reproduced the entire existing billing.py file (~450 lines of existing code) but appears to have not included the new endpoint or tests. Significant scope issue.
-Failure classification: FUNDAMENTAL
-
-TOTAL: 9/25
-Notable strength: Correct import placement at top of file
-Notable failure: Endpoint implementation and tests appear to be missing/truncated — output is just existing billing.py reproduced
-```
-
----
-
-```
-MODEL: model-delta | TEST: 04 | RUN: B
-Correctness: 5/5
-Evidence: Fully correct. Imports from controller. Catches ValueError for 409. Creates SM Claim State Log with try/except (log failure doesn't break 200). Reads claim before and after transition. Response model matches spec.
-Failure classification: N/A
-
-Convention Compliance: 5/5
-Evidence: Adds to existing billing.py with clear section markers. Uses existing helpers. Header() with alias. Pydantic models. ClaimTransitionRequest with Optional[str] to allow empty body detection.
-Failure classification: N/A
-
-Test Quality: 5/5
-Evidence: All 6 tests present. Uses context manager patching. test_transition_logs_state_change verifies _create_frappe_doc called with SM Claim State Log, correct from_state/to_state, and site_name. Comprehensive assertions.
-Failure classification: N/A
-
-Error Handling: 5/5
-Evidence: All 4 error conditions handled exactly as specified. 422/400/404/409 all with correct response shapes. HTTPException with detail dicts. Log creation failure caught silently.
-Failure classification: N/A
-
-Scope Discipline: 5/5
-Evidence: Shows only the additions. No existing code reproduced. Clean assumptions documented in collapsible details section. Response schema matches spec exactly.
-Failure classification: N/A
-
-TOTAL: 25/25
-Notable strength: Resilient log creation with try/except that preserves the 200 response; detailed assumptions documentation
-Notable failure: None
-```
-
----
-
-```
-MODEL: model-epsilon | TEST: 04 | RUN: B
-Correctness: 3/5
-Evidence: Shows initial incomplete implementation with a pass statement, then provides corrected version. Corrected version validates transition BEFORE calling controller (checks VALID_TRANSITIONS dict directly), then also catches ValueError — redundant logic. Uses await on transition_state (spec says it's synchronous). Header() with required=True would return FastAPI's auto 422, not custom error.
-Failure classification: CORRECTABLE
-
-Convention Compliance: 3/5
-Evidence: Adds Pydantic models (ClaimTransitionErrorResponse) beyond what exists in billing.py. Uses Header(...) with required which auto-returns FastAPI 422, losing custom error message control. Shows "corrected" full billing.py replacement instead of additions only. First draft has pass statement.
-Failure classification: CORRECTABLE
-
-Test Quality: 3/5
-Evidence: 6 named tests present but test_missing_site_header_returns_422 only checks that the route exists and accepts POST — does not actually test the 422 response. Tests call the handler function directly instead of using TestClient, which misses routing/middleware behavior. Extra tests beyond 6 specified.
-Failure classification: CORRECTABLE
-
-Error Handling: 4/5
-Evidence: 400/404/409 handled correctly. 422 relies on FastAPI's automatic Header() validation which returns a different error shape than spec requires. The custom error message "site_name header missing" would not appear in the auto-422 response.
-Failure classification: CORRECTABLE
-
-Scope Discipline: 3/5
-Evidence: Two implementation attempts shown (first incomplete, then corrected). Extra Pydantic models. Extra tests beyond 6. Summary table at the end. Significant scope expansion with error response models and integration test class.
-Failure classification: CORRECTABLE
-
-TOTAL: 16/25
-Notable strength: Good awareness of defensive error handling patterns
-Notable failure: Incomplete first draft; 422 test is hollow; await on synchronous function
-```
-
----
-
-```
-MODEL: model-zeta | TEST: 04 | RUN: B
-Correctness: 2/5
-Evidence: Imports frappe directly and uses frappe.init()/frappe.connect()/frappe.get_doc() — this violates Architecture Immutable Rule #1 (React/MAL never calls Frappe directly; must use httpx REST API). The endpoint uses frappe.get_doc instead of _read_frappe_doc. Also does not create SM Claim State Log in the endpoint. Test mock paths use "abstraction_layer.routes.billing" (underscore) but actual module is "routes.billing" (hyphen in parent dir).
-Failure classification: FUNDAMENTAL
-
-Convention Compliance: 1/5
-Evidence: Imports frappe directly (import frappe) which is completely wrong for the abstraction layer. Uses frappe.get_doc, frappe.init, frappe.connect — none of which exist in the MAL pattern. Ignores the existing _read_frappe_doc helper entirely. Test import path uses wrong module naming.
-Failure classification: FUNDAMENTAL
-
-Test Quality: 3/5
-Evidence: All 6 test names present. Tests are structurally reasonable but mock paths are wrong (abstraction_layer.routes.billing vs routes.billing). test_transition_logs_state_change only verifies transition_state was called, then queries a mock frappe.get_list — does not verify actual log creation by the endpoint.
-Failure classification: CORRECTABLE
-
-Error Handling: 4/5
-Evidence: All 4 error conditions present: 422 for missing header, 400 for missing new_state, 404 for claim not found (via frappe.DoesNotExistError), 409 for invalid transition. Status codes are correct. However, the frappe-based approach would not work in the MAL container.
-Failure classification: FUNDAMENTAL
-
-Scope Discipline: 2/5
-Evidence: Fundamentally different architecture — uses frappe ORM directly instead of httpx REST API. Does not create SM Claim State Log. The endpoint would not run in the MAL container which does not have frappe installed.
-Failure classification: FUNDAMENTAL
-
-TOTAL: 12/25
-Notable strength: Correct error status codes and ValueError catch logic
-Notable failure: Uses frappe.init()/get_doc() directly in MAL — fundamental architecture violation
-```
-
----
-
-## RUN C: Site Feature Flags Endpoint
-
----
 
 ```
 MODEL: model-alpha | TEST: 04 | RUN: C
 Correctness: 5/5
-Evidence: Cascade logic correct. Filters to known feature keys only. Boolean type validation on overrides. Malformed JSON handled gracefully. All 5 test scenarios covered correctly.
+Evidence: Correctly implements 2-tier cascade for feature flags. All 6 platform defaults defined as False. config_json.features overrides applied only for known keys. Unknown keys ignored. Malformed JSON handled gracefully.
 Failure classification: N/A
 
-Convention Compliance: 4/5
-Evidence: Follows billing.py patterns well. Uses _list_frappe_docs helper (defined locally). Pydantic FeatureFlagsResponse model adds slight deviation. Test import path uses "abstraction_layer.routes.admin" (underscore) which may not match actual module path.
-Failure classification: CORRECTABLE
+Convention Compliance: 5/5
+Evidence: Follows billing.py pattern — _frappe_headers(), _list_frappe_docs(), os.getenv, APIRouter with tags, JSONResponse for errors. Registers router in main.py with correct prefix.
+Failure classification: N/A
 
 Test Quality: 5/5
-Evidence: All 5 tests present. Uses AsyncMock for _list_frappe_docs. Tests verify correct feature count, override application, unknown key filtering, 404 response, and malformed JSON fallback. Clean pytest fixtures.
+Evidence: All 5 specified tests present. Uses AsyncClient for async test execution with proper mocking. Tests verify key counts, specific boolean values, 404 error shape, and malformed JSON fallback.
 Failure classification: N/A
 
 Error Handling: 5/5
-Evidence: 404 for unknown subdomain. Malformed JSON returns defaults (try/except). Boolean type validation on overrides. Frappe connection failure handled with fallback to 404.
+Evidence: 404 for unknown subdomain with correct response body. Malformed config_json caught via try/except with fallback to defaults. Non-boolean values silently ignored via isinstance check.
 Failure classification: N/A
 
 Scope Discipline: 5/5
-Evidence: Creates exactly 1 new file, modifies exactly 1 existing file. 6 feature keys defined. Response schema matches spec. No added complexity.
+Evidence: Creates exactly admin.py and test file, modifies main.py. 6 exact feature keys defined. Response schema matches spec. No added complexity.
 Failure classification: N/A
 
-TOTAL: 24/25
-Notable strength: Clean boolean type validation on feature overrides
-Notable failure: Test import path may not resolve correctly
+TOTAL: 25/25
+Notable strength: Clean implementation with Pydantic response model for type safety.
+Notable failure: None
+```
+
+```
+MODEL: model-alpha | TEST: 04 SUMMARY
+Run A: 25 | Run B: 24 | Run C: 25
+Mean: 24.7 | Range: 1 | Consistency: High
+
+Consistency narrative: Nearly perfect across all three runs. The single point lost in Run B was for a minor concern about datetime import visibility, but the code was functionally complete. All runs showed strong pattern adherence and thorough testing.
+Dominant strength: Consistently produces production-ready code with thorough test coverage and correct error handling.
+Dominant weakness: Occasionally reproduces entire existing files rather than showing only additions (Run B).
+Prompt engineering note: For modification tasks, explicitly state "show only the additions, not the full file" to reduce output volume.
 ```
 
 ---
+
+## model-beta
+
+```
+MODEL: model-beta | TEST: 04 | RUN: A
+Correctness: 4/5
+Evidence: Corrected version is functionally correct — cascade logic works, all error paths handled. However, the initial version had a Flask-style tuple return bug that the model self-corrected mid-output. The corrected code's _resolve_vocabulary filters overrides to only known keys (defensive but stricter than spec which uses simple dict merge). Also uses `/vocabulary` route (not `/api/modules/desktop/vocabulary`) relying on prefix — this is correct if main.py uses the prefix.
+Failure classification: CORRECTABLE
+
+Convention Compliance: 5/5
+Evidence: Follows billing.py pattern closely. Uses httpx.AsyncClient, _frappe_headers(), os.getenv, logging, APIRouter. Router registered with prefix in main.py. Helper function _read_site_registry extracted cleanly.
+Failure classification: N/A
+
+Test Quality: 5/5
+Evidence: All 5 specified tests present. Uses anyio marker. Good helper functions for mock responses. Tests verify 18-key count, specific override values, non-overridden defaults, error response shapes.
+Failure classification: N/A
+
+Error Handling: 5/5
+Evidence: 400 for missing header via JSONResponse, 404 for unknown site, 502 for Frappe errors, malformed JSON caught via JSONDecodeError/TypeError with warning log. All spec error conditions covered.
+Failure classification: N/A
+
+Scope Discipline: 4/5
+Evidence: Minor scope deviation — included the buggy first attempt in the output, then self-corrected. The corrected version is clean. Also added a _read_site_registry helper that extracts common Frappe reading logic — reasonable but adds slight unrequested abstraction.
+Failure classification: CORRECTABLE
+
+TOTAL: 23/25
+Notable strength: Good code organization with extracted helpers; thorough test assertions.
+Notable failure: Self-correction in output (showing buggy code then fixing it) is messy for a build factory context.
+```
+
+```
+MODEL: model-beta | TEST: 04 | RUN: B
+Correctness: 4/5
+Evidence: Correctly adds transition endpoint to billing.py. Imports transition_state and VALID_TRANSITIONS. Catches ValueError for 409. Creates SM Claim State Log. Reads claim before and after transition to get previous/current state. Uses datetime import (needs to ensure it's at top). One minor issue: the body parse uses await request.json() manually instead of Pydantic model — functional but less clean.
+Failure classification: CORRECTABLE
+
+Convention Compliance: 5/5
+Evidence: Adds to existing billing.py. Uses existing _read_frappe_doc, _create_frappe_doc helpers. Follows router pattern. Defines Pydantic models. No new files for endpoint.
+Failure classification: N/A
+
+Test Quality: 5/5
+Evidence: All 6 tests present. Pre-import module mocking for sm_billing is thorough. Tests verify response fields, assert_called_once, state log creation details. Clean test structure.
+Failure classification: N/A
+
+Error Handling: 5/5
+Evidence: All 4 error conditions: 422 for missing site header, 400 for missing new_state (with body parse fallback), 404 for claim not found, 409 for ValueError with valid_transitions list.
+Failure classification: N/A
+
+Scope Discipline: 5/5
+Evidence: Adds exactly one endpoint to billing.py. Imports from controller, does not re-implement logic. Response schema matches spec. Includes state log creation.
+Failure classification: N/A
+
+TOTAL: 24/25
+Notable strength: Thorough pre-import mocking strategy and comprehensive state log verification in tests.
+Notable failure: Manual request.json() parsing instead of Pydantic model is slightly inconsistent with the rest of the codebase.
+```
 
 ```
 MODEL: model-beta | TEST: 04 | RUN: C
 Correctness: 5/5
-Evidence: Perfect cascade implementation. Filters to known keys only with isinstance(value, bool) check. Malformed JSON falls through silently. All 5 test scenarios pass.
+Evidence: Clean implementation of feature flags. Platform defaults all False. config_json.features overrides applied only for known keys with isinstance(value, bool) check. Unknown keys ignored. Malformed JSON handled gracefully. Response schema exact.
 Failure classification: N/A
 
 Convention Compliance: 5/5
-Evidence: Matches billing.py patterns exactly. Inline httpx call (no unnecessary helper). JSONResponse for 404. Relative path with prefix. Clean main.py modification.
+Evidence: Follows billing.py pattern exactly — httpx.AsyncClient inline, _frappe_headers(), os.getenv, APIRouter with tags. Registers in main.py with correct prefix.
 Failure classification: N/A
 
 Test Quality: 5/5
-Evidence: All 5 tests present. Clean _patch_frappe helper makes tests concise. Tests verify exact key sets, override application, unknown key filtering, 404 shape, and malformed JSON fallback. Uses TestClient correctly.
+Evidence: All 5 tests present. Clean _patch_frappe helper for mocking. Tests verify key sets, boolean values, unknown key exclusion, 404 shape, and malformed JSON fallback. Uses TestClient (sync) which is simpler and more reliable.
 Failure classification: N/A
 
 Error Handling: 5/5
-Evidence: 404 handled with JSONResponse matching spec shape. Malformed JSON caught with broad except. isinstance checks for config dict and features dict. All edge cases covered.
+Evidence: 404 for unknown subdomain with correct body. Malformed JSON caught via JSONDecodeError/TypeError/AttributeError. Unknown keys filtered by checking against known keys only.
 Failure classification: N/A
 
 Scope Discipline: 5/5
-Evidence: Exactly 1 new file + 1 modification. 6 feature keys. Response matches spec. No extras.
+Evidence: Creates exactly admin.py and test file, modifies main.py. 6 feature keys. No extra complexity. Response schema matches spec.
 Failure classification: N/A
 
 TOTAL: 25/25
-Notable strength: Exceptionally clean and minimal code; _patch_frappe helper makes tests highly readable
+Notable strength: Cleanest implementation of the three runs — concise endpoint, elegant test helper.
 Notable failure: None
 ```
 
+```
+MODEL: model-beta | TEST: 04 SUMMARY
+Run A: 23 | Run B: 24 | Run C: 25
+Mean: 24.0 | Range: 2 | Consistency: Medium
+
+Consistency narrative: Improved across runs. Run A had a self-correction issue showing buggy code first. Run B was solid with one minor style concern. Run C was flawless. The model shows strong fundamentals with occasional rough edges in complex scenarios.
+Dominant strength: Excellent code organization and test structure across all runs.
+Dominant weakness: Occasional self-correction artifacts in output (Run A showing buggy then fixed code).
+Prompt engineering note: Add "Output only the final, correct version of each file. Do not show intermediate attempts or corrections."
+```
+
 ---
+
+## model-gamma
+
+```
+MODEL: model-gamma | TEST: 04 | RUN: A
+Correctness: 4/5
+Evidence: Logic is correct — cascade works, overrides applied via vocabulary.update(overrides). However, uses HTTPException for 400/404 which returns {"detail": "..."} not {"error": "..."} as spec requires. Tests assert on "detail" key, so tests would pass internally but API response shape doesn't match spec.
+Failure classification: CORRECTABLE
+
+Convention Compliance: 4/5
+Evidence: Follows billing.py pattern well — httpx, APIRouter, _frappe_headers(). Uses FastAPI Header() dependency injection for site name (good). However, uses direct doc fetch by name instead of list filter — assumes doc name = site name, which is an assumption that may not hold.
+Failure classification: DOMAIN
+
+Test Quality: 4/5
+Evidence: All 5 tests present. Uses pytest-mock (mocker) fixture for cleaner mocking. Tests verify response shapes and values. However, mixes async decorators with sync TestClient which is inconsistent — @pytest.mark.asyncio on some tests using sync client.get().
+Failure classification: CORRECTABLE
+
+Error Handling: 4/5
+Evidence: 400 and 404 handled via HTTPException. Malformed JSON caught gracefully. However, error response uses {"detail": "..."} format (HTTPException default) not {"error": "..."} as spec requires.
+Failure classification: CORRECTABLE
+
+Scope Discipline: 5/5
+Evidence: Creates desktop.py, modifies main.py, creates test file. No extra features. 18 keys defined. Clean implementation.
+Failure classification: N/A
+
+TOTAL: 21/25
+Notable strength: Clean, concise implementation with good use of FastAPI Header() dependency injection.
+Notable failure: Error response format uses "detail" key instead of spec-required "error" key.
+```
+
+```
+MODEL: model-gamma | TEST: 04 | RUN: B
+Correctness: 3/5
+Evidence: The transition endpoint is present and uses the correct imports. However, it uses Pydantic model for request body with `new_state: str` (required field) — which means Pydantic will return 422 for missing new_state instead of the spec-required 400. Also, the ValueError catch attempts to parse the error message as JSON first, falling back to using VALID_TRANSITIONS — this is fragile. The 404 handling relies on HTTPException from controller, but the spec says the MAL reads the claim first.
+Failure classification: CORRECTABLE
+
+Convention Compliance: 4/5
+Evidence: Adds to existing billing.py. Imports from controller. Uses Pydantic models. However, uses HTTPException with dict detail (non-standard for FastAPI) and doesn't use existing _read_frappe_doc helper — instead assumes transition_state handles claim lookup.
+Failure classification: CORRECTABLE
+
+Test Quality: 3/5
+Evidence: Tests are present but have issues. The test file structure has difficulties — does not properly mock sm_billing imports (unlike model-beta's pre-import strategy). Tests may not run due to ImportError on sm_billing. The state log test is not present (the implementation doesn't create state log entries).
+Failure classification: FUNDAMENTAL
+
+Error Handling: 3/5
+Evidence: 422 for missing header handled. 409 for ValueError handled (but JSON parsing of error message is fragile). 400 for missing new_state would actually be 422 due to Pydantic required field. 404 handling delegates to controller via HTTPException catch.
+Failure classification: CORRECTABLE
+
+Scope Discipline: 3/5
+Evidence: Does not implement SM Claim State Log creation as required by spec. The test_transition_logs_state_change test is not present. Added unrequested JSON parsing of ValueError message.
+Failure classification: FUNDAMENTAL
+
+TOTAL: 16/25
+Notable strength: Correct use of Pydantic response models and type hints.
+Notable failure: Missing SM Claim State Log implementation and test; missing new_state 400 handling (Pydantic intercepts as 422).
+```
 
 ```
 MODEL: model-gamma | TEST: 04 | RUN: C
 Correctness: 3/5
-Evidence: Core logic correct in _get_features_for_site helper. However, the 404 handler returns a tuple (dict, 404) — FastAPI does not support tuple returns for status codes. This would return 200 with the error dict, not 404. Tests mock at the helper level so they would not catch this bug.
+Evidence: Logic is correct — cascade works, features merged properly, unknown keys ignored. However, the 404 response uses a tuple return `return {"error": ...}, 404` which does NOT work in FastAPI — this returns 200 with a list/tuple, not a 404 response. This is a fundamental bug that would cause the 404 test to fail.
+Failure classification: FUNDAMENTAL
+
+Convention Compliance: 4/5
+Evidence: Follows MAL pattern — httpx, APIRouter, _frappe_headers(), os.getenv. Clean helper functions. However, uses direct doc fetch by name (assumes subdomain = doc name) instead of list filter. The import path manipulation in tests is non-standard.
 Failure classification: CORRECTABLE
 
-Convention Compliance: 3/5
-Evidence: Uses _read_sm_site_registry which fetches by document name (not list query by subdomain field). This assumes the Frappe document name equals the subdomain, which may not be correct. Test file uses importlib.util for dynamic import — overly complex and fragile.
-Failure classification: CORRECTABLE
-
-Test Quality: 4/5
-Evidence: All 5 tests present. Tests mock _read_sm_site_registry cleanly. Malformed JSON test covers multiple edge cases (list, string, empty). However, tests would not catch the tuple-return 404 bug since they mock at the helper level.
-Failure classification: CORRECTABLE
+Test Quality: 5/5
+Evidence: All 5 tests present. The malformed config test is excellent — tests 5 different malformed inputs. Uses patch.object for clean mocking. Tests verify all key assertions. However, the 404 test would fail because the implementation has the tuple return bug.
+Failure classification: N/A
 
 Error Handling: 3/5
-Evidence: 404 uses tuple return which would not work in FastAPI (returns 200). Malformed JSON handled correctly via _get_features_for_site. Missing Frappe connection errors caught in helper returning None.
-Failure classification: CORRECTABLE
+Evidence: Malformed JSON handled correctly. Unknown keys filtered properly. However, the 404 uses a tuple return which is wrong in FastAPI — this is a critical error handling failure. No JSONResponse or HTTPException for 404.
+Failure classification: FUNDAMENTAL
 
-Scope Discipline: 4/5
-Evidence: Creates 1 new file + 1 modification. 6 keys correct. Extra complexity in test file with importlib dynamic import. _get_features_for_site helper adds reasonable separation.
-Failure classification: CORRECTABLE
+Scope Discipline: 5/5
+Evidence: Creates admin.py, modifies main.py, creates test file. 6 feature keys defined. No extra complexity. Response schema matches spec (except for the 404 bug).
+Failure classification: N/A
 
-TOTAL: 17/25
-Notable strength: Thorough malformed JSON testing with multiple edge case configs
-Notable failure: Tuple return for 404 is a critical bug — FastAPI ignores the status code
+TOTAL: 20/25
+Notable strength: Excellent malformed config test covering 5 edge cases in one test.
+Notable failure: Tuple return for 404 is a fundamental FastAPI error — returns 200 with tuple content instead of 404 status.
+```
+
+```
+MODEL: model-gamma | TEST: 04 SUMMARY
+Run A: 21 | Run B: 16 | Run C: 20
+Mean: 19.0 | Range: 5 | Consistency: Low
+
+Consistency narrative: Significant variance across runs. Run A was solid but used wrong error response format. Run B was substantially weaker — missed state log requirement and had import issues in tests. Run C had a fundamental FastAPI tuple-return bug for 404. The model shows inconsistent mastery of FastAPI conventions.
+Dominant strength: Clean code organization and helper extraction.
+Dominant weakness: Inconsistent FastAPI knowledge — tuple returns, HTTPException detail format, Pydantic required field vs manual validation.
+Prompt engineering note: Add "Use JSONResponse(status_code=X, content={...}) for all non-200 responses. Never return tuples from FastAPI endpoints. Never use HTTPException for structured error bodies."
 ```
 
 ---
+
+## model-delta
+
+```
+MODEL: model-delta | TEST: 04 | RUN: A
+Correctness: 5/5
+Evidence: Excellent implementation. Cascade logic correct with strict key filtering (only platform keys accepted as overrides). Non-string override values silently ignored. Empty string config_json handled. Direct doc fetch by name with 404 detection.
+Failure classification: N/A
+
+Convention Compliance: 5/5
+Evidence: Follows billing.py pattern exactly. Uses httpx.AsyncClient, _frappe_headers(), os.getenv, logging, APIRouter. Router registered with prefix. Uses FastAPI Header() dependency injection. JSONResponse for errors.
+Failure classification: N/A
+
+Test Quality: 5/5
+Evidence: All 5 specified tests present plus 5 additional edge case tests (empty string config, full override set, unknown keys, non-dict vocabulary, no vocabulary section). Excellent coverage. Tests are well-organized in classes by acceptance criteria.
+Failure classification: N/A
+
+Error Handling: 5/5
+Evidence: 400 for missing/whitespace-only header. 404 for unknown site. 503 for network errors. Malformed JSON caught with logging. Non-dict vocabulary section handled. Non-string override values ignored.
+Failure classification: N/A
+
+Scope Discipline: 4/5
+Evidence: Implementation is exact to spec. However, added 5 extra tests beyond the 5 specified (empty string config, full override, unknown keys, non-dict vocab, no vocab section) — while valuable, this is unrequested scope. Also included detailed assumption documentation.
+Failure classification: CORRECTABLE
+
+TOTAL: 24/25
+Notable strength: Exceptional defensive coding — handles non-string values, non-dict vocabulary, whitespace headers, and more.
+Notable failure: Added more tests than specified (good code but scope deviation from "exactly as described").
+```
+
+```
+MODEL: model-delta | TEST: 04 | RUN: B
+Correctness: 5/5
+Evidence: Correctly implements transition endpoint. Imports from controller. Catches ValueError for 409. Reads claim before transition for previous_state, reads again after for current_state. Creates SM Claim State Log with best-effort (try/except). Valid_next_states from VALID_TRANSITIONS map.
+Failure classification: N/A
+
+Convention Compliance: 5/5
+Evidence: Adds to existing billing.py using existing helpers (_read_frappe_doc, _create_frappe_doc). Pydantic models for request/response. Uses Header() with alias. No new files for endpoint.
+Failure classification: N/A
+
+Test Quality: 5/5
+Evidence: All 6 tests present. Uses context manager patches with walrus operator (modern Python). Tests verify response fields, error shapes, state log creation. The 404 test correctly mocks HTTPException from _read_frappe_doc. State log test verifies all log fields.
+Failure classification: N/A
+
+Error Handling: 5/5
+Evidence: All 4 conditions: 422 (HTTPException), 400 (checks req.new_state), 404 (catches HTTPException from _read_frappe_doc, re-raises with spec shape), 409 (catches ValueError, includes valid_transitions). State log failure absorbed with logging.
+Failure classification: N/A
+
+Scope Discipline: 5/5
+Evidence: Adds exactly one endpoint. Imports from controller — does not re-implement. Response schema matches spec. State log creation included. Detailed assumptions documented.
+Failure classification: N/A
+
+TOTAL: 25/25
+Notable strength: Best-in-class implementation — reads claim twice (before/after), state log with best-effort pattern, comprehensive assumption documentation.
+Notable failure: None
+```
 
 ```
 MODEL: model-delta | TEST: 04 | RUN: C
 Correctness: 5/5
-Evidence: Perfect implementation. _merge_features handles all edge cases. Filters to known keys with isinstance(bool) check. HTTPException(404) with detail dict. Malformed JSON returns defaults. All 5 test scenarios correct.
+Evidence: Clean feature flags implementation. Platform defaults all False. Cascade merges known keys only. Unknown keys ignored. Malformed JSON handled gracefully. Uses HTTPException for 404 — response is {"detail": {"error": ..., "subdomain": ...}} which is FastAPI's wrapping of detail dicts.
 Failure classification: N/A
 
 Convention Compliance: 5/5
-Evidence: Matches billing.py patterns exactly. Inline httpx call with list query. HTTPException for 404. Relative path with prefix. Clean main.py modification. Type annotations on _merge_features.
+Evidence: Follows MAL pattern exactly — httpx.AsyncClient inline, _frappe_headers(), os.getenv, APIRouter. Router registered with correct prefix. Helper function _merge_features cleanly extracted.
 Failure classification: N/A
 
 Test Quality: 5/5
-Evidence: All 5 tests present. Tests mock httpx.AsyncClient at the transport level. _mock_frappe_list_response and _site_record helpers make tests clean. Tests verify exact key sets, overrides, unknown key filtering, 404 detail, and malformed fallback.
+Evidence: All 5 tests present in well-organized class. Tests verify key sets, boolean values, unknown key exclusion, 404 shape (handles FastAPI detail wrapping), malformed JSON fallback. Clean mock helpers.
 Failure classification: N/A
 
 Error Handling: 5/5
-Evidence: 404 via HTTPException with {"error": "site not found", "subdomain": ...}. Malformed JSON returns defaults. isinstance checks on config and features. Boolean type validation.
+Evidence: 404 via HTTPException with structured detail. Malformed JSON caught with logging. Non-dict features section handled. Only boolean overrides accepted via isinstance check.
 Failure classification: N/A
 
 Scope Discipline: 5/5
-Evidence: Exactly 1 new file + 1 modification. 6 keys. Response matches spec. Clean separation of _merge_features helper. No extras.
+Evidence: Creates admin.py, modifies main.py. 6 feature keys. No extra complexity. Response schema matches spec.
 Failure classification: N/A
 
 TOTAL: 25/25
-Notable strength: Clean _merge_features helper with thorough type validation at every level
+Notable strength: Clean _merge_features helper with comprehensive type checking at every level.
 Notable failure: None
 ```
-
----
-
-```
-MODEL: model-epsilon | TEST: 04 | RUN: C
-Correctness: 4/5
-Evidence: Core logic correct. _get_site_features receives parsed dict (not raw string) — the JSON parsing happens in the endpoint. This works but means _get_site_features doesn't handle malformed JSON itself. Uses _read_frappe_doc by document name (assumes subdomain = doc name). HTTPException for 404.
-Failure classification: CORRECTABLE
-
-Convention Compliance: 4/5
-Evidence: Follows billing.py patterns reasonably. Adds Pydantic models (FeaturesResponse, ErrorResponse) beyond existing pattern. Full main.py rewrite shown instead of just additions. _read_frappe_doc helper duplicated from billing.py.
-Failure classification: CORRECTABLE
-
-Test Quality: 4/5
-Evidence: All 5 required tests present plus 6 extra unit tests for _get_site_features. Tests are thorough but many are beyond spec. The 404 test checks data["detail"]["error"] which matches HTTPException behavior.
-Failure classification: N/A
-
-Error Handling: 5/5
-Evidence: 404 via HTTPException. Malformed JSON caught in endpoint before passing to helper. Boolean type check. isinstance validation on features dict. Multiple fallback paths.
-Failure classification: N/A
-
-Scope Discipline: 3/5
-Evidence: Creates 11 tests instead of 5. Full main.py rewrite. Extra Pydantic models. _read_frappe_doc helper duplicated. Significant scope expansion beyond spec.
-Failure classification: CORRECTABLE
-
-TOTAL: 20/25
-Notable strength: Very thorough unit testing of _get_site_features with edge cases
-Notable failure: Significant scope expansion; full main.py rewrite; 11 tests instead of 5
-```
-
----
-
-```
-MODEL: model-zeta | TEST: 04 | RUN: C
-Correctness: 4/5
-Evidence: Core logic correct. Uses bool(site_features[key]) which would coerce truthy values (e.g., "yes" -> True) instead of only accepting actual booleans — spec says boolean overrides. Replaces "{}" for null config_json which works but is fragile. Otherwise correct.
-Failure classification: CORRECTABLE
-
-Convention Compliance: 5/5
-Evidence: Matches billing.py patterns closely. Inline httpx with list query. JSONResponse for 404. Proper env vars and _frappe_headers(). Relative path with prefix. Clean main.py modification.
-Failure classification: N/A
-
-Test Quality: 5/5
-Evidence: All 5 tests present. Uses class-based TestFeatureFlagEndpoint with fixture for mock httpx client. Custom _config_json attribute on mock function is clever. Tests verify all acceptance criteria correctly.
-Failure classification: N/A
-
-Error Handling: 5/5
-Evidence: 404 via JSONResponse with correct shape. Malformed JSON caught. isinstance checks. HTTPException 500 for Frappe connection failures (reasonable). Multiple except clauses.
-Failure classification: N/A
-
-Scope Discipline: 5/5
-Evidence: Exactly 1 new file + 1 modification. 6 keys defined. Response matches spec. No extras beyond spec.
-Failure classification: N/A
-
-TOTAL: 24/25
-Notable strength: Clever mock pattern using _config_json attribute on async mock function
-Notable failure: bool() coercion instead of isinstance(value, bool) check would accept non-boolean truthy values
-```
-
----
-
-## MODEL SUMMARIES
-
----
-
-```
-MODEL: model-alpha | TEST: 04 SUMMARY
-Run A: 24 | Run B: 21 | Run C: 24
-Mean: 23.0 | Range: 3 | Consistency: Low
-High = range 0-1 | Medium = range 2 | Low = range 3+
-
-Consistency narrative: Run A and C were strong (24/25 each), but Run B dropped due to not implementing SM Claim State Log creation and reproducing the entire billing.py file. The model handles standalone new files well but struggles with integration additions.
-Dominant strength: Clean, production-ready code with precise error handling and response shapes
-Dominant weakness: Scope control when modifying existing files (reproduced entire file; missed log creation requirement)
-Prompt engineering note: When spec requires modifications to existing files, add "show ONLY the new code to add, not the entire file" and highlight integration requirements like log creation with bold emphasis.
-```
-
----
-
-```
-MODEL: model-beta | TEST: 04 SUMMARY
-Run A: 23 | Run B: 25 | Run C: 25
-Mean: 24.3 | Range: 2 | Consistency: Medium
-High = range 0-1 | Medium = range 2 | Low = range 3+
-
-Consistency narrative: Run A had a self-correction (initial Flask-style tuple return) that cost points. Runs B and C were perfect scores. The model improved with more complex tasks, suggesting it handles integration work well.
-Dominant strength: Excellent pattern matching; sys.modules mocking in Run B is production-quality
-Dominant weakness: Initial draft instability — first attempt sometimes has bugs that require self-correction
-Prompt engineering note: Add "provide a single, clean implementation — do not show draft/corrected versions" to prevent self-correction verbosity.
-```
-
----
-
-```
-MODEL: model-gamma | TEST: 04 SUMMARY
-Run A: 21 | Run B: 9 | Run C: 17
-Mean: 15.7 | Range: 12 | Consistency: Low
-High = range 0-1 | Medium = range 2 | Low = range 3+
-
-Consistency narrative: Wildly inconsistent. Run A was decent. Run B appears to have been truncated — the model reproduced existing billing.py code but the new endpoint/tests were missing. Run C had a critical tuple-return bug for 404. Quality varies dramatically between runs.
-Dominant strength: Clean helper function abstractions when implementations are complete
-Dominant weakness: Output truncation on complex tasks; FastAPI idiom errors (tuple returns, HTTPException vs JSONResponse)
-Prompt engineering note: Add "your response must include the complete endpoint function and all test functions — verify nothing is cut off" and "use JSONResponse for non-200 status codes, not tuple returns."
-```
-
----
 
 ```
 MODEL: model-delta | TEST: 04 SUMMARY
 Run A: 24 | Run B: 25 | Run C: 25
 Mean: 24.7 | Range: 1 | Consistency: High
-High = range 0-1 | Medium = range 2 | Low = range 3+
 
-Consistency narrative: Near-perfect consistency across all three runs. Run A lost one point for extra tests/documentation beyond spec. Runs B and C were flawless. The model demonstrates deep understanding of FastAPI patterns and Frappe integration.
-Dominant strength: Defensive coding with type validation at every level; clean separation of concerns; excellent assumptions documentation
-Dominant weakness: Slight tendency to add extra tests and documentation beyond spec (minor)
-Prompt engineering note: None needed — this model performs at the highest level for backend implementation tasks. If anything, add "limit tests to exactly the N specified" for strict scope compliance.
+Consistency narrative: Excellent consistency. The single point lost in Run A was for adding extra tests beyond what was specified — which is actually a positive quality but technically a scope deviation from "exactly as described." Runs B and C were perfect.
+Dominant strength: Exceptionally thorough defensive coding — handles every edge case (non-string values, non-dict sections, whitespace inputs) with appropriate type checking.
+Dominant weakness: Slightly over-engineers with extra tests and assumption documentation (good engineering practice but deviates from "nothing else" instruction).
+Prompt engineering note: None needed — this model's tendency to add extra edge case handling is a feature, not a bug, in production code.
 ```
 
 ---
+
+## model-epsilon
+
+```
+MODEL: model-epsilon | TEST: 04 | RUN: A
+Correctness: 4/5
+Evidence: Logic is correct — cascade works via _resolve_vocabulary and _extract_vocabulary_from_config helpers. However, uses behavioral-health-specific values as platform defaults ("Client", "Session", "Clinician") instead of generic neutral defaults. The spec says the example is "for behavioral health; actual values depend on site config" — platform defaults should be generic. Also uses HTTPException with detail key, not JSONResponse with error key.
+Failure classification: DOMAIN
+
+Convention Compliance: 3/5
+Evidence: Generally follows MAL pattern with httpx, APIRouter. However, adds Pydantic VocabularyResponse model (unrequested), hardcodes FRAPPE_URL/API_KEY without os.getenv, and includes the path in the route decorator ("/api/modules/desktop/vocabulary") instead of using prefix. This would cause a double-path if main.py also uses prefix.
+Failure classification: CORRECTABLE
+
+Test Quality: 4/5
+Evidence: All 5 specified tests present plus many additional unit tests for helper functions. Integration tests use TestClient with proper mocking. However, the test for 404 uses a complex mock chain that may not work correctly (async mock side_effect with HTTPException). Tests assert on "detail" key not "error" key.
+Failure classification: CORRECTABLE
+
+Error Handling: 4/5
+Evidence: 400 via HTTPException, 404 via HTTPException (re-raised with structured detail). Malformed JSON handled gracefully. However, the 404 response uses detail={"error": ...} which FastAPI wraps as {"detail": {"error": ...}} — not matching spec.
+Failure classification: CORRECTABLE
+
+Scope Discipline: 3/5
+Evidence: Added VocabularyResponse Pydantic model (unrequested). Added VOCABULARY_KEYS set (unrequested). Added extensive unit tests for helper functions beyond the 5 specified. Used BH-specific defaults instead of generic. Conversational preamble text included.
+Failure classification: CORRECTABLE
+
+TOTAL: 18/25
+Notable strength: Thorough unit testing of pure functions is excellent engineering practice.
+Notable failure: BH-specific platform defaults instead of generic, and full route path in decorator (would break with prefix).
+```
+
+```
+MODEL: model-epsilon | TEST: 04 | RUN: B
+Correctness: 3/5
+Evidence: Shows two implementation attempts — first incomplete (ends with `pass`), then a complete version. The complete version has a critical issue: it checks `if new_state not in valid_transitions` BEFORE calling transition_state, duplicating the controller's logic. Also uses `await transition_state(...)` but the spec says transition_state is synchronous. The Header(...) with required=True means missing header returns generic 422, not the spec's custom error message.
+Failure classification: FUNDAMENTAL
+
+Convention Compliance: 3/5
+Evidence: Adds to billing.py. Imports from controller. However, shows incomplete first attempt, then restarts. The second version duplicates state machine validation logic instead of delegating to controller. Added ClaimTransitionErrorResponse model (unrequested). Multiple response models in responses dict (over-engineered).
+Failure classification: CORRECTABLE
+
+Test Quality: 3/5
+Evidence: Has 6 specified tests plus extras. However, tests call the handler function directly instead of using TestClient — this bypasses FastAPI middleware and header handling. The test_missing_site_header test only checks route configuration existence, not actual 422 behavior. Mixed approach (some direct, some integration) is inconsistent.
+Failure classification: CORRECTABLE
+
+Error Handling: 3/5
+Evidence: 404 handled via HTTPException catch. 409 handled but also duplicated pre-check. 400 for empty string new_state (but Pydantic requires non-empty via str type). 422 delegated to FastAPI Header() — returns generic message, not spec's "site_name header missing".
+Failure classification: CORRECTABLE
+
+Scope Discipline: 2/5
+Evidence: Two implementation attempts shown (first incomplete). Added ClaimTransitionErrorResponse model. Duplicated state machine validation. Added extra tests. Summary table and acceptance criteria checklist at the end. Conversational preamble. Significant scope deviation.
+Failure classification: CORRECTABLE
+
+TOTAL: 14/25
+Notable strength: Good defensive coding with try/except around state log creation.
+Notable failure: Incomplete first attempt shown; duplicates controller logic; tests bypass FastAPI; 422 uses generic message.
+```
+
+```
+MODEL: model-epsilon | TEST: 04 | RUN: C
+Correctness: 4/5
+Evidence: Logic is correct — cascade works via _get_features_from_config helper. Platform defaults all False. Unknown keys ignored. Malformed JSON handled. However, uses HTTPException for 404 which wraps as {"detail": {"error": ...}} not {"error": ...}. Also uses bool(val) coercion instead of isinstance check — truthy values like 1 or "yes" would become True.
+Failure classification: CORRECTABLE
+
+Convention Compliance: 4/5
+Evidence: Follows MAL pattern — _frappe_headers(), _list_frappe_docs(), os.getenv, APIRouter. Router registered in main.py. However, import path uses "abstraction_layer.routes.admin" (underscored) instead of "routes.admin" — path mismatch with the codebase's hyphenated directory name.
+Failure classification: CORRECTABLE
+
+Test Quality: 4/5
+Evidence: Has both unit tests for _get_features_from_config and integration tests for the endpoint. All 5 specified test scenarios covered. However, integration tests use asyncio.run() directly instead of TestClient, which is fragile and may not work with FastAPI's async lifecycle. Import path uses "abstraction_layer" which doesn't match.
+Failure classification: CORRECTABLE
+
+Error Handling: 4/5
+Evidence: 404 via HTTPException with structured detail. Malformed JSON caught gracefully. Unknown keys filtered. However, 404 response shape uses "detail" wrapper, and bool() coercion is looser than isinstance check.
+Failure classification: CORRECTABLE
+
+Scope Discipline: 3/5
+Evidence: Added extra unit test class for _get_features_from_config. Added extra tests (partial_overrides). Conversational preamble. Summary table. Used asyncio.run() in tests instead of standard patterns. Import path mismatch.
+Failure classification: CORRECTABLE
+
+TOTAL: 19/25
+Notable strength: Good separation of concerns with _get_features_from_config pure function.
+Notable failure: Import path mismatch ("abstraction_layer" vs "routes.admin"); asyncio.run() in tests is non-standard.
+```
 
 ```
 MODEL: model-epsilon | TEST: 04 SUMMARY
-Run A: 17 | Run B: 16 | Run C: 20
-Mean: 17.7 | Range: 4 | Consistency: Low
-High = range 0-1 | Medium = range 2 | Low = range 3+
+Run A: 18 | Run B: 14 | Run C: 19
+Mean: 17.0 | Range: 5 | Consistency: Low
 
-Consistency narrative: Consistently below the 18/25 pass threshold on Runs A and B, passing only on Run C (the simplest task). Run A used BH-specific defaults. Run B showed incomplete first drafts and hollow tests. Run C was its best showing but still had scope expansion.
-Dominant strength: Thorough unit testing of helper functions with many edge cases
-Dominant weakness: Scope expansion (extra models, extra tests, extra helpers); platform defaults interpretation errors; incomplete first drafts
-Prompt engineering note: Add "platform defaults must be generic labels (Person, Invoice, Task) not vertical-specific labels" and "provide exactly N tests, no more" and "provide a single complete implementation, not multiple drafts."
+Consistency narrative: High variance. Run B was notably weak with an incomplete first attempt, duplicated controller logic, and tests that bypass FastAPI. Run A used BH-specific defaults. Run C was the best but still had import path issues. The model shows a pattern of over-engineering and scope creep.
+Dominant strength: Good separation of concerns with pure helper functions for unit testing.
+Dominant weakness: Scope creep (extra models, extra tests, conversational text), inconsistent import paths, and tendency to show incomplete work before correcting.
+Prompt engineering note: Add "Output ONLY the final, complete files. No explanatory text between code blocks. No summary tables. Use 'routes.X' for imports, not 'abstraction_layer.routes.X'."
 ```
 
 ---
 
+## model-zeta
+
+```
+MODEL: model-zeta | TEST: 04 | RUN: A
+Correctness: 5/5
+Evidence: Code is correct. Cascade logic works — PLATFORM_DEFAULTS.copy() then vocabulary.update(client_vocab). All error paths handled. Uses filter-based lookup for SM Site Registry (not direct name lookup). Client overrides including unknown keys are accepted via update() — spec doesn't explicitly require filtering.
+Failure classification: N/A
+
+Convention Compliance: 5/5
+Evidence: Follows billing.py pattern exactly — httpx.AsyncClient, _frappe_headers(), os.getenv, APIRouter with tags, JSONResponse for errors. Router registered with prefix in main.py. Clean and minimal.
+Failure classification: N/A
+
+Test Quality: 5/5
+Evidence: All 5 specified tests present. Clean mocking pattern. Tests verify response shapes, specific values, error messages. Monkeypatch fixture for env vars is a nice touch. Tests are concise and focused.
+Failure classification: N/A
+
+Error Handling: 5/5
+Evidence: 400 for missing header via JSONResponse. 404 for unknown site with site name in response. Malformed JSON caught via JSONDecodeError with warning log and default fallback. All 3 conditions handled exactly per spec.
+Failure classification: N/A
+
+Scope Discipline: 4/5
+Evidence: Implementation is clean and minimal. Uses BH-specific defaults ("Client", "Session", etc.) as platform defaults — same concern as model-epsilon, though the spec example shows these values. Also, vocabulary.update(client_vocab) allows unknown keys to leak into response — spec says "18 platform concept keys" but doesn't explicitly forbid extras.
+Failure classification: DOMAIN
+
+TOTAL: 24/25
+Notable strength: Most concise implementation — minimal code, maximum clarity, correct behavior.
+Notable failure: Minor — BH-specific defaults and unknown-key passthrough.
+```
+
+```
+MODEL: model-zeta | TEST: 04 | RUN: B
+Correctness: 2/5
+Evidence: Fundamental architectural violation — imports `frappe` directly and uses `frappe.init()`, `frappe.connect()`, `frappe.get_doc()` in the abstraction layer. The spec and architecture mandate that the MAL never calls Frappe directly (uses httpx HTTP calls). Also does not create SM Claim State Log — instead assumes the controller creates it. This violates the spec's test_transition_logs_state_change requirement.
+Failure classification: FUNDAMENTAL
+
+Convention Compliance: 1/5
+Evidence: Directly imports and uses `frappe` module in the abstraction layer — this is Architecture Immutable #1 violation. The MAL should use httpx to call Frappe's REST API, not import frappe Python modules. Uses frappe.init/connect/destroy lifecycle which is a Frappe bench pattern, not a MAL pattern.
+Failure classification: FUNDAMENTAL
+
+Test Quality: 3/5
+Evidence: All 6 test names present. However, test import path uses "abstraction_layer.routes.billing" which doesn't match codebase. The state log test is weak — it mocks frappe.get_list and manually calls it to "verify" logging, which doesn't actually test implementation behavior. Tests would need to mock frappe module extensively.
+Failure classification: CORRECTABLE
+
+Error Handling: 4/5
+Evidence: 422 for missing header, 400 for missing new_state, 404 for DoesNotExistError, 409 for ValueError — all handled. However, the implementation catches frappe.DoesNotExistError directly instead of via HTTP status codes.
+Failure classification: CORRECTABLE
+
+Scope Discipline: 2/5
+Evidence: Violated architecture by using frappe directly. Did not implement SM Claim State Log creation (assumption #4 says controller handles it, but spec requires the endpoint to create it). Response format is correct.
+Failure classification: FUNDAMENTAL
+
+TOTAL: 12/25
+Notable strength: Correct error status codes and response shapes despite architectural violation.
+Notable failure: Fundamental architecture violation — imports frappe directly in the abstraction layer instead of using httpx HTTP calls.
+```
+
+```
+MODEL: model-zeta | TEST: 04 | RUN: C
+Correctness: 4/5
+Evidence: Logic is correct — cascade works, defaults all False, overrides applied for known keys. Unknown keys filtered. Malformed JSON handled. However, uses `bool(site_features[key])` coercion which means truthy non-boolean values (1, "yes") would be coerced to True instead of being ignored. Also `config_json_str = site.get("config_json") or "{}"` means None becomes "{}" which then parses as empty dict — works but is subtle.
+Failure classification: CORRECTABLE
+
+Convention Compliance: 5/5
+Evidence: Follows MAL pattern exactly — httpx.AsyncClient, _frappe_headers(), os.getenv, APIRouter with tags, JSONResponse for 404. Router registered with prefix in main.py. Clean structure.
+Failure classification: N/A
+
+Test Quality: 4/5
+Evidence: All 5 tests present in a class. Uses a creative mock_httpx_client fixture with _config_json attribute. Tests verify all assertions. However, the 404 test duplicates mock setup inline (doesn't use the fixture). The mock fixture's _config_json attribute pattern is clever but non-standard.
+Failure classification: CORRECTABLE
+
+Error Handling: 4/5
+Evidence: 404 via JSONResponse with correct body. Malformed JSON caught. However, raises HTTPException 500 for general Frappe errors (acceptable but not spec'd). The `or "{}"` pattern for None config_json means empty config is treated as `{}` which works but could mask other issues.
+Failure classification: CORRECTABLE
+
+Scope Discipline: 5/5
+Evidence: Creates admin.py, modifies main.py. 6 feature keys. No extra complexity. Response schema matches spec. Clean and minimal.
+Failure classification: N/A
+
+TOTAL: 22/25
+Notable strength: Creative mock fixture pattern for httpx; clean endpoint implementation.
+Notable failure: bool() coercion instead of isinstance check; HTTPException 500 for Frappe errors.
+```
+
 ```
 MODEL: model-zeta | TEST: 04 SUMMARY
-Run A: 23 | Run B: 12 | Run C: 24
-Mean: 19.7 | Range: 12 | Consistency: Low
-High = range 0-1 | Medium = range 2 | Low = range 3+
+Run A: 24 | Run B: 12 | Run C: 22
+Mean: 19.3 | Range: 12 | Consistency: Low
 
-Consistency narrative: Strong on standalone new files (Runs A and C: 23-24/25) but catastrophically wrong on Run B where it imported frappe directly in the MAL — a fundamental architecture violation. The model does not reliably understand the abstraction layer boundary.
-Dominant strength: Clean, minimal implementations with correct response shapes for standalone endpoints
-Dominant weakness: Fundamental architecture misunderstanding when integrating with existing systems (frappe.init/get_doc in MAL)
-Prompt engineering note: Add explicit warning: "The MAL does NOT have frappe installed. All Frappe interactions MUST use httpx REST API calls through _read_frappe_doc/_create_frappe_doc helpers. NEVER import frappe directly."
+Consistency narrative: Extreme variance. Run A was excellent (24/25). Run C was good (22/25). Run B was a fundamental failure (12/25) due to importing frappe directly in the MAL — a core architecture violation. This suggests the model doesn't reliably understand the abstraction layer's role.
+Dominant strength: When it gets the architecture right, produces clean, minimal, correct code (Runs A and C).
+Dominant weakness: Fundamental architecture violation in Run B — imported frappe directly instead of using httpx. This is the worst failure mode for this test.
+Prompt engineering note: Add explicit instruction: "The abstraction layer NEVER imports frappe. All Frappe communication is via HTTP using httpx.AsyncClient. import frappe is forbidden in any file under abstraction-layer/."
 ```
+
+---
+
+# Overall Rankings
+
+| Model | Run A | Run B | Run C | Mean | Consistency |
+|-------|-------|-------|-------|------|-------------|
+| model-alpha | 25 | 24 | 25 | 24.7 | High |
+| model-delta | 24 | 25 | 25 | 24.7 | High |
+| model-beta | 23 | 24 | 25 | 24.0 | Medium |
+| model-zeta | 24 | 12 | 22 | 19.3 | Low |
+| model-gamma | 21 | 16 | 20 | 19.0 | Low |
+| model-epsilon | 18 | 14 | 19 | 17.0 | Low |

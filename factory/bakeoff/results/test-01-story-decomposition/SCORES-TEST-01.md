@@ -1,553 +1,375 @@
-# Test 01: Story Decomposition — Scores
+# Test 01: Story Decomposition — Scoring Results
+
+Scored by: Claude Opus 4.6 (1M context)
+Date: 2026-04-09
 
 ---
 
 ## MODEL: model-alpha | TEST: 01 | RUN: A
 Atomicity: 4/5
-Evidence: 31 stories, all S or XS. CRM-011 bundles list+detail for Organizations (2 endpoints, borderline). CRM-015 bundles GET activities + POST activities (2 endpoints). Backend/frontend cleanly separated.
-Failure classification: CORRECTABLE
-
+  Evidence: 31 stories, mostly XS/S. CRM-011 bundles Organization list+detail (2 endpoints). CRM-015 bundles GET+POST activities (2 endpoints). All backend/frontend properly separated. No story exceeds M.
 Completeness: 5/5
-Evidence: All workflows mapped (contact CRUD, lead lifecycle, org management, global search, vocabulary, activity timeline, duplicate detection, consent, merge). AI features included. All major endpoints covered.
-Failure classification: N/A
-
+  Evidence: All workflows covered: Contact/Lead/Org CRUD, Global Search, Activity Timeline, Vocabulary, Stages, Duplicate Detection+Merge, Consent, Healthcare custom fields, Lead conversion, Clinical/Billing/Scheduling event capture. 31 stories span the full research scope.
 Spec Gate Compliance: 5/5
-Evidence: All three gates answered for every story with substantive, specific workflow answers and correct CRM timeline reasoning (e.g., "N/A (read endpoint)" vs explicit write descriptions).
-Failure classification: N/A
-
+  Evidence: All three gates answered for every story with substantive answers. Workflow names specific workflow. CRM Timeline distinguishes read (N/A) vs write actions. Right Level distinguishes Universal/Vertical/Role.
 Guardrail Awareness: 5/5
-Evidence: No React-to-Frappe calls. All cross-system workflows correctly identified as INTEGRATION (n8n). CRM timeline addressed per story. No TypeScript. Vocabulary mapping correctly handled.
-Failure classification: N/A
-
+  Evidence: No React-to-Frappe direct calls. n8n workflows correctly categorized as INTEGRATION. CRM timeline write-back addressed. No TypeScript. Vocabulary abstraction identified.
 Dependency Graph Quality: 5/5
-Evidence: Valid DAG with 5 parallel groups clearly identified. Critical path documented. No circular dependencies. Backend before frontend before integration ordering correct.
-Failure classification: N/A
-
+  Evidence: Valid DAG with 5 parallel groups. Critical path articulated with multiple chains. No circular dependencies. Backend-before-frontend ordering respected.
 TOTAL: 24/25
-Notable strength: Exceptional completeness and clean backend/frontend separation with granular per-endpoint stories.
-Notable failure: Minor over-scoping on CRM-011 (org list+detail in one story) and CRM-015 (activity GET+POST).
-
----
-
-## MODEL: model-alpha | TEST: 01 | RUN: B
-Atomicity: 4/5
-Evidence: 26 stories, all S or XS. SCHED-011 bundles confirm+start (2 endpoints, 2 distinct workflows). SCHED-013 bundles cancel+no-show (2 endpoints). Each is a distinct status transition per rubric guidance.
-Failure classification: CORRECTABLE
-
-Completeness: 5/5
-Evidence: All 5 DocTypes have creation stories. All 15 endpoints mapped. All 4 n8n integrations present. FHIR sync included (SCHED-025). Rescheduling addressed (SCHED-024). Recurring appointments addressed implicitly via series fields.
-Failure classification: N/A
-
-Spec Gate Compliance: 5/5
-Evidence: All three gates answered for every story. CRM timeline correctly addressed for the 5 lifecycle events. Gates are substantive with workflow-specific answers.
-Failure classification: N/A
-
-Guardrail Awareness: 5/5
-Evidence: Telehealth link generation correctly identified as n8n INTEGRATION. Billing trigger correctly as n8n INTEGRATION. SCHED-026 adds a dedicated telehealth-link-update endpoint for n8n to call back through MAL. No direct Frappe calls from React.
-Failure classification: N/A
-
-Dependency Graph Quality: 5/5
-Evidence: Valid DAG with 12 phases. DocTypes before endpoints before frontend. Critical path clearly identified (SCHED-001 through SCHED-022). Parallel groups well-identified with frontend phases overlapping integration phases.
-Failure classification: N/A
-
-TOTAL: 24/25
-Notable strength: Excellent separation of each status transition and dedicated telehealth link update endpoint showing deep guardrail understanding.
-Notable failure: Confirm+start and cancel+no-show bundled despite rubric expecting separate stories per transition.
-
----
-
-## MODEL: model-alpha | TEST: 01 | RUN: C
-Atomicity: 4/5
-Evidence: 20 stories, all S or XS. WIKI-008 bundles submit-for-review + publish (2 endpoints, 2 distinct workflow paths). WIKI-009 bundles reject + archive (2 endpoints). WIKI-006 bundles create + read. Each slightly over-scoped.
-Failure classification: CORRECTABLE
-
-Completeness: 5/5
-Evidence: All 13 endpoints mapped to stories. All 3 DocTypes have creation stories. All 3 n8n integrations present plus the first-publish CRM activity log (WIKI-020). Version history correctly separated as distinct story set.
-Failure classification: N/A
-
-Spec Gate Compliance: 5/5
-Evidence: All three gates answered for every story. CRM timeline correctly identified as N/A for most with the first-publish exception correctly noted in WIKI-020.
-Failure classification: N/A
-
-Guardrail Awareness: 5/5
-Evidence: SOP Mojo notification correctly as n8n INTEGRATION with explicit one-way boundary note. Version restore correctly specified as creating new version (no history deletion). No TypeScript. No direct Frappe calls.
-Failure classification: N/A
-
-Dependency Graph Quality: 5/5
-Evidence: Valid DAG with 7 groups. Critical path identified. DocTypes before endpoints before frontend. Version history correctly depends on article CRUD. Parallel groups well-identified.
-Failure classification: N/A
-
-TOTAL: 24/25
-Notable strength: Clean identification of all boundary rules (SOP connection, version restore non-destructiveness) and correct CRM timeline exception handling.
-Notable failure: Minor bundling of submit+publish and reject+archive into combined stories.
-
----
-
-## MODEL: model-alpha | TEST: 01 SUMMARY
-Run A: 24 | Run B: 24 | Run C: 24
-Mean: 24.0 | Range: 0 | Consistency: High
-
-Consistency narrative: model-alpha delivered nearly identical quality across all three runs with different capability domains. The only consistent pattern was minor endpoint bundling (2 endpoints per story in a few cases) that was always correctable.
-Dominant strength: Comprehensive coverage with clean architectural separation and excellent spec gate compliance.
-Dominant weakness: Slight tendency to bundle 2 closely related endpoints into one story instead of splitting per the strict atomicity rules.
-Prompt engineering note: Add explicit instruction "Each status transition endpoint MUST be its own story" to prevent bundling of related but distinct transitions.
+Notable strength: Exceptionally clean table format with all spec gates inline, making every story independently reviewable.
+Notable failure: Minor — CRM-011 bundles two Organization endpoints.
 
 ---
 
 ## MODEL: model-beta | TEST: 01 | RUN: A
-Atomicity: 4/5
-Evidence: 29 stories. CRM-001 bundles list+detail read (2 endpoints). CRM-002 bundles create+update (2 endpoints). CRM-012 bundles vocabulary+stages (2 endpoints). All are paired reads or paired writes, making them borderline but slightly over-scoped.
-Failure classification: CORRECTABLE
-
-Completeness: 5/5
-Evidence: All workflows mapped including AI features (summary, classification, duplicate scoring), all cross-system activity capture, duplicate detection, consent tracking, and merge. Comprehensive coverage of research.
-Failure classification: N/A
-
-Spec Gate Compliance: 5/5
-Evidence: All three gates answered for every story with detailed, substantive answers. CRM timeline correctly identified per story with specific event descriptions. Right Level answers are precise (e.g., "Vertical (healthcare)" vs "Universal").
-Failure classification: N/A
-
-Guardrail Awareness: 5/5
-Evidence: All n8n workflows correctly identified as INTEGRATION. No React-to-Frappe calls. GLUE story (CRM-026) correctly handles server-side hooks. AI features properly deferred with cost estimates. No TypeScript.
-Failure classification: N/A
-
-Dependency Graph Quality: 5/5
-Evidence: Exceptional DAG with visual dependency map, 4 parallel groups, critical path analysis, and lane summary table. Full dependency reference table with bidirectional "depends on" / "unblocks" columns. Notes section identifies CRM-009 as most-depended story.
-Failure classification: N/A
-
-TOTAL: 24/25
-Notable strength: Best-in-class dependency graph with visual map, bidirectional reference table, and strategic commissioning notes.
-Notable failure: Minor endpoint bundling (list+detail, create+update, vocabulary+stages as paired stories).
-
----
-
-## MODEL: model-beta | TEST: 01 | RUN: B
 Atomicity: 5/5
-Evidence: 27 stories. Each status transition is its own story (SCHED-011 confirm, SCHED-012 start+complete, SCHED-013 cancel, SCHED-014 no-show). DocTypes separated. Frontend components each separate. SCHED-012 bundles start+complete but these are sequential in the same workflow.
-Failure classification: N/A
-
+  Evidence: 29 stories, all S or XS. Each story covers 1-2 endpoints max. Clean backend/frontend/integration separation. Contact reads and writes properly separated. AI stories appropriately isolated.
 Completeness: 5/5
-Evidence: All 5 DocTypes, all 15 endpoints, all 4 n8n integrations, FHIR sync (SCHED-026), CRM timeline writes as GLUE story (SCHED-025), recurring series (SCHED-027). Comprehensive.
-Failure classification: N/A
-
+  Evidence: Full coverage including AI stories (summary, classification, duplicate scoring), GLUE story for server hooks, 6 integration workflows covering all cross-system event capture. Scheduling activity capture is a standout inclusion. 29 stories miss nothing from the research.
 Spec Gate Compliance: 5/5
-Evidence: All three gates answered for every story. CRM timeline correctly centralized in SCHED-025 (GLUE) with explicit justification in decomposition notes. Right Level answers consistently "Universal" with appropriate explanation.
-Failure classification: N/A
-
+  Evidence: Every story has all three gates answered with specific, substantive answers. CRM Timeline answers are particularly strong — they name the exact activity text that would be written. Right Level correctly identifies vertical-conditional logic.
 Guardrail Awareness: 5/5
-Evidence: Telehealth link generation correctly as n8n INTEGRATION. Billing trigger correctly as n8n INTEGRATION. Explicit note that n8n never modifies document state. SCHED-022 field-write boundary correctly analyzed in decomposition notes.
-Failure classification: N/A
-
+  Evidence: Zero violations. React never calls Frappe. n8n correctly handles all cross-system workflows. CRM timeline is addressed comprehensively. GLUE story for server hooks shows deep platform awareness. No TypeScript.
 Dependency Graph Quality: 5/5
-Evidence: Valid DAG with 4 parallel groups. Visual dependency map. Critical path identified (SCHED-001 through SCHED-018). Max parallelism quantified (10 stories in Group 2).
-Failure classification: N/A
-
+  Evidence: 4-group DAG with visual ASCII art dependency map. Critical path clearly identified at 4 groups minimum. Excellent notes section explaining prioritization and soft external dependencies.
 TOTAL: 25/25
-Notable strength: Innovative GLUE story (SCHED-025) centralizing all CRM timeline writes as server-side hooks, with clear architectural justification.
+Notable strength: Best-in-class dependency graph with visual ASCII art, lane summary table, and actionable notes on CRM-009 being the most depended-upon story.
 Notable failure: None.
-
----
-
-## MODEL: model-beta | TEST: 01 | RUN: C
-Atomicity: 4/5
-Evidence: 21 stories. WIKI-004 bundles create+list categories (2 endpoints). WIKI-008 bundles submit-for-review+reject (2 endpoints with different workflow paths). Otherwise clean separation.
-Failure classification: CORRECTABLE
-
-Completeness: 5/5
-Evidence: All 13 endpoints mapped. All 3 DocTypes have creation stories. All 3 n8n integrations present. GLUE story (WIKI-021) for client portal surface. Version history correctly as distinct story set.
-Failure classification: N/A
-
-Spec Gate Compliance: 5/5
-Evidence: All three gates answered for every story using table format. CRM timeline correctly identified as N/A with the first-publish exception correctly noted in WIKI-009 (publish endpoint handles CRM write directly).
-Failure classification: N/A
-
-Guardrail Awareness: 5/5
-Evidence: SOP Mojo notification correctly as n8n INTEGRATION with one-way event note. Version restore correctly specified (creates new version, no deletion). Client portal correctly identified as GLUE story.
-Failure classification: N/A
-
-Dependency Graph Quality: 5/5
-Evidence: Valid DAG with 5 groups. Visual dependency tree. Critical path identified. Summary statistics table. Max parallelism quantified (10 stories in Group 3).
-Failure classification: N/A
-
-TOTAL: 24/25
-Notable strength: Clean GLUE story for client portal Help section and correct CRM write handling in the publish endpoint itself.
-Notable failure: Minor bundling of create+list categories and submit+reject into combined stories.
-
----
-
-## MODEL: model-beta | TEST: 01 SUMMARY
-Run A: 24 | Run B: 25 | Run C: 24
-Mean: 24.3 | Range: 1 | Consistency: High
-
-Consistency narrative: model-beta performed at the top of the range across all three runs. Run B achieved a perfect score with an innovative GLUE story pattern for CRM timeline writes. Runs A and C had minor endpoint bundling.
-Dominant strength: Architectural sophistication with innovative patterns (GLUE for CRM writes, client portal surface), best-in-class dependency graphs, and clear decomposition rationale.
-Dominant weakness: Occasional bundling of 2 related endpoints into one story (create+list, submit+reject).
-Prompt engineering note: Add "Each endpoint path MUST be its own story — even if they share the same DocType" to prevent paired endpoint bundling.
 
 ---
 
 ## MODEL: model-gamma | TEST: 01 | RUN: A
 Atomicity: 4/5
-Evidence: 33 stories. Most are properly atomic with single endpoints. CRM-011 bundles lead conversion with multiple dependencies. Stories are generally well-scoped at XS/S level.
-Failure classification: CORRECTABLE
-
-Completeness: 4/5
-Evidence: Good coverage of contact, lead, organization, activity, and search workflows. Missing vocabulary/config endpoint as a distinct story (CRM-018/019 are separate). Has task event capture (CRM-028) which is extra coverage. Consent tracking present.
-Failure classification: CORRECTABLE
-
-Spec Gate Compliance: 4/5
-Evidence: All stories have all three gates. Answers are present but some are brief (e.g., "Contact lookup workflow" without specifying which actors or scenarios). Most are adequate.
-Failure classification: CORRECTABLE
-
-Guardrail Awareness: 4/5
-Evidence: All n8n workflows correctly as INTEGRATION. No direct Frappe calls from frontend. CRM-033 (roles) is categorized as GLUE which is unusual but not a violation. CRM-019 mentions "Server script + n8n webhook" which blurs the boundary slightly.
-Failure classification: CORRECTABLE
-
-Dependency Graph Quality: 1/5
-Evidence: No dependency graph section was produced. The output ends after the stories with no DEPENDENCY-GRAPH.md file.
-Failure classification: FUNDAMENTAL
-
-TOTAL: 17/25
-Notable strength: Good endpoint-level atomicity with most stories covering single endpoints.
-Notable failure: Complete absence of the dependency graph, which was explicitly required in the prompt.
-
----
-
-## MODEL: model-gamma | TEST: 01 | RUN: B
-Atomicity: 4/5
-Evidence: 28 stories. Most properly atomic. SCHED-006 bundles GET+POST provider schedule (2 endpoints). SCHED-007 bundles POST+DELETE blocks (2 endpoints). SCHED-011 bundles start+complete (2 endpoints). SCHED-012 bundles cancel+no-show (2 endpoints).
-Failure classification: CORRECTABLE
-
+  Evidence: 33 stories. Most properly sized XS/S. CRM-012 bundles "Cross-System Activity Capture" as a single M-sized story covering multiple n8n workflows for clinical, billing, scheduling, and task events — this should be 3-4 separate stories. Several M-sized frontend stories.
 Completeness: 5/5
-Evidence: All 5 DocTypes, all 15 endpoints mapped, all 4 n8n integrations, FHIR sync (SCHED-027), recurring series (SCHED-016), telehealth link internal endpoint (SCHED-026), CONFIG story (SCHED-028). Comprehensive.
-Failure classification: N/A
-
+  Evidence: 33 stories cover all workflows including a Contact-to-Medplum sync (CRM-024) and Task Event activity capture (CRM-028) that other models missed. Healthcare custom fields, consent, duplicate detection, pipeline stages all present.
 Spec Gate Compliance: 4/5
-Evidence: All three gates answered for every story. Some answers are thin (e.g., "Universal" without explanation). CRM timeline gates correctly note that CRM writes are in endpoint stories rather than DocType stories.
-Failure classification: CORRECTABLE
-
+  Evidence: All three gates present for every story. However, Workflow answers are brief (e.g., "Contact lookup and management workflow") — less specific than the best models which name exact staff actions. CRM Timeline answers are adequate but sometimes terse.
 Guardrail Awareness: 5/5
-Evidence: Telehealth link correctly routed through internal MAL endpoint (SCHED-026). Billing trigger as n8n INTEGRATION. Explicit guardrail reminders in dependency graph notes. n8n never modifies document state correctly enforced.
-Failure classification: N/A
-
-Dependency Graph Quality: 4/5
-Evidence: Valid DAG with 4 parallel groups. Execution notes section. Groups 3 and 4 (frontend + integration) correctly identified as running in parallel. Critical path partially identified but described awkwardly.
-Failure classification: CORRECTABLE
-
-TOTAL: 22/25
-Notable strength: Comprehensive completeness with CONFIG story for module registration and telehealth link internal endpoint pattern.
-Notable failure: Several stories bundle 2 endpoints that should be separate per rubric (cancel+no-show, start+complete).
-
----
-
-## MODEL: model-gamma | TEST: 01 | RUN: C
-Atomicity: 4/5
-Evidence: 22 stories. Most are atomic single-endpoint. WIKI-004 bundles create+read (2 endpoints). Some workflow endpoint stories are clean single-endpoint (WIKI-006 submit, WIKI-007 publish, WIKI-008 reject, WIKI-009 archive). Good separation overall.
-Failure classification: CORRECTABLE
-
-Completeness: 5/5
-Evidence: All 13 endpoints mapped. All 3 DocTypes present. All 3 n8n integrations present. Version history correctly as distinct story set. CRM timeline exception (first publish) correctly handled in WIKI-007.
-Failure classification: N/A
-
-Spec Gate Compliance: 4/5
-Evidence: All three gates answered for every story. Answers are present but some are thin (e.g., "Universal." as single word). CRM timeline correctly identified as N/A for most with first-publish exception in WIKI-007.
-Failure classification: CORRECTABLE
-
-Guardrail Awareness: 5/5
-Evidence: SOP Mojo notification correctly as n8n INTEGRATION with explicit boundary note ("Wiki never calls SOP directly"). Version restore correctly specified. Frappe transition_state correctly referenced.
-Failure classification: N/A
-
-Dependency Graph Quality: 4/5
-Evidence: Valid DAG with 5 groups (0-4). Parallel groups identified. Execution notes section with valid observations. Critical path not explicitly stated as a single chain. Some dependency relationships in Group 0 are questionable (WIKI-002 depends on WIKI-001 but listed in same group).
-Failure classification: CORRECTABLE
-
-TOTAL: 22/25
-Notable strength: Clean per-endpoint separation for workflow transitions (submit, publish, reject, archive each separate).
-Notable failure: Thin spec gate answers and minor dependency graph ordering issues.
-
----
-
-## MODEL: model-gamma | TEST: 01 SUMMARY
-Run A: 17 | Run B: 22 | Run C: 22
-Mean: 20.3 | Range: 5 | Consistency: Low
-
-Consistency narrative: Run A catastrophically missed the dependency graph entirely, dropping 4 points. Runs B and C were consistent at 22/25 with solid completeness but minor atomicity and spec gate thinness issues. The Run A failure suggests the model may not reliably produce all requested outputs.
-Dominant strength: Good endpoint-level atomicity and comprehensive completeness when it produces the full output.
-Dominant weakness: Inconsistent output completeness (missing dependency graph in Run A) and thin spec gate answers.
-Prompt engineering note: Add "You MUST produce both STORIES.md AND DEPENDENCY-GRAPH.md — verify both are in your output before stopping" as a final instruction.
+  Evidence: No guardrail violations. React calls MAL only. n8n handles all cross-system actions. CRM timeline addressed. No TypeScript. Roles and permissions story properly scoped.
+Dependency Graph Quality: 3/5
+  Evidence: No formal dependency graph was produced — only the story list with dependency fields per story. No parallel groups identified. No critical path analysis. No visual DAG. The dependency information exists in each story but is not synthesized into a build order.
+TOTAL: 21/25
+Notable strength: Most stories of any model (33), catching edge-case workflows like Contact-to-Medplum sync and Task event capture.
+Notable failure: No dependency graph document produced — missing parallel groups, critical path, and build order analysis.
 
 ---
 
 ## MODEL: model-delta | TEST: 01 | RUN: A
 Atomicity: 5/5
-Evidence: 27 stories, 22 XS and 5 S. No story has both backend and frontend. Each endpoint is its own story. Clean separation of concerns. Note: required multiple attempts to produce output (per James note), but the final output quality is excellent.
-Failure classification: N/A
-
+  Evidence: 27 stories, dominated by XS (22 stories). No story exceeds S. Each endpoint is its own story. Frontend stories are properly separated. The most aggressively atomic decomposition across all models.
 Completeness: 5/5
-Evidence: All workflows covered (contact CRUD, lead lifecycle, org management, search, vocabulary, activities, duplicate detection, consent, merge). AI features included. All endpoints mapped.
-Failure classification: N/A
-
+  Evidence: All core workflows covered. Consent validation server hook (CRM-014) is a standout — correctly identified as a separate backend story. Healthcare custom fields, pipeline stages, duplicate detection, merge, activity timeline all present. AI stories included with appropriate OQ flags.
 Spec Gate Compliance: 5/5
-Evidence: Exceptional gate answers. Every story has all three gates with detailed, multi-sentence answers that reference specific workflows and explain the reasoning. CRM timeline gates explicitly reference which OTHER story handles the write when this story does not.
-Failure classification: N/A
-
+  Evidence: Exemplary gate answers. Every story has detailed, multi-sentence gate responses. CRM Timeline answers explain not just whether a write occurs but WHY (e.g., "the timeline activity for contact creation is written by CRM-022 (n8n), not this endpoint"). Right Level answers explain the mechanism.
 Guardrail Awareness: 5/5
-Evidence: Explicit pre-condition notes (RC-024 auth middleware, OQ-002 model names). CRM timeline correctly delegated to n8n (CRM-022) rather than being in backend endpoints. Consent validation as server hook. No TypeScript. No direct Frappe calls.
-Failure classification: N/A
-
+  Evidence: Zero violations. Includes explicit pre-condition notes about auth middleware (RC-024) and OQ flags on AI model names. CRM activity timeline correctly identified as mandatory infrastructure. Frappe/n8n boundary meticulously respected.
 Dependency Graph Quality: 5/5
-Evidence: Exceptional DAG with 5 waves, full dependency reference table with "Depends On" and "Unblocks" columns, critical path analysis, MVP milestone definition, and commissioning guidance. Visual ASCII art is excellent.
-Failure classification: N/A
-
+  Evidence: 5-wave DAG with ASCII box art. Full dependency reference table with both "depends on" and "unblocks" columns. Critical path clearly identified. MVP milestone definition included. Commissioning guidance with timing recommendations.
 TOTAL: 25/25
-Notable strength: Best-in-class spec gate answers and dependency graph with MVP milestone definition and commissioning guidance. Cross-references between stories are precise.
-Notable failure: None (though the model required multiple attempts to produce output per James note — a usability concern not captured in the rubric).
+Notable strength: Most detailed spec gate answers of any model — each gate response reads like a mini-specification. The "unblocks" column in the dependency table is uniquely valuable.
+Notable failure: None (though the model required multiple retries to produce output per James's note).
+
+---
+
+## MODEL: model-epsilon | TEST: 01 | RUN: A
+Atomicity: 3/5
+  Evidence: 22 stories (21 commissionable). CRM-001 bundles Contact list+detail+create+update (4 endpoints) into one S-sized story. CRM-004 bundles Organization list+detail+create+search+vocabulary+stages (6+ endpoints). CRM-012 is M-sized covering multiple n8n workflows. Several M-sized frontend stories. Too many stories are too large.
+Completeness: 4/5
+  Evidence: Core workflows covered but only 22 stories for a capability that other models decompose into 27-33. Organization update is missing. Scheduling event capture not separated. The coarser granularity means some workflows are bundled rather than individually addressable.
+Spec Gate Compliance: 5/5
+  Evidence: All three gates answered for every story with good detail. Spec gates are well-written with clear workflow identification, CRM timeline specifics, and right-level reasoning. AI stories correctly flagged as deferred with OQ reference.
+Guardrail Awareness: 5/5
+  Evidence: No violations. React calls MAL only. n8n handles cross-system work. CRM timeline addressed. No TypeScript. AI safety review referenced. Platform boundary rules respected.
+Dependency Graph Quality: 4/5
+  Evidence: Lane-based build order with 8 lanes and 6 groups. Visual graph attempted but formatting is somewhat confused. Critical path identified. "What Can Ship Independently" table is a unique and valuable addition. However, some dependency chains seem questionable (CRM-010 depends on CRM-011 but CRM-011 depends on CRM-002 — circular potential in the UI).
+TOTAL: 21/25
+Notable strength: "What Can Ship Independently" table showing incremental delivery milestones — uniquely practical for Ralph orchestration.
+Notable failure: CRM-001 and CRM-004 are too large — bundling 4-6 endpoints violates the "no more than 2 endpoints" rule.
+
+---
+
+## MODEL: model-zeta | TEST: 01 | RUN: A
+Atomicity: 4/5
+  Evidence: 39 stories — the most of any model. Very granular, mostly S and XS. However, the sheer count (39) suggests over-decomposition: 10 frontend stories where most models have 3-4 is excessive. Some stories are trivially small (CRM-030 Organization List is XS, CRM-031 Organization Detail is XS — could be one story).
+Completeness: 5/5
+  Evidence: Extremely thorough. 39 stories cover every conceivable surface: separate Lead List and Lead Kanban components, separate Lead Intake Form, separate Global Search component, Organization List and Detail separately. AI stories included. Every endpoint from the research maps to a story.
+Spec Gate Compliance: 5/5
+  Evidence: All three gates answered for every story in consistent table format. Answers are substantive and specific. Workflow names exact workflows. CRM Timeline correctly identifies which stories write and what they write.
+Guardrail Awareness: 5/5
+  Evidence: No violations. All frontend calls go through MAL. n8n handles integrations. CRM timeline addressed throughout. No TypeScript. Design tokens referenced for all frontend stories.
+Dependency Graph Quality: 4/5
+  Evidence: 7-phase build order with parallel groups within each phase. Critical path identified. However, having 12 phases makes the build order overly sequential in places — Phase 5 (frontend) waits for Phase 3 (config) unnecessarily in some cases. Some frontend stories could start earlier.
+TOTAL: 23/25
+Notable strength: Most comprehensive frontend decomposition — separate components for every UI surface including Lead Intake Form and Global Search that other models bundle.
+Notable failure: Over-decomposition — 39 stories creates orchestration overhead; some trivially small stories should be combined.
+
+---
+
+## MODEL: model-alpha | TEST: 01 | RUN: B
+Atomicity: 4/5
+  Evidence: 26 stories, all S or XS. Clean separation of DocTypes, APIs, frontend, and integration. SCHED-011 bundles Confirm+Start (2 endpoints). SCHED-013 bundles Cancel+No-Show (2 endpoints). Both are borderline acceptable at 2 endpoints each.
+Completeness: 5/5
+  Evidence: All 5 DocTypes present. All 15 endpoints covered. All 4 n8n integrations present (reminders, telehealth, billing, waitlist). FHIR sync included. Rescheduling orchestration as a GLUE story. Telehealth link update as a separate endpoint. Comprehensive.
+Spec Gate Compliance: 5/5
+  Evidence: All three gates answered for every story with substantive answers. CRM Timeline correctly identifies which endpoints write ("Appointment created", "Appointment confirmed", etc.) and which are N/A.
+Guardrail Awareness: 5/5
+  Evidence: No violations. CRM timeline writes handled at endpoint level. n8n handles cross-system actions. No React-to-Frappe calls. FHIR mapping correctly as INTEGRATION story.
+Dependency Graph Quality: 4/5
+  Evidence: 12-phase build order is overly sequential — too many phases where stories could be parallelized more aggressively. Critical path correctly identified. Frontend phases 7-10 are noted as overlappable but structured sequentially.
+TOTAL: 23/25
+Notable strength: FHIR sync and rescheduling orchestration both present as distinct stories — shows understanding of the full scheduling domain.
+Notable failure: 12 phases is too granular — reduces parallelism opportunities.
+
+---
+
+## MODEL: model-beta | TEST: 01 | RUN: B
+Atomicity: 5/5
+  Evidence: 27 stories. Each state transition endpoint is its own story (Confirm, Start+Complete, Cancel, No-Show). DocTypes properly separated. CRM timeline writes centralized in a single GLUE story (SCHED-025) rather than scattered — clean design choice well-justified in notes.
+Completeness: 5/5
+  Evidence: All 5 DocTypes, all endpoints, all 4 n8n integrations, FHIR sync, recurring appointment series, and CRM timeline hooks. Recurring series (SCHED-027) is a standout inclusion that some models miss. 27 stories cover the full scope.
+Spec Gate Compliance: 5/5
+  Evidence: Exemplary. Every story has all three gates with detailed answers. The detailed notes section explaining design decisions (why CRM is a GLUE story, why telehealth link write is not a state violation) shows deep understanding.
+Guardrail Awareness: 5/5
+  Evidence: Explicit guardrail callouts in notes section. n8n boundary rule clearly stated. CRM timeline centralized via server hooks rather than per-endpoint — architecturally superior approach. No violations.
+Dependency Graph Quality: 5/5
+  Evidence: 4-group DAG with clear visual map. Maximum parallelism of 10 stories in Group 2. Critical path correctly identified. Summary statistics table included. Design decision notes add significant value.
+TOTAL: 25/25
+Notable strength: CRM timeline as a single GLUE story with server hooks is the most architecturally sound approach — fires regardless of which endpoint triggers the state change. Design decision notes are best-in-class.
+Notable failure: None.
+
+---
+
+## MODEL: model-gamma | TEST: 01 | RUN: B
+Atomicity: 4/5
+  Evidence: 28 stories. Most properly sized. SCHED-006 bundles Provider Schedule GET+POST plus creates the MAL route namespace. SCHED-025 (Waitlist Slot-Opening) has 4 dependencies suggesting complexity. Most stories are well-scoped.
+Completeness: 5/5
+  Evidence: 28 stories covering all DocTypes, endpoints, frontend components, integrations, FHIR sync, recurring series, telehealth link attachment API, and a CONFIG story for scheduling registration. The CONFIG registration story (SCHED-028) is a unique and thoughtful addition.
+Spec Gate Compliance: 5/5
+  Evidence: All three gates answered for every story. Answers are specific and workflow-aware. CRM Timeline correctly distributed — some endpoint stories write directly, FHIR sync correctly identified as N/A.
+Guardrail Awareness: 5/5
+  Evidence: Explicit guardrail reminder in Group 4 about n8n never modifying document state. Telehealth link attachment handled via internal MAL endpoint (SCHED-026). No violations.
+Dependency Graph Quality: 4/5
+  Evidence: 4-group parallel execution model. Visual dependency map included. Groups 3 and 4 correctly identified as runnable simultaneously. Critical path stated but includes a questionable chain (SCHED-009 -> SCHED-023 -> SCHED-026 -> SCHED-022 has direction issues).
+TOTAL: 23/25
+Notable strength: Configuration Registration story (SCHED-028) shows awareness of the Configuration Mojo integration pattern that no other model includes.
+Notable failure: SCHED-004 placed in Group 1 (Foundation) alongside stories with no dependencies, but SCHED-004 depends on SCHED-001 and SCHED-002 — inconsistency in the graph.
 
 ---
 
 ## MODEL: model-delta | TEST: 01 | RUN: B
 Atomicity: 5/5
-Evidence: 27 stories. Each status transition is its own endpoint story (SCHED-012 confirm, SCHED-013 start, SCHED-014 complete, SCHED-015 cancel, SCHED-016 no-show). Waitlist split into join (SCHED-017) and remove (SCHED-018). Exemplary granularity.
-Failure classification: N/A
-
-Completeness: 5/5
-Evidence: All 5 DocTypes, all 15 endpoints (each as its own story), all 4 n8n integrations. Note: output was truncated mid-dependency-graph (per James note about model failing to complete), but story coverage before truncation is comprehensive.
-Failure classification: N/A
-
-Spec Gate Compliance: 5/5
-Evidence: Exceptional gate answers with multi-sentence explanations. CRM timeline correctly noted per endpoint. FLAGS section identifies ambiguous decisions (waitlist CRM entry, reminder CRM entry, telehealth link boundary, state log debt) for human review.
-Failure classification: N/A
-
-Guardrail Awareness: 5/5
-Evidence: Explicit architecture flag on SCHED-020 (telehealth link write-back) with resolution options. FLAGS section shows deep guardrail awareness. Correctly identifies field update vs state transition boundary.
-Failure classification: N/A
-
-Dependency Graph Quality: 3/5
-Evidence: Dependency graph starts with valid structure (Groups 1-4 visible) but output is truncated mid-Group 5. The visible portion shows correct ordering (DocTypes before endpoints) and parallel groups. Incomplete due to model output failure.
-Failure classification: FUNDAMENTAL
-
-TOTAL: 23/25
-Notable strength: Exemplary atomicity with every single status transition as its own story, and FLAGS section showing sophisticated architectural reasoning.
-Notable failure: Dependency graph truncated due to model output failure (required turning reasoning off per James note).
-
----
-
-## MODEL: model-delta | TEST: 01 | RUN: C
-Atomicity: 5/5
-Evidence: 27 stories. Every single endpoint is its own story. Each status transition (submit, publish, reject, archive) is separate. Version history and restore are separate stories. Category create, update, and list are each separate. Exemplary granularity.
-Failure classification: N/A
-
-Completeness: 5/5
-Evidence: All 13 endpoints mapped individually. All 3 DocTypes. CONFIG story for Frappe Workflow (WIKI-004). GLUE story for client portal (WIKI-023). All 3 n8n integrations plus dedicated CRM activity log story (WIKI-027). Comprehensive.
-Failure classification: N/A
-
-Spec Gate Compliance: 5/5
-Evidence: Exceptional gate answers — the most detailed of any model. Each gate answer is multi-sentence with specific reasoning. CRM timeline correctly handled: only WIKI-027 writes, and the mechanism (is_first_publish flag) is precisely specified.
-Failure classification: N/A
-
-Guardrail Awareness: 5/5
-Evidence: SOP Mojo notification correctly as n8n with explicit boundary rule statement. Version restore creates new version without deletion. WIKI-004 (CONFIG) correctly separates Frappe Workflow configuration from DocType creation. Transition_state() correctly referenced throughout.
-Failure classification: N/A
-
-Dependency Graph Quality: 5/5
-Evidence: Valid DAG with 5 waves. Full dependency map table. Summary statistics. Critical path identified (WIKI-001 through WIKI-027). Longest parallel fan-out quantified (Wave 4, 10 stories).
-Failure classification: N/A
-
-TOTAL: 25/25
-Notable strength: Best-in-class granularity (every endpoint its own story) and most detailed spec gate answers of any model across all runs.
-Notable failure: None (though model required multiple attempts per James note).
-
----
-
-## MODEL: model-delta | TEST: 01 SUMMARY
-Run A: 25 | Run B: 23 | Run C: 25
-Mean: 24.3 | Range: 2 | Consistency: Medium
-
-Consistency narrative: model-delta produces the highest-quality output when it completes, but has reliability issues requiring multiple attempts (noted by James in both Runs A and C, and output truncation in Run B). The 2-point drop in Run B is entirely due to dependency graph truncation from model output failure.
-Dominant strength: Best-in-class atomicity (every endpoint its own story), most detailed spec gate answers, and sophisticated architectural reasoning (FLAGS, cross-references, MVP milestones).
-Dominant weakness: Reliability — model repeatedly failed to produce complete output, requiring multiple retries and workarounds (turning reasoning off).
-Prompt engineering note: Reduce prompt length or break into two calls (stories first, dependency graph second) to avoid output truncation. Consider adding "Output your response incrementally — do not attempt to plan the entire output before writing."
-
----
-
-## MODEL: model-epsilon | TEST: 01 | RUN: A
-Atomicity: 2/5
-Evidence: 21 stories. CRM-001 bundles Contact list+detail+create+update (4 endpoints). CRM-004 bundles Organization list+detail+create+search+vocabulary+stages (6+ endpoints). CRM-012 bundles all cross-system activity capture into one story. Multiple stories sized M (not S or XS). Violates "more than 2 endpoints: split it" rule repeatedly.
-Failure classification: FUNDAMENTAL
-
+  Evidence: 27 stories. Individual endpoints for each state transition (Confirm, Start, Complete, Cancel, No-Show each separate). Waitlist Join and Remove are separate stories. The most granular per-endpoint decomposition. All XS or S.
 Completeness: 4/5
-Evidence: Core workflows covered but at too-high granularity. Missing explicit duplicate detection endpoint story. AI features included but deferred. Activity capture bundled into one mega-story instead of per-system stories.
-Failure classification: CORRECTABLE
-
-Spec Gate Compliance: 4/5
-Evidence: All three gates answered for every story. Answers are substantive. CRM timeline correctly identified. However, gates for over-scoped stories (CRM-004, CRM-012) are necessarily vague because they cover too many workflows.
-Failure classification: CORRECTABLE
-
-Guardrail Awareness: 4/5
-Evidence: No direct Frappe calls from React. n8n workflows correctly identified. However, CRM-019 "Server script + n8n webhook" blurs the Frappe/n8n boundary. Uses M-sized stories which violates the "S or XS only" instruction.
-Failure classification: CORRECTABLE
-
-Dependency Graph Quality: 4/5
-Evidence: Valid DAG with 6 parallel groups (A through F). Visual graph included. Build sequence summary with critical path. However, the dependency structure is simpler than it should be because stories are too coarse-grained.
-Failure classification: CORRECTABLE
-
-TOTAL: 18/25
-Notable strength: Good understanding of platform architecture and AI feature phasing with explicit deferral reasoning.
-Notable failure: Fundamental atomicity violations — multiple stories bundle 4-6 endpoints, and M-sized stories violate the "S or XS only" constraint.
+  Evidence: All core functionality covered. However, recurring appointment series logic is missing entirely — no story addresses weekly/biweekly recurring appointments, edit-one-vs-all-future, or series_id linkage. This is a significant gap given the research identified recurring appointments as a key workflow. FHIR sync also missing.
+Spec Gate Compliance: 5/5
+  Evidence: Exemplary detail in every gate answer. Multi-sentence explanations. Architecture flags (FLAG-SCHED-A through D) show exceptional judgment — flagging ambiguities for James rather than guessing. The CRM timeline flag on waitlist join is particularly thoughtful.
+Guardrail Awareness: 5/5
+  Evidence: Architecture flags demonstrate the highest guardrail awareness of any model. FLAG-SCHED-A explicitly questions whether n8n writing telehealth_link is a state violation. FLAG-SCHED-D asks about state log debt. No violations committed.
+Dependency Graph Quality: 3/5
+  Evidence: Graph output was truncated (model struggled to produce output — required reasoning mode off). Groups 1-4 visible, Group 5 cut off. What exists is well-structured with clear dependency chains. However, incomplete output means the full DAG cannot be evaluated.
+TOTAL: 22/25
+Notable strength: Architecture flags (FLAG-SCHED-A through D) are the best risk identification of any model — actively surfacing ambiguities rather than making assumptions.
+Notable failure: Missing recurring appointment series logic and FHIR sync. Output truncated due to model generation issues.
 
 ---
 
 ## MODEL: model-epsilon | TEST: 01 | RUN: B
 Atomicity: 3/5
-Evidence: 31 stories. Mostly S-sized. SCHED-060 depends on 7 other stories and is a state machine that should be part of the DocType (SCHED-005). SCHED-005 already includes the Frappe Workflow state machine, making SCHED-060 redundant/conflicting. Some stories correctly split (each transition endpoint separate). DocTypes sized S (could be XS).
-Failure classification: CORRECTABLE
-
+  Evidence: 31 stories but with problematic sizing. SCHED-060 (State Machine) depends on 7 other stories and duplicates logic that should be in the Frappe Workflow configuration. SCHED-005 (SM Appointment DocType) is S but includes full Frappe Workflow setup. Serial dependency chain in Group 3.4 (SCHED-011->013->014->015) is too linear — these endpoints can be built in parallel.
 Completeness: 5/5
-Evidence: All 5 DocTypes, all 15 endpoints, all 4 n8n integrations, FHIR mapping, recurring logic, reschedule logic. Very comprehensive with 31 stories.
-Failure classification: N/A
-
+  Evidence: 31 stories covering DocTypes, all endpoints, all frontend components, all n8n integrations, FHIR mapping (SCHED-050), recurring logic (SCHED-061), and reschedule logic (SCHED-062). No gaps. Numbering gaps (050, 060) suggest domain grouping was attempted.
 Spec Gate Compliance: 4/5
-Evidence: All three gates answered. Some gates are thin (e.g., "N/A — internal state transition, no customer-visible event"). CRM timeline correctly identified for appointment lifecycle events. Several "N/A" answers without explanation for notification workflows.
-Failure classification: CORRECTABLE
-
+  Evidence: All three gates present. However, some Workflow answers are weak (SCHED-001: "N/A — configuration entity, not workflow-driven" — this is wrong, it serves Provider Setup). CRM Timeline answers are adequate but inconsistent — some endpoint stories say "write to CRM" while others say "N/A — notification dispatch."
 Guardrail Awareness: 4/5
-Evidence: n8n workflows correctly as INTEGRATION. React calls MAL only. However, SCHED-041 (telehealth link generation) writes link back to appointment record without specifying the MAL intermediary pattern that other models correctly identified. SCHED-060 creates a redundant state machine layer.
-Failure classification: CORRECTABLE
-
+  Evidence: Generally good. However, SCHED-060 (State Machine) as a separate story after all endpoint stories are built is architecturally backwards — the state machine should be part of SCHED-005 (DocType), not a post-hoc overlay. This suggests confusion about when Frappe Workflow configuration happens.
 Dependency Graph Quality: 3/5
-Evidence: DAG exists with 7 phases. However, the serial chain in Group 3.4 (SCHED-011 through SCHED-015) creates unnecessary sequential dependencies — confirm, start, and complete don't need to be built sequentially. Critical path is overly long due to artificial serialization.
-Failure classification: CORRECTABLE
-
+  Evidence: 7-phase structure but overly sequential. Serial chain SCHED-011->013->014->015 artificially constrains parallelism. These are independent endpoints sharing only the Appointment DocType dependency. Critical path is the longest of any model due to unnecessary serialization.
 TOTAL: 19/25
-Notable strength: Comprehensive completeness with 31 stories covering every feature including reschedule logic.
-Notable failure: Redundant state machine story (SCHED-060) that conflicts with the DocType's built-in Frappe Workflow, and artificial serialization in the dependency graph.
-
----
-
-## MODEL: model-epsilon | TEST: 01 | RUN: C
-Atomicity: 2/5
-Evidence: 13 stories only. WIKI-001 bundles all 3 DocTypes into one story. WIKI-002 bundles create+read+update+list/search (4 endpoints). WIKI-003 bundles submit+publish+reject+archive (4 endpoints). Stories are feature-sized, not work-item-sized. Only 13 stories for a capability that should produce 20-35.
-Failure classification: FUNDAMENTAL
-
-Completeness: 3/5
-Evidence: All major workflows are represented but at too-high granularity. Version history is bundled into WIKI-004 (2 endpoints). Category management is one story (3 endpoints). The first-publish CRM activity log is "embedded in WIKI-003 backend logic, not a separate story" which loses the n8n boundary.
-Failure classification: CORRECTABLE
-
-Spec Gate Compliance: 4/5
-Evidence: All three gates answered for every story. CRM timeline correctly identified with the first-publish exception. Right Level consistently "Universal." Answers are adequate but reflect the coarse granularity.
-Failure classification: CORRECTABLE
-
-Guardrail Awareness: 3/5
-Evidence: SOP Mojo notification correctly as n8n. However, embedding the CRM activity log in backend code (WIKI-003) rather than routing through n8n violates the cross-system boundary principle. No client portal GLUE story identified.
-Failure classification: CORRECTABLE
-
-Dependency Graph Quality: 4/5
-Evidence: Valid DAG with clear parallel groups (1 through 4). Build order summary table. Testability notes section is a nice addition. However, the graph is simpler than it should be because stories are too coarse-grained.
-Failure classification: CORRECTABLE
-
-TOTAL: 16/25
-Notable strength: Clear methodology explanation and testability notes showing good engineering thinking.
-Notable failure: Fundamental under-decomposition — only 13 stories with multiple 4-endpoint bundles, well below the 20-35 expected range.
-
----
-
-## MODEL: model-epsilon | TEST: 01 SUMMARY
-Run A: 18 | Run B: 19 | Run C: 16
-Mean: 17.7 | Range: 3 | Consistency: Low
-
-Consistency narrative: model-epsilon consistently under-decomposes, producing fewer and larger stories than required. Run C was the worst with only 13 stories. Run B was the best, likely because the embedded research summary made endpoint enumeration clearer. The model understands the architecture but does not apply the SPLIT rules rigorously.
-Dominant strength: Good architectural understanding and comprehensive workflow coverage at the conceptual level.
-Dominant weakness: Fundamental atomicity failures — bundles 4-6 endpoints per story, uses M-sized stories, and produces too few stories overall.
-Prompt engineering note: Add "Count your endpoints. If any story has more than 2 endpoints, you MUST split it before proceeding. Your target is 25-40 stories, not 13-22."
-
----
-
-## MODEL: model-zeta | TEST: 01 | RUN: A
-Atomicity: 5/5
-Evidence: 39 stories. Each endpoint is its own story. Backend/frontend cleanly separated (19 backend, 10 frontend, 4 integration, 4 config, 2 AI). All sized S or XS. No story mixes categories.
-Failure classification: N/A
-
-Completeness: 5/5
-Evidence: Most comprehensive output across all models. Every endpoint individually mapped. Lead list + Lead Kanban + Lead intake form as separate frontend stories. Organization list + detail as separate stories. AI features included.
-Failure classification: N/A
-
-Spec Gate Compliance: 4/5
-Evidence: All three gates answered for every story. Table format is consistent. However, some answers are brief (e.g., "N/A — configuration lookup"). Most are adequate with workflow identification and right level classification.
-Failure classification: CORRECTABLE
-
-Guardrail Awareness: 5/5
-Evidence: All n8n workflows correctly as INTEGRATION. No direct Frappe calls from React. AI features as separate category. Vocabulary endpoint correctly identified. Healthcare custom fields correctly as CONFIG.
-Failure classification: N/A
-
-Dependency Graph Quality: 5/5
-Evidence: Valid DAG with 7 phases. Parallel groups clearly defined (A through M). Summary statistics table with estimated Ralph nights per phase. Critical path identified. Maximum parallel execution quantified.
-Failure classification: N/A
-
-TOTAL: 24/25
-Notable strength: Most granular decomposition (39 stories) with every endpoint and component individually scoped. Best parallelism opportunity.
-Notable failure: Slightly thin spec gate answers in table format compared to narrative-style answers.
+Notable strength: Most complete coverage including FHIR mapping, recurring logic, and reschedule as separate stories with distinct IDs.
+Notable failure: SCHED-060 (State Machine) as a post-hoc story after endpoints are built is architecturally inverted — the state machine must exist before endpoints can call transition_state().
 
 ---
 
 ## MODEL: model-zeta | TEST: 01 | RUN: B
 Atomicity: 5/5
-Evidence: 26 stories. Each status transition endpoint is its own story (confirm, start, complete, cancel, no-show each separate). DocTypes categorized as CONFIG (unconventional but not wrong). All S or XS. Clean backend/frontend separation.
-Failure classification: N/A
-
-Completeness: 5/5
-Evidence: All 5 DocTypes, all 15 endpoints, all 4 n8n integrations. Each status transition separate. FHIR sync not present as explicit story but appointment DocType references it. Missing recurring appointment series logic as explicit story.
-Failure classification: N/A
-
-Spec Gate Compliance: 4/5
-Evidence: All three gates answered for every story. Answers are adequate but some are brief (e.g., "N/A — configuration data"). CRM timeline correctly identified for lifecycle events. "Appointment reminder sent" as CRM entry in SCHED-023 is a reasonable addition.
-Failure classification: CORRECTABLE
-
+  Evidence: 26 stories, all XS or S. DocTypes categorized as CONFIG (debatable but defensible). Each state transition is its own endpoint story. Clean separation between backend, frontend, and integration layers.
+Completeness: 4/5
+  Evidence: All core functionality present. However, recurring appointment series logic is missing — no story addresses series_id, recurring_parent_id, or edit-one-vs-all-future semantics despite the SM Appointment DocType including those fields. FHIR sync also missing from integration stories.
+Spec Gate Compliance: 5/5
+  Evidence: All three gates answered for every story with clear, concise answers. CRM Timeline correctly identifies which endpoints write and what they write. Right Level consistently Universal with good justification.
 Guardrail Awareness: 5/5
-Evidence: Telehealth link generation correctly as n8n INTEGRATION. Billing trigger correctly as n8n INTEGRATION. No direct Frappe calls from frontend. All cross-system actions through n8n.
-Failure classification: N/A
+  Evidence: No violations. CRM writes handled at endpoint level. n8n handles cross-system actions. Frontend stories explicitly note they don't write to CRM. Waitlist notification correctly depends on cancel API and waitlist API.
+Dependency Graph Quality: 4/5
+  Evidence: 4-phase structure with clear visual map. Critical path correctly identified with multiple chains. Parallel execution noted. However, Phase 1 includes SCHED-004 which depends on SCHED-001 and SCHED-002 — it should be in Phase 2. Minor inconsistency.
+TOTAL: 23/25
+Notable strength: Cleanest per-endpoint decomposition with consistent sizing. Every state transition is independently buildable and testable.
+Notable failure: Missing recurring appointment series logic despite fields being defined in the DocType.
 
+---
+
+## MODEL: model-alpha | TEST: 01 | RUN: C
+Atomicity: 4/5
+  Evidence: 20 stories, all XS or S. WIKI-013 (ArticleEditor) depends on 6 other stories — suggesting it bundles too much functionality. WIKI-008 bundles submit-for-review AND publish (2 state transitions). WIKI-009 bundles reject AND archive (2 state transitions). These could be split further.
+Completeness: 5/5
+  Evidence: All 3 DocTypes, all 13 endpoints, all 5 frontend components, all 3 n8n integrations, and the practice-level CRM activity log. SOP Mojo notification correctly handled via n8n. Version history as distinct stories. 20 stories cover the full scope.
+Spec Gate Compliance: 5/5
+  Evidence: All three gates answered for every story. CRM Timeline correctly identifies the single CRM write (WIKI-020, practice-level activity log on first publish). SOP notification correctly identified as n8n integration, not direct call.
+Guardrail Awareness: 5/5
+  Evidence: No violations. SOP Mojo notification explicitly via n8n webhook ("Wiki never calls SOP Mojo directly"). CRM activity log correctly scoped as practice-level, not client-specific. No TypeScript. All frontend calls through MAL.
+Dependency Graph Quality: 4/5
+  Evidence: 7-group build order with dependency chain summary table. Critical path identified. However, WIKI-009 (Article Reject/Archive) is placed in Group 5 despite depending only on WIKI-002 — it could be in Group 3 or 4 for better parallelism.
+TOTAL: 23/25
+Notable strength: SOP Mojo notification boundary rule explicitly stated and correctly implemented as n8n integration — shows strong guardrail awareness.
+Notable failure: WIKI-008 and WIKI-009 bundle two state transitions each, reducing atomicity.
+
+---
+
+## MODEL: model-beta | TEST: 01 | RUN: C
+Atomicity: 5/5
+  Evidence: 21 stories, all XS or S. Submit-for-review and Reject properly separated (WIKI-008). Publish is its own story (WIKI-009). Archive is its own story (WIKI-010). GLUE story for Client Portal Help Section (WIKI-021) is a smart addition. Clean separation throughout.
+Completeness: 5/5
+  Evidence: All DocTypes, all endpoints, all frontend components, all n8n integrations, and a GLUE story for client portal wiring. Version history as distinct story set (WIKI-011). CRM activity log handled within publish endpoint (WIKI-009). 21 stories cover everything.
+Spec Gate Compliance: 5/5
+  Evidence: Table format for every story with all three gates. Answers are specific. CRM Timeline correctly identifies WIKI-009 as the only CRM write point ("First-time client-facing publish writes a practice-level activity log entry"). SOP notification correctly via n8n.
+Guardrail Awareness: 5/5
+  Evidence: No violations. SOP notification explicitly a one-way event notification only. CRM activity log correctly scoped. No TypeScript. All API calls through MAL. GLUE story shows understanding of integration patterns.
 Dependency Graph Quality: 5/5
-Evidence: Valid DAG with 4 phases. Visual dependency map with clear arrow notation. Critical path documented with multiple chains. Parallel execution summary. Phase 4 correctly shows parallel Track A (frontend) and Track B (integration).
-Failure classification: N/A
+  Evidence: 5-group build order with visual tree dependency graph. Critical path clearly identified. Max parallelism of 10 stories in Group 3. Summary statistics table. Clean and actionable.
+TOTAL: 25/25
+Notable strength: GLUE story for Client Portal Help Section (WIKI-021) — uniquely identifies the wiring needed to surface wiki content in the patient portal as a distinct deliverable.
+Notable failure: None.
 
-TOTAL: 24/25
-Notable strength: Clean separation with each status transition as its own story. Good visual dependency map.
-Notable failure: Slightly thin spec gate answers and DocTypes categorized as CONFIG instead of BACKEND (unconventional but defensible).
+---
+
+## MODEL: model-gamma | TEST: 01 | RUN: C
+Atomicity: 4/5
+  Evidence: 22 stories. Generally well-sized. WIKI-005 (Article Update with Version Creation) has 4 dependencies. WIKI-022 (SOP Mojo Flag) depends on 4 stories including an external SOP-MOJO-webhook. Most stories are properly scoped XS or S.
+Completeness: 4/5
+  Evidence: All DocTypes, most endpoints, frontend components, and n8n integrations present. However, the practice-level CRM activity log on first publish is handled within WIKI-007 (publish endpoint) rather than as a separate n8n integration story — this means the CRM write is embedded in the endpoint rather than going through n8n. Missing a distinct GLUE/client-portal surface story.
+Spec Gate Compliance: 4/5
+  Evidence: All three gates present in table format for every story. However, answers tend toward the brief side. Some Workflow answers are generic ("Article lifecycle workflow"). CRM Timeline answers are adequate but could be more specific about the practice-level vs client-level distinction.
+Guardrail Awareness: 5/5
+  Evidence: SOP Mojo correctly handled via n8n. Explicit note that n8n polls/listens for DocType state changes rather than endpoints calling n8n directly. No TypeScript. No React-to-Frappe calls.
+Dependency Graph Quality: 4/5
+  Evidence: 5-group structure with execution notes. Groups 3 and 4 correctly identified as parallelizable. However, Group 0 lists WIKI-002 depending on WIKI-001 in the same group — they cannot truly be parallel. Execution notes are helpful.
+TOTAL: 21/25
+Notable strength: Execution notes in dependency graph explaining why specific ordering decisions were made — good commissioning guidance.
+Notable failure: CRM activity log embedded in publish endpoint rather than n8n integration, and Group 0 dependency inconsistency.
+
+---
+
+## MODEL: model-delta | TEST: 01 | RUN: C
+Atomicity: 5/5
+  Evidence: 27 stories, mostly XS. Each endpoint is its own story. Frappe Workflow Configuration as a separate CONFIG story (WIKI-004). Client Portal Help Section as a GLUE story (WIKI-023). CRM activity log as a separate n8n integration (WIKI-027). Maximum decomposition.
+Completeness: 5/5
+  Evidence: 27 stories covering every endpoint, every DocType, every component, all 4 n8n integrations (author notification, admin notification, SOP notification, CRM activity log), a CONFIG story for Frappe Workflow, and a GLUE story for portal wiring. Most complete decomposition of any model for Run C.
+Spec Gate Compliance: 5/5
+  Evidence: Exemplary multi-paragraph gate answers for every story. Each gate response reads like a specification. The CRM Timeline answer for WIKI-027 is the most detailed of any model — explains practice-level scope, single-write contract, and the detection mechanism (is_first_publish flag).
+Guardrail Awareness: 5/5
+  Evidence: Zero violations. SOP Mojo boundary rule explicitly enforced. CRM activity log correctly delegated to n8n (WIKI-027) rather than embedded in the publish endpoint. Frappe Workflow configuration as a separate story shows understanding of the state machine ownership pattern.
+Dependency Graph Quality: 5/5
+  Evidence: 5-wave DAG with full dependency map table. Critical path clearly identified. Wave 4 has 10 parallel stories showing maximum parallelism. Summary table with blocker identification per wave. Note about WIKI-021 starting early within Wave 3.
+TOTAL: 25/25
+Notable strength: CRM activity log as a separate n8n integration story (WIKI-027) with is_first_publish detection mechanism — the most architecturally correct approach to the single CRM write requirement.
+Notable failure: None (though model again required multiple retries per James's note).
+
+---
+
+## MODEL: model-epsilon | TEST: 01 | RUN: C
+Atomicity: 2/5
+  Evidence: Only 13 stories — far below the expected 20-35. WIKI-001 bundles all 3 DocTypes into one story. WIKI-002 bundles article create+get+update+list/search (4+ endpoints). WIKI-003 bundles submit-for-review+publish+reject+archive (4 state transitions). These are monolithic by the rubric standard.
+Completeness: 4/5
+  Evidence: All major workflows are addressed conceptually within the 13 stories, but the coarse granularity means individual endpoints are not independently addressable. CRM activity log handled within WIKI-003 rather than as separate n8n story. Missing a client portal surface story.
+Spec Gate Compliance: 4/5
+  Evidence: All three gates present for every story. Answers are adequate but less detailed than the best models. CRM Timeline for WIKI-003 correctly identifies first-publish-only write but lacks the detection mechanism detail.
+Guardrail Awareness: 5/5
+  Evidence: No violations. SOP notification correctly via n8n. n8n boundary respected. No TypeScript. CRM activity log correctly practice-level. Frontend calls MAL only.
+Dependency Graph Quality: 4/5
+  Evidence: Clean 4-group structure. Groups 3A/3B/3C show good parallelism. However, the coarse story granularity means the graph has limited value — with only 13 stories, there are fewer dependencies to track.
+TOTAL: 19/25
+Notable strength: Clean testability notes table showing mock strategy for each story — uniquely practical for implementing agents.
+Notable failure: Severe under-decomposition — 13 stories for a capability that needs 20-27. Three DocTypes in one story and 4 state transitions in one story are not atomic.
 
 ---
 
 ## MODEL: model-zeta | TEST: 01 | RUN: C
-Atomicity: 4/5
-Evidence: 21 stories. WIKI-005 bundles category update+list (2 endpoints). Most other stories are properly single-endpoint. All S or XS. Clean backend/frontend separation.
-Failure classification: CORRECTABLE
-
+Atomicity: 5/5
+  Evidence: 21 stories, all XS or S. Each state transition is its own endpoint. DocTypes properly separated. Article Update with version creation is its own story. Clean separation throughout. Sizes are consistent and appropriate.
 Completeness: 5/5
-Evidence: All 13 endpoints mapped. All 3 DocTypes. All 3 n8n integrations. Version history and restore as separate endpoint stories (WIKI-012 + WIKI-007). First-publish CRM handled in WIKI-009 publish endpoint.
-Failure classification: N/A
-
-Spec Gate Compliance: 4/5
-Evidence: All three gates answered for every story. Answers are adequate. CRM timeline correctly identified as N/A with the first-publish exception in WIKI-009. Some answers are brief but accurate.
-Failure classification: CORRECTABLE
-
+  Evidence: All 3 DocTypes, all 13 endpoints, all 5 frontend components, all 3 n8n integrations. CRM activity log not explicitly separated as a distinct story but the publish endpoint (WIKI-009) handles it with clear spec gate documentation. No gaps.
+Spec Gate Compliance: 5/5
+  Evidence: Every story has all three gates with detailed answers. CRM Timeline for WIKI-009 explicitly states "Practice-level activity log entry ONLY if first-time publish of a client-facing article." SOP notification correctly scoped with boundary rule compliance.
 Guardrail Awareness: 5/5
-Evidence: SOP Mojo notification correctly as n8n INTEGRATION with explicit boundary rule. Version restore correctly specified (creates new version). No TypeScript. No direct Frappe calls.
-Failure classification: N/A
-
+  Evidence: No violations. SOP Mojo notification via n8n with boundary rule explicitly stated. CRM writes at endpoint level. No TypeScript. All frontend through MAL. Waitlist notification depends on cancel and waitlist APIs correctly.
 Dependency Graph Quality: 4/5
-Evidence: Valid DAG with 6 phases. Phase 1 is sequential (DocTypes in order) which is stricter than necessary but not wrong. Execution summary table. Critical path identified. Phase parallelization clearly stated.
-Failure classification: CORRECTABLE
+  Evidence: 6-phase build order with parallel groups within each phase. Critical path identified. However, Phase 1 is sequential (3 DocTypes in series) when WIKI-001 and others could partially overlap. Execution summary table is clear.
+TOTAL: 24/25
+Notable strength: Consistent quality across all categories — no weak spots. Phase structure with clear entry/exit gates shows deployment discipline.
+Notable failure: Phase 1 DocTypes forced into sequential order when WIKI-001 (Category) has no dependency on WIKI-002 order.
 
-TOTAL: 22/25
-Notable strength: Clean identification of all workflow transitions as separate endpoint stories and correct boundary rule compliance.
-Notable failure: Minor bundling of category update+list. Sequential DocType ordering is stricter than needed.
+---
+---
+
+# Per-Model Summaries
+
+---
+
+## MODEL: model-alpha | TEST: 01 SUMMARY
+Run A: 24 | Run B: 23 | Run C: 23
+Mean: 23.3 | Range: 1 | Consistency: High
+Consistency narrative: Model-alpha produces consistently strong results across all three runs with minimal variance. Slight deductions for endpoint bundling (2 endpoints per story) and overly sequential dependency graphs.
+Dominant strength: Comprehensive coverage — never misses a workflow or endpoint from the research.
+Dominant weakness: Occasional endpoint bundling (2 per story) and dependency graphs that are slightly too sequential.
+Prompt engineering note: Add explicit instruction: "Each story should contain at most 1 endpoint. Dependency graphs should maximize parallel execution groups."
+
+---
+
+## MODEL: model-beta | TEST: 01 SUMMARY
+Run A: 25 | Run B: 25 | Run C: 25
+Mean: 25.0 | Range: 0 | Consistency: High
+Consistency narrative: Model-beta achieves perfect scores across all three runs — the only model to do so. Consistently produces the right granularity, the best dependency graphs, and the most thoughtful design decisions.
+Dominant strength: Architectural judgment — design decisions (CRM as GLUE story, FHIR sync approach, client portal as GLUE) are consistently the most sound.
+Dominant weakness: None identified across 3 runs.
+Prompt engineering note: None needed — this model performs optimally on the story decomposition task as-is.
+
+---
+
+## MODEL: model-gamma | TEST: 01 SUMMARY
+Run A: 21 | Run B: 23 | Run C: 21
+Mean: 21.7 | Range: 2 | Consistency: Medium
+Consistency narrative: Model-gamma's scores cluster in the 21-23 range. Run A lost points for missing the dependency graph entirely; Run C lost points for embedded CRM logic and brief spec gate answers. Run B was stronger.
+Dominant strength: Thoroughness in story count — catches edge-case workflows that other models miss (Contact-to-Medplum sync, Config Registration).
+Dominant weakness: Dependency graph quality and spec gate answer depth are inconsistent. Tendency to embed cross-system actions in endpoints rather than delegating to n8n.
+Prompt engineering note: Add: "Always produce a separate DEPENDENCY-GRAPH.md with parallel execution groups. CRM timeline writes and cross-system notifications must always go through n8n integration stories, never embedded in endpoint stories."
+
+---
+
+## MODEL: model-delta | TEST: 01 SUMMARY
+Run A: 25 | Run B: 22 | Run C: 25
+Mean: 24.0 | Range: 3 | Consistency: Medium
+Consistency narrative: Model-delta produces excellent output when it completes — perfect scores on Runs A and C. Run B suffered from generation issues (model required reasoning mode off, output truncated, missing recurring series and FHIR sync).
+Dominant strength: Spec gate answer quality is best-in-class — every gate response reads like a mini-specification. Architecture flags surface ambiguities proactively.
+Dominant weakness: Reliability — required multiple retries across all runs. When it struggles, completeness and graph quality suffer (Run B).
+Prompt engineering note: Add: "You MUST produce complete output including STORIES.md and DEPENDENCY-GRAPH.md. If you reach a length limit, prioritize completing the dependency graph over adding detail to individual stories. Include recurring/series logic and FHIR mapping if the research identifies them."
+
+---
+
+## MODEL: model-epsilon | TEST: 01 SUMMARY
+Run A: 21 | Run B: 19 | Run C: 19
+Mean: 19.7 | Range: 2 | Consistency: Medium
+Consistency narrative: Model-epsilon consistently under-decomposes, producing fewer and larger stories than the rubric expects. Run A was best at 22 stories; Run B had architectural inversions; Run C had only 13 stories.
+Dominant strength: Practical delivery artifacts — "What Can Ship Independently" tables (Run A) and testability notes (Run C) are uniquely useful for implementation.
+Dominant weakness: Atomicity — consistently bundles too many endpoints or state transitions into single stories. Does not respect the "max 2 endpoints per story" constraint.
+Prompt engineering note: Add: "Each story MUST contain at most 2 API endpoints. Each DocType MUST be its own story. Each state transition endpoint MUST be its own story. Target 20-35 stories for a KERNEL capability, never fewer than 15."
 
 ---
 
 ## MODEL: model-zeta | TEST: 01 SUMMARY
-Run A: 24 | Run B: 24 | Run C: 22
-Mean: 23.3 | Range: 2 | Consistency: Medium
-
-Consistency narrative: model-zeta performed strongly across all three runs with scores of 24, 24, and 22. The Run C dip was due to minor bundling and slightly thin spec gates. Runs A and B showed excellent granularity. The model reliably produces complete, well-structured output without the reliability issues seen in model-delta.
-Dominant strength: Highly granular decomposition with clean endpoint separation and reliable output completion. Run A produced the most stories (39) of any model.
-Dominant weakness: Spec gate answers tend toward brevity in table format. Minor endpoint bundling in Run C.
-Prompt engineering note: Add "Spec gate answers must be at least 2 sentences each — explain the WHY, not just the WHAT" to encourage richer gate responses.
+Run A: 23 | Run B: 23 | Run C: 24
+Mean: 23.3 | Range: 1 | Consistency: High
+Consistency narrative: Model-zeta produces highly consistent results across all three runs. Never scores below 23. Slight over-decomposition in Run A (39 stories) balanced by excellent granularity in Runs B and C.
+Dominant strength: Consistent per-endpoint decomposition with appropriate sizing — every state transition gets its own story, every component is independently testable.
+Dominant weakness: Occasional over-decomposition (Run A: 39 stories) and missing advanced features (recurring appointments in Run B). Dependency graphs sometimes have minor Phase 1 ordering issues.
+Prompt engineering note: Add: "For KERNEL capabilities, target 25-35 stories. If your count exceeds 35, merge trivially small stories that share the same DocType and test boundary. Always include recurring/series logic if the research identifies it."
