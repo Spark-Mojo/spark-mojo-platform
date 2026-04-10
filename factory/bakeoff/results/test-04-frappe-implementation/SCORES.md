@@ -576,6 +576,102 @@ Prompt engineering note: Add explicit instruction: "The abstraction layer NEVER 
 
 ---
 
+## model-theta
+
+```
+MODEL: model-theta | TEST: 04 | RUN: A
+Correctness: 4/5
+Evidence: Logic is correct — cascade works, platform defaults defined with 18 keys, client overrides applied only for keys in platform defaults. Error handling correct. However, uses HTTPException with detail={"error": ...} for 400/404 which FastAPI wraps as {"detail": {"error": ...}} — not the spec-required flat {"error": ...} format. Tests assert on flat format and would fail against actual FastAPI response. Also first version hardcoded FRAPPE_URL without os.getenv; self-corrected in second version.
+Failure classification: CORRECTABLE
+
+Convention Compliance: 4/5
+Evidence: Follows billing.py pattern — httpx.AsyncClient, _frappe_headers(), APIRouter with tags. Router registered with prefix. Second version uses os.getenv correctly. However, shows two full versions of the code (initial then "revised") which is messy. The endpoint raises HTTPException for errors instead of using JSONResponse — this wraps error bodies in {"detail": ...}. Also uses direct doc fetch by resource path (f"/api/resource/sm_site_registry/{site_name}") which uses lowercase doctype name — Frappe API expects "SM Site Registry" with spaces.
+Failure classification: CORRECTABLE
+
+Test Quality: 4/5
+Evidence: All 5 specified tests present plus 2 extra tests (empty config_json, config_json without vocabulary section). Tests verify correct assertions. However, import path uses "abstraction-layer" with hyphens which is invalid Python (from abstraction-layer.routes.desktop import ...). Also mock patch path uses "abstraction_layer.routes.desktop" (underscored) but the import statement uses hyphens — inconsistency means tests would not import correctly. The async mock is not properly set up — patches a coroutine with synchronous return_value without AsyncMock.
+Failure classification: CORRECTABLE
+
+Error Handling: 4/5
+Evidence: 400 for missing header, 404 for unknown site, malformed JSON caught with JSONDecodeError/TypeError and graceful fallback. However, HTTPException wraps detail as {"detail": {"error": ...}} not flat {"error": ...}. The 404 test asserts flat format which wouldn't match actual FastAPI behavior.
+Failure classification: CORRECTABLE
+
+Scope Discipline: 3/5
+Evidence: Shows two complete versions of desktop.py (initial then "revised"), two complete versions of main.py, extensive narrative between code blocks explaining thought process ("But wait...", "Actually..."). Added 2 extra tests beyond 5 specified. Significant conversational/stream-of-consciousness text violates "Write the implementation. Write the tests. Do not write anything else."
+Failure classification: CORRECTABLE
+
+TOTAL: 19/25
+Notable strength: Correct cascade logic and thorough defensive coding (non-dict vocabulary, non-string values filtered).
+Notable failure: Two full versions shown with extensive reasoning text; invalid Python import path with hyphens; HTTPException detail wrapping issue.
+```
+
+```
+MODEL: model-theta | TEST: 04 | RUN: B
+Correctness: 3/5
+Evidence: Shows THREE versions of the implementation (initial, first revision, second revision) and TWO versions of the tests. The final version reads claim before and after transition (good approach for getting previous_state). Catches ValueError for 409, HTTPException for 404. However, uses Pydantic BaseModel with new_state: str (required) — Pydantic will return 422 for missing new_state, not the spec-required 400. The manual check "if not request_body.new_state" only catches empty string, not missing field. Also does NOT implement SM Claim State Log creation — the endpoint does not call _create_frappe_doc for a state log entry. The test_transition_logs_state_change only verifies transition_state was called, not that a log was created.
+Failure classification: FUNDAMENTAL (missing state log)
+
+Convention Compliance: 4/5
+Evidence: Adds to existing billing.py correctly. Imports from controller. Uses existing _read_frappe_doc helper. Pydantic models defined. However, reproduces the ENTIRE billing.py file (1000+ lines) three times across revisions, which is extremely wasteful. The VALID_TRANSITIONS mock uses MagicMock.get which requires complex setup — a real dict would be simpler. Import path uses "abstraction_layer" (underscored) which doesn't match the hyphenated directory name.
+Failure classification: CORRECTABLE
+
+Test Quality: 3/5
+Evidence: All 6 test names present. However, test_missing_new_state_returns_400 sends json={} — Pydantic would return 422 (validation error), not 400. The test would fail. test_transition_logs_state_change is weak — only verifies transition_state was called, not that an SM Claim State Log entry was created (the spec explicitly requires this). The autouse fixture with VALID_TRANSITIONS as MagicMock is fragile — mock_valid.get.return_value overrides for all calls, which breaks when different tests need different states. Import path "abstraction_layer.routes.billing" has underscore but directory uses hyphens.
+Failure classification: CORRECTABLE
+
+Error Handling: 3/5
+Evidence: 422 for missing header handled correctly. 409 for ValueError handled with valid_transitions. 404 for claim not found catches HTTPException. However, 400 for missing new_state would actually be 422 (Pydantic intercepts). The error response format uses HTTPException detail which wraps as {"detail": {...}} in FastAPI, not the flat format the tests assert. Generic Exception catch uses string matching ("not found" in str(e).lower()) which is fragile.
+Failure classification: CORRECTABLE
+
+Scope Discipline: 1/5
+Evidence: Massive scope violation. Shows THREE complete versions of the billing.py endpoint and TWO complete versions of the test file, with extensive stream-of-consciousness reasoning between them ("Actually...", "But wait...", "Let me re-examine...", "However, I realize there are issues..."). Reproduces the entire 1000+ line billing.py file multiple times. The spec says "Write the implementation and tests. Nothing else." — this output includes enormous amounts of reasoning text and intermediate attempts.
+Failure classification: FUNDAMENTAL
+
+TOTAL: 14/25
+Notable strength: Good approach of reading claim before/after transition for previous_state; handles multiple controller return types (tuple, dict, None).
+Notable failure: Three implementation versions and two test versions with massive reasoning text; missing SM Claim State Log creation; Pydantic 422 vs spec 400 conflict.
+```
+
+```
+MODEL: model-theta | TEST: 04 | RUN: C
+Correctness: 4/5
+Evidence: Logic is correct — cascade works, platform defaults all False, overrides applied only for known keys with isinstance(bool) check. Unknown keys filtered. Malformed JSON handled gracefully. 404 handled with JSONResponse (correct approach). However, the generic except clause returns 200 with defaults for ANY non-HTTP error (including network failures) — this silently swallows errors that should probably be visible. Also shows TWO complete versions of admin.py (initial then "revised") and TWO versions of test file.
+Failure classification: CORRECTABLE
+
+Convention Compliance: 4/5
+Evidence: Follows MAL pattern — httpx.AsyncClient, _frappe_headers(), os.getenv, APIRouter with tags. Uses JSONResponse for 404 (correct, avoids detail wrapping). Router registered with prefix. However, has os import in the middle of the file (after other imports) instead of at the top. Pydantic FeatureFlagsResponse model is clean. Shows two full versions which is messy.
+Failure classification: CORRECTABLE
+
+Test Quality: 3/5
+Evidence: All 5 tests present. Tests verify correct assertions. The 404 test correctly checks for {"error": "site not found", "subdomain": "unknown-site"}. Malformed JSON test covers both invalid JSON and non-dict JSON (good). However, import path uses "abstraction-layer" with hyphens (from abstraction-layer.main import app) — invalid Python. Also uses "abstraction-layer.routes.admin" in patch paths — also invalid. The first test file version mocks _get_site_registry as synchronous but it's async — needs AsyncMock. The 404 test in the first version has messy code (overwrites mock.side_effect twice, asserts "error" in data OR "detail" in data with uncertain expectations).
+Failure classification: CORRECTABLE
+
+Error Handling: 5/5
+Evidence: 404 via JSONResponse with correct spec-compliant body {"error": "site not found", "subdomain": subdomain}. Malformed JSON caught with JSONDecodeError/TypeError. Non-boolean values filtered via isinstance. Non-dict features section handled. Generic errors return defaults (debatable but defensive). Catches HTTPException specifically for 404 re-raise.
+Failure classification: N/A
+
+Scope Discipline: 2/5
+Evidence: Shows TWO complete versions of admin.py and TWO complete versions of test file. Extensive reasoning text between code blocks ("Wait, I need to adjust...", "Actually, looking at the story spec again...", "Let me revise..."). The spec says "Write the implementation and tests. Nothing else." This output has more reasoning text than code. Also includes a summary section with checkmarks at the end.
+Failure classification: CORRECTABLE
+
+TOTAL: 18/25
+Notable strength: Correct use of JSONResponse for 404 (avoids HTTPException detail wrapping); good isinstance(bool) type checking for overrides.
+Notable failure: Two versions of each file with extensive reasoning; invalid Python import paths with hyphens; summary text violates scope instruction.
+```
+
+```
+MODEL: model-theta | TEST: 04 SUMMARY
+Run A: 19 | Run B: 14 | Run C: 18
+Mean: 17.0 | Range: 5 | Consistency: Low
+
+Consistency narrative: Below average across all runs with significant variance. Run B was notably weak due to three implementation versions, missing state log creation, and Pydantic 422/400 conflict. Run A and C were middling — correct logic but marred by duplicate code versions and stream-of-consciousness reasoning text. All three runs share a persistent problem: invalid Python import paths using hyphens instead of underscores for the "abstraction-layer" directory.
+Dominant strength: Correct cascade/merge logic in all three runs; good defensive type checking.
+Dominant weakness: Extreme verbosity — shows multiple full versions of files with extensive reasoning text between them. The "thinking out loud" pattern (showing wrong code, realizing the issue, then rewriting) produces output 3-5x larger than needed and violates the "nothing else" instruction. Invalid import paths with hyphens would prevent all tests from running.
+Prompt engineering note: Add "Output ONLY the final, correct version of each file. No explanatory text. No intermediate attempts. No reasoning. No summaries. Code only." Also specify "The directory name is 'abstraction-layer' but Python module imports use underscores: 'abstraction_layer'."
+```
+
+---
+
 # Overall Rankings
 
 | Model | Run A | Run B | Run C | Mean | Consistency |
@@ -585,4 +681,5 @@ Prompt engineering note: Add explicit instruction: "The abstraction layer NEVER 
 | model-beta | 23 | 24 | 25 | 24.0 | Medium |
 | model-zeta | 24 | 12 | 22 | 19.3 | Low |
 | model-gamma | 21 | 16 | 20 | 19.0 | Low |
+| model-theta | 19 | 14 | 18 | 17.0 | Low |
 | model-epsilon | 18 | 14 | 19 | 17.0 | Low |

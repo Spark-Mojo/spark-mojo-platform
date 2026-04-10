@@ -584,3 +584,99 @@ Consistency narrative: Dramatic improvement across runs. Run A had a hard guardr
 Dominant strength: Improved significantly with simpler component requirements (pure display vs async fetching).
 Dominant weakness: Guardrail compliance failures under complexity (hardcoded colors, fragile selectors).
 Prompt engineering note: Add "CRITICAL: Every color must use var(--sm-*) tokens. The word 'white' is not allowed as a color value. Always add data-testid attributes to the root element."
+
+---
+
+## MODEL: model-theta | TEST: 05 | RUN: A
+
+Correctness: 4/5
+Evidence: All 4 visual states rendered correctly. Fetch logic is sound with cancellation flag. However, the markdown output contains malformed JSX — multiple `<span` and `<svg` opening tags are missing the `<` character (lines 108, 125, 157, 180). In the test file, multiple `render(` calls are missing the `<` before the component name (lines 277, 293, 332, 347). These are rendering artifacts that would cause syntax errors if used as-is. The logic itself is correct, so this is treated as a presentation issue.
+Failure classification: CORRECTABLE
+
+Guardrail Compliance — Hard Violations: 5/5
+Evidence: No TypeScript, all colors use `var(--sm-*)` tokens, no Frappe imports, no hardcoded hex.
+Failure classification: N/A
+
+Code Quality: 5/5
+Evidence: Cancellation flag in useEffect cleanup. Clean baseStyle object spread. `encodeURIComponent` for subdomain safety. Proper dependency array `[subdomain, featureKey]`. `data-testid` and `data-state` attributes for testability. PropTypes defined.
+Failure classification: N/A
+
+Test Coverage: 4/5
+Evidence: 8 test cases present (6 specified plus size and label formatting bonus tests). All 6 required tests are accounted for. The mock pattern for `useSiteConfig` is correct. However, test 6 ("uses subdomain from useSiteConfig when prop is absent") does a dynamic `import()` then `mockReturnValueOnce` — this is fragile and may not work reliably with Vitest's hoisted mocks. The missing `<` in render calls would cause test failures if copied directly.
+Failure classification: CORRECTABLE
+
+Spec Adherence: 5/5
+Evidence: All props implemented (featureKey, subdomain, size). Label formatting replaces underscores with spaces. All 4 visual states present with correct colors. Size uses Tailwind utility classes (text-xs/text-sm with px/py) which is consistent with platform patterns. `data-testid` present.
+Failure classification: N/A
+
+TOTAL: 23/25
+Notable strength: Clean component structure with proper cancellation, PropTypes, and data attributes.
+Notable failure: Malformed JSX in markdown output — missing `<` on multiple tags — would require manual correction before use.
+
+---
+
+## MODEL: model-theta | TEST: 05 | RUN: B
+
+Correctness: 5/5
+Evidence: All 19 states mapped correctly. Strikethrough applied to written_off/voided/cancelled. Unknown state shows "Unknown" with neutral styling. Label formatting correct ("Ready to submit", not "Ready To Submit"). All 7 specified tests would pass.
+Failure classification: N/A
+
+Guardrail Compliance — Hard Violations: 5/5
+Evidence: No TypeScript, all colors use `var(--sm-*)` tokens, no Frappe imports, no hardcoded hex.
+Failure classification: N/A
+
+Code Quality: 4/5
+Evidence: Clean switch statement for state mapping. `formatLabel` with explicit known-states list for unknown detection. `data-testid` on pill and icon. However, the output includes extensive "thinking out loud" text between the first code block and the final code block — the model produced the component code twice (once as stream-of-consciousness, once as final output). The `getStateStyle` function recreates the style object on every render call (no memoization), and the `formatLabel` duplicates the known-states list that already exists in the switch. Minor redundancy.
+Failure classification: CORRECTABLE
+
+Test Coverage: 5/5
+Evidence: All 7 specified tests present. Plus 3 bonus tests: all 19 states render without errors, label formatting for multiple states, and color mapping for all state groups. Uses `data-testid` for reliable selectors. Strikethrough test checks `textDecoration: 'line-through'`. Icon test uses `queryByTestId`. The `render()` calls in the first code block have missing `<` but the final test file block is also missing `<` on some calls (lines 541, 551, 601) — same markdown artifact as Run A.
+Failure classification: CORRECTABLE
+
+Spec Adherence: 5/5
+Evidence: All 19 states mapped. Both size variants with exact pixel values (11px/2px 8px, 13px/4px 12px) and `borderRadius: '9999px'`. showIcon works. Label formatting correct. State normalization via `toLowerCase()` adds robustness.
+Failure classification: N/A
+
+TOTAL: 24/25
+Notable strength: Comprehensive test coverage with 10 test cases including exhaustive state-group color verification.
+Notable failure: Duplicate output (component code appears twice with thinking-aloud commentary between them) — messy presentation.
+
+---
+
+## MODEL: model-theta | TEST: 05 | RUN: C
+*Note: Run C was given the ClaimStatusPill prompt (same as Run B). Scored against Run B rubric.*
+
+Correctness: 0/5
+Evidence: Model built a **ProviderSelector** dropdown component instead of the requested **ClaimStatusPill**. The prompt explicitly says "ClaimStatusPill" with 19 canonical states, pure display, no API calls. The model produced a completely different component (a fetching select dropdown for scheduling providers). None of the 19 states are mapped. None of the 7 specified tests are present. The component makes API calls (`GET /api/modules/scheduling/providers`) when the spec explicitly says "Pure display component — no API calls."
+Failure classification: FUNDAMENTAL
+
+Guardrail Compliance — Hard Violations: 5/5
+Evidence: No TypeScript (`.jsx`), all colors use `var(--sm-*)` tokens, no Frappe imports, no hardcoded hex. The guardrails are met even though the wrong component was built.
+Failure classification: N/A
+
+Code Quality: 4/5
+Evidence: The ProviderSelector code itself is well-written: proper cancellation flag in useEffect, clean visual states (loading/error/empty/loaded), controlled component pattern, `encodeURIComponent` for query params. However, this is the wrong component, so quality is moot for scoring purposes. Deducting 1 for the fact that this is clearly a hallucinated/confused response — the model ignored the prompt entirely.
+Failure classification: FUNDAMENTAL
+
+Test Coverage: 0/5
+Evidence: None of the 7 specified tests are present. The test file tests ProviderSelector behavior (loading, options, onChange, refetch, empty, error, disabled) — none of which correspond to the ClaimStatusPill spec (draft/neutral, paid/success, denied/error, written_off/strikethrough, unknown/graceful, size=md, showIcon=false).
+Failure classification: FUNDAMENTAL
+
+Spec Adherence: 0/5
+Evidence: Wrong component entirely. No state-to-color mapping. No 19 canonical states. No label formatting. No size variants matching spec. No showIcon prop. No strikethrough behavior. The model built ProviderSelector instead of ClaimStatusPill.
+Failure classification: FUNDAMENTAL
+
+TOTAL: 9/25
+Notable strength: The ProviderSelector code itself is well-structured with proper patterns (if it had been the right component).
+Notable failure: Built the completely wrong component. The prompt says "ClaimStatusPill" and lists 19 states — the model produced "ProviderSelector" with API fetching. This is a fundamental comprehension failure.
+
+---
+
+## MODEL: model-theta | TEST: 05 SUMMARY
+Run A: 23 | Run B: 24 | Run C: 9
+Mean: 18.7 | Range: 15 | Consistency: Very Low
+
+Consistency narrative: Runs A and B were solid — competent implementations with minor presentation issues (malformed JSX tags in markdown, duplicate output). Run C was a catastrophic failure: the model built an entirely different component (ProviderSelector) instead of the requested ClaimStatusPill, despite receiving the identical prompt to Run B. This suggests the model either hallucinated a different spec or confused the prompt with training data.
+Dominant strength: When on-target, produces clean components with good test coverage and proper guardrail compliance.
+Dominant weakness: Catastrophic prompt comprehension failure in Run C — built the wrong component entirely. Also, markdown output formatting issues (missing `<` characters) across all runs.
+Prompt engineering note: Add "CRITICAL: The component name is {NAME}. Do not build any other component. Repeat the component name in your first line of output before writing code."
