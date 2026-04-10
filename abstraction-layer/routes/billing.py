@@ -753,6 +753,158 @@ async def list_denials(
     )
 
 
+# ---------------------------------------------------------------------------
+# BILL-015: Denial Worklist Endpoint
+# ---------------------------------------------------------------------------
+
+@router.get("/denials/worklist")
+async def denial_worklist(
+    site: str = Query(..., description="Frappe site name for tenant isolation"),
+    payer: Optional[str] = None,
+    date_from: Optional[str] = None,
+    date_to: Optional[str] = None,
+    include_watching: bool = True,
+):
+    """
+    Denial worklist — workboard-backed billing lens per DECISION-029.
+    Queries SM Tasks filtered to billing denial work, enriches with SM Denial data.
+    Also surfaces claims in pipeline states as watching-mode visibility items.
+    """
+    # Step 1: Query SM Tasks for denial review
+    task_filters = [
+        ["source_system", "=", "Healthcare Billing Mojo"],
+        ["task_type", "=", "denial_review"],
+        ["canonical_state", "not in", ["Completed", "Canceled"]],
+    ]
+    task_fields = '["name","task_mode","source_object_id","canonical_state"]'
+    tasks = await _list_frappe_docs(
+        "SM Task", filters=json.dumps(task_filters), fields=task_fields, limit=200
+    )
+
+    # Step 2: Enrich each task with SM Denial data
+    today = datetime.now().date()
+    denial_items = []
+    for task in tasks:
+        denial_name = task.get("source_object_id", "")
+        if not denial_name:
+            continue
+        try:
+            denial = await _read_frappe_doc("SM Denial", denial_name)
+        except Exception:
+            continue
+
+        denial_date = denial.get("denial_date")
+        appeal_deadline = denial.get("appeal_deadline")
+
+        # Apply optional filters
+        if date_from and denial_date and denial_date < date_from:
+            continue
+        if date_to and denial_date and denial_date > date_to:
+            continue
+
+        # Get payer name from linked claim
+        payer_name = None
+        if denial.get("claim"):
+            try:
+                claim = await _read_frappe_doc("SM Claim", denial["claim"])
+                payer_name = claim.get("payer")
+            except Exception:
+                pass
+
+        if payer and payer_name != payer:
+            continue
+
+        # Compute days until deadline
+        days_until_deadline = None
+        if appeal_deadline:
+            try:
+                dl = datetime.strptime(appeal_deadline, "%Y-%m-%d").date()
+                days_until_deadline = (dl - today).days
+            except (ValueError, TypeError):
+                pass
+
+        # Extract CARC codes as list of strings
+        carc_rows = denial.get("carc_codes", [])
+        carc_list = []
+        if isinstance(carc_rows, list):
+            carc_list = [r.get("carc_code", "") for r in carc_rows if r.get("carc_code")]
+        elif isinstance(carc_rows, str):
+            carc_list = _parse_comma_list(carc_rows)
+
+        ai_category = denial.get("ai_category", "pending") or "pending"
+
+        denial_items.append({
+            "task_id": task.get("name"),
+            "task_mode": task.get("task_mode", "active"),
+            "denial_name": denial_name,
+            "claim": denial.get("claim"),
+            "denial_date": denial_date,
+            "appeal_deadline": appeal_deadline,
+            "days_until_deadline": days_until_deadline,
+            "carc_codes": carc_list,
+            "denial_reason_summary": denial.get("denial_reason_summary"),
+            "ai_category": ai_category,
+            "ai_appealable": denial.get("ai_appealable", 0),
+            "ai_action": denial.get("ai_action"),
+            "ai_confidence": denial.get("ai_confidence"),
+            "payer_name": payer_name,
+            "_sort_key": days_until_deadline if days_until_deadline is not None else 9999,
+        })
+
+    # Step 5: Group by ai_category, sort by appeal_deadline ascending (past-deadline first)
+    categories = {"correctable": [], "appealable": [], "terminal": [], "pending": []}
+    for item in denial_items:
+        cat = item["ai_category"] if item["ai_category"] in categories else "pending"
+        categories[cat].append(item)
+    for cat in categories:
+        categories[cat].sort(key=lambda x: x["_sort_key"])
+        for item in categories[cat]:
+            del item["_sort_key"]
+
+    # Step 3: Pipeline claims (watching mode)
+    pipeline = {"submitted": [], "adjudicating": []}
+    if include_watching:
+        for pipe_state in ["submitted", "adjudicating"]:
+            pipe_filters = [["canonical_state", "=", pipe_state]]
+            pipe_fields = '["name","canonical_state","payer","date_of_service","state_changed_at"]'
+            pipe_claims = await _list_frappe_docs(
+                "SM Claim", filters=json.dumps(pipe_filters), fields=pipe_fields, limit=200
+            )
+            for pc in pipe_claims:
+                if payer and pc.get("payer") != payer:
+                    continue
+                days_in_state = None
+                if pc.get("state_changed_at"):
+                    try:
+                        changed = datetime.strptime(pc["state_changed_at"], "%Y-%m-%d %H:%M:%S")
+                        days_in_state = (datetime.now() - changed).days
+                    except (ValueError, TypeError):
+                        pass
+                pipeline[pipe_state].append({
+                    "claim": pc.get("name"),
+                    "canonical_state": pipe_state,
+                    "payer_name": pc.get("payer"),
+                    "date_of_service": pc.get("date_of_service"),
+                    "days_in_state": days_in_state,
+                })
+
+    totals = {
+        "correctable": len(categories["correctable"]),
+        "appealable": len(categories["appealable"]),
+        "terminal": len(categories["terminal"]),
+        "pending": len(categories["pending"]),
+        "pipeline_submitted": len(pipeline["submitted"]),
+        "pipeline_adjudicating": len(pipeline["adjudicating"]),
+        "total_action_required": len(denial_items),
+    }
+
+    return {
+        "action_required": categories,
+        "pipeline": pipeline,
+        "totals": totals,
+    }
+
+
 @router.get("/denials/{denial_name}", response_model=DenialDetailResponse)
 async def get_denial(denial_name: str):
     """Get full denial detail."""
