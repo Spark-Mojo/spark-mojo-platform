@@ -772,37 +772,78 @@ async def get_denial(denial_name: str):
     )
 
 
-@webhook_router.post("/277")
-async def stedi_277_webhook(request_body: dict):
+# ---------------------------------------------------------------------------
+# STC category code labels for 277CA
+# ---------------------------------------------------------------------------
+
+STC_LABELS = {
+    "A1": "accepted by payer",
+    "A2": "accepted with errors",
+    "A0": "claim forwarded",
+    "R3": "rejected",
+    "A3": "rejected — request not supported",
+    "E0": "payer error — manual review required",
+    "A4": "not found — manual review required",
+}
+
+# STC codes that trigger adjudicating transition
+STC_ADJUDICATING = {"A1", "A2", "A0"}
+# STC codes that trigger rejected transition
+STC_REJECTED = {"R3", "A3"}
+# STC codes that require manual review (no transition)
+STC_MANUAL_REVIEW = {"E0", "A4"}
+
+
+async def _transition_claim_state(
+    claim_name: str, to_state: str, trigger_reference: str, reason: str
+) -> dict:
+    """Call the Frappe whitelisted transition_state API."""
+    async with httpx.AsyncClient(base_url=FRAPPE_URL, headers=_frappe_headers()) as client:
+        resp = await client.post(
+            "/api/method/sm_billing.sm_billing.sm_billing.doctype.sm_claim.sm_claim.api_transition_state",
+            json={
+                "claim_name": claim_name,
+                "to_state": to_state,
+                "trigger_type": "webhook_277ca",
+                "reason": reason,
+                "trigger_reference": trigger_reference,
+                "changed_by": "System",
+            },
+            timeout=15,
+        )
+        resp.raise_for_status()
+        return resp.json().get("message", {})
+
+
+@webhook_router.post("/277ca")
+async def stedi_277ca_webhook(request_body: dict):
     """
     Receive 277CA claim acknowledgment from Stedi.
-    Updates SM Claim state based on acknowledgment category.
+    Parses STC category code and transitions SM Claim state via transition_state().
+    Always returns HTTP 200 — Stedi must not retry.
     """
-    transaction_id = request_body.get("transactionId", "")
-    transaction_set = request_body.get("x12", {}).get("transactionSetIdentifier", "")
+    transaction_id = request_body.get("stedi_transaction_id", "") or request_body.get("transactionId", "")
+    claim_control_number = (
+        request_body.get("claim_control_number", "")
+        or request_body.get("patientControlNumber", "")
+    )
+    stc_category = (
+        request_body.get("stc_category", "")
+        or request_body.get("categoryCode", "")
+    )
 
-    if transaction_set and transaction_set != "277":
-        logger.warning("Received non-277 webhook: %s", transaction_set)
-        return {"status": "ignored", "reason": "not a 277 transaction"}
+    if not claim_control_number:
+        logger.warning("277CA webhook missing claim_control_number, txn=%s", transaction_id)
+        return {"status": "warning", "detail": "missing claim_control_number"}
 
-    # Extract acknowledgment data
-    # In production, would GET /healthcare/claim-acknowledgment/{transactionId}
-    # For now, parse from webhook payload
-    category_code = request_body.get("categoryCode", "")
-    patient_control_number = request_body.get("patientControlNumber", "")
-
-    if not patient_control_number:
-        logger.warning("277 webhook missing patientControlNumber, txn=%s", transaction_id)
-        return {"status": "ok", "matched": False}
-
-    # Find SM Claim by patient_control_number
+    # Look up SM Claim by patient_control_number (claim control number)
     try:
         async with httpx.AsyncClient(base_url=FRAPPE_URL, headers=_frappe_headers()) as client:
             resp = await client.get(
                 "/api/resource/SM Claim",
                 params={
-                    "filters": f'[["patient_control_number","=","{patient_control_number}"]]',
-                    "fields": '["name","canonical_state"]',
+                    "filters": json.dumps([["patient_control_number", "=", claim_control_number]]),
+                    "fields": json.dumps(["name", "canonical_state"]),
                     "limit_page_length": 1,
                 },
                 timeout=15,
@@ -810,31 +851,51 @@ async def stedi_277_webhook(request_body: dict):
             resp.raise_for_status()
             claims = resp.json().get("data", [])
     except Exception as exc:
-        logger.error("Failed to look up claim for 277 webhook: %s", exc)
-        return {"status": "ok", "matched": False}
+        logger.error("277CA webhook: failed to look up claim: %s", exc)
+        return {"status": "warning", "detail": f"claim lookup failed: {exc}"}
 
     if not claims:
-        logger.warning("No SM Claim found for patient_control_number=%s", patient_control_number)
-        return {"status": "ok", "matched": False}
+        logger.warning("277CA webhook: no claim found for control_number=%s", claim_control_number)
+        return {"status": "warning", "detail": f"claim not found: {claim_control_number}"}
 
-    claim_name = claims[0]["name"]
-    today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    claim = claims[0]
+    claim_name = claim["name"]
+    current_state = claim.get("canonical_state", "")
 
-    if category_code in ("A1", "A2"):
-        update_data = {
-            "canonical_state": "adjudicating",
-            "acknowledgment_date": today,
-        }
-        if category_code == "A2":
-            update_data["notes"] = request_body.get("statusReason", "Accepted with errors")
-        await _update_frappe_doc("SM Claim", claim_name, update_data)
-    elif category_code == "R3":
-        await _update_frappe_doc("SM Claim", claim_name, {
-            "canonical_state": "draft",
-            "notes": f"Rejected: {request_body.get('statusReason', 'Unknown reason')}",
-        })
+    # Claim must be in submitted state for 277CA transitions
+    if current_state != "submitted":
+        return {"status": "warning", "detail": "claim not in submitted state"}
 
-    return {"status": "ok", "matched": True, "claim_name": claim_name, "category": category_code}
+    label = STC_LABELS.get(stc_category, f"unknown STC: {stc_category}")
+    reason = f"{stc_category}: {label}"
+
+    # Manual review codes — log but don't transition
+    if stc_category in STC_MANUAL_REVIEW:
+        logger.error("277CA webhook: %s for claim %s — manual review required", stc_category, claim_name)
+        return {"status": "warning", "detail": f"{stc_category} {label}"}
+
+    # Determine target state
+    if stc_category in STC_ADJUDICATING:
+        to_state = "adjudicating"
+    elif stc_category in STC_REJECTED:
+        to_state = "rejected"
+    else:
+        logger.warning("277CA webhook: unrecognized STC category %s for claim %s", stc_category, claim_name)
+        return {"status": "warning", "detail": f"unrecognized STC category: {stc_category}"}
+
+    # Execute transition via Frappe whitelisted API
+    try:
+        await _transition_claim_state(
+            claim_name=claim_name,
+            to_state=to_state,
+            trigger_reference=transaction_id,
+            reason=reason,
+        )
+    except Exception as exc:
+        logger.error("277CA webhook: transition failed for claim %s: %s", claim_name, exc)
+        return {"status": "warning", "detail": f"transition failed: {exc}"}
+
+    return {"status": "ok", "claim": claim_name, "new_state": to_state}
 
 
 @webhook_router.post("/835")

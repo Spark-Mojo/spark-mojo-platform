@@ -95,3 +95,32 @@ class SMClaim(Document):
         ).insert(ignore_permissions=True)
 
         # 8. Do NOT call frappe.db.commit() - caller's responsibility
+
+
+@frappe.whitelist()
+def api_transition_state(
+    claim_name: str,
+    to_state: str,
+    trigger_type: str,
+    reason: str = "",
+    trigger_reference: str = "",
+    changed_by: str = "",
+):
+    """Whitelisted API to call transition_state() on an SM Claim.
+
+    Used by the abstraction layer for webhook-driven state transitions.
+    """
+    doc = frappe.get_doc("SM Claim", claim_name)
+    if not changed_by:
+        changed_by = frappe.session.user
+
+    doc.transition_state(
+        to_state=to_state,
+        changed_by=changed_by,
+        trigger_type=trigger_type,
+        reason=reason,
+        trigger_reference=trigger_reference,
+    )
+    doc.save(ignore_permissions=True)
+    frappe.db.commit()
+    return {"claim_name": doc.name, "canonical_state": doc.canonical_state}

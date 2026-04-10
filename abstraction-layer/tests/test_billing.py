@@ -313,77 +313,193 @@ class TestClaimSubmission:
 
 
 # ---------------------------------------------------------------------------
-# Test: 277CA Webhook
+# Test: 277CA Webhook (BILL-011)
 # ---------------------------------------------------------------------------
 
-class TestWebhook277:
+
+def _mock_277ca_client(claim_state="submitted", claim_found=True):
+    """Create a mock httpx client for 277CA webhook tests."""
+    instance = AsyncMock()
+
+    async def mock_get(url, **kwargs):
+        resp = MagicMock()
+        url_str = str(url)
+        if "/api/resource/SM Claim" in url_str and "filters" in str(kwargs):
+            resp.status_code = 200
+            if claim_found:
+                resp.json.return_value = {
+                    "data": [{"name": "CLM-202604-0001", "canonical_state": claim_state}]
+                }
+            else:
+                resp.json.return_value = {"data": []}
+            resp.raise_for_status = MagicMock()
+        else:
+            resp.status_code = 404
+            resp.json.return_value = {}
+            resp.raise_for_status = MagicMock()
+        return resp
+
+    async def mock_post(url, **kwargs):
+        resp = MagicMock()
+        url_str = str(url)
+        if "api_transition_state" in url_str:
+            resp.status_code = 200
+            resp.json.return_value = {
+                "message": {"claim_name": "CLM-202604-0001", "canonical_state": "adjudicating"}
+            }
+            resp.raise_for_status = MagicMock()
+        else:
+            resp.status_code = 200
+            resp.json.return_value = {"data": {}}
+            resp.raise_for_status = MagicMock()
+        return resp
+
+    instance.get = mock_get
+    instance.post = mock_post
+    instance.__aenter__ = AsyncMock(return_value=instance)
+    instance.__aexit__ = AsyncMock(return_value=False)
+    return instance
+
+
+class TestWebhook277CA:
 
     @patch("routes.billing.httpx.AsyncClient")
-    def test_277_accepted_a1(self, MockClient, client):
-        """A1 accepted — claim state goes to adjudicating."""
-        instance = AsyncMock()
-        instance.get = AsyncMock(side_effect=_mock_frappe_get)
-        instance.put = AsyncMock(side_effect=_mock_frappe_put)
-        instance.__aenter__ = AsyncMock(return_value=instance)
-        instance.__aexit__ = AsyncMock(return_value=False)
-        MockClient.return_value = instance
-
-        resp = client.post("/api/webhooks/stedi/277", json={
-            "transactionId": "TXN-001",
-            "x12": {"transactionSetIdentifier": "277"},
-            "categoryCode": "A1",
-            "patientControlNumber": "PCN-001",
+    def test_277ca_a1_accepted(self, MockClient, client):
+        """A1 accepted — claim transitions to adjudicating."""
+        MockClient.return_value = _mock_277ca_client(claim_state="submitted")
+        resp = client.post("/api/webhooks/stedi/277ca", json={
+            "stedi_transaction_id": "TXN-001",
+            "claim_control_number": "PCN-001",
+            "stc_category": "A1",
         })
         assert resp.status_code == 200
         data = resp.json()
-        assert data["matched"] is True
-        assert data["category"] == "A1"
+        assert data["status"] == "ok"
+        assert data["claim"] == "CLM-202604-0001"
+        assert data["new_state"] == "adjudicating"
 
     @patch("routes.billing.httpx.AsyncClient")
-    def test_277_rejected_r3(self, MockClient, client):
-        """R3 rejected — claim state goes back to draft."""
-        instance = AsyncMock()
-        instance.get = AsyncMock(side_effect=_mock_frappe_get)
-        instance.put = AsyncMock(side_effect=_mock_frappe_put)
-        instance.__aenter__ = AsyncMock(return_value=instance)
-        instance.__aexit__ = AsyncMock(return_value=False)
-        MockClient.return_value = instance
-
-        resp = client.post("/api/webhooks/stedi/277", json={
-            "transactionId": "TXN-002",
-            "x12": {"transactionSetIdentifier": "277"},
-            "categoryCode": "R3",
-            "patientControlNumber": "PCN-001",
-            "statusReason": "Invalid member ID",
+    def test_277ca_a2_accepted_with_errors(self, MockClient, client):
+        """A2 accepted with errors — claim transitions to adjudicating."""
+        MockClient.return_value = _mock_277ca_client(claim_state="submitted")
+        resp = client.post("/api/webhooks/stedi/277ca", json={
+            "stedi_transaction_id": "TXN-002",
+            "claim_control_number": "PCN-001",
+            "stc_category": "A2",
         })
         assert resp.status_code == 200
         data = resp.json()
-        assert data["matched"] is True
-        assert data["category"] == "R3"
+        assert data["status"] == "ok"
+        assert data["new_state"] == "adjudicating"
 
     @patch("routes.billing.httpx.AsyncClient")
-    def test_277_no_matching_claim(self, MockClient, client):
-        """No matching claim — return 200 OK anyway."""
-        mock_resp = MagicMock()
-        mock_resp.status_code = 200
-        mock_resp.json.return_value = {"data": []}
-        mock_resp.raise_for_status = MagicMock()
-
-        instance = AsyncMock()
-        instance.get = AsyncMock(return_value=mock_resp)
-        instance.__aenter__ = AsyncMock(return_value=instance)
-        instance.__aexit__ = AsyncMock(return_value=False)
-        MockClient.return_value = instance
-
-        resp = client.post("/api/webhooks/stedi/277", json={
-            "transactionId": "TXN-003",
-            "x12": {"transactionSetIdentifier": "277"},
-            "categoryCode": "A1",
-            "patientControlNumber": "UNKNOWN-PCN",
+    def test_277ca_a0_forwarded(self, MockClient, client):
+        """A0 forwarded — claim transitions to adjudicating."""
+        MockClient.return_value = _mock_277ca_client(claim_state="submitted")
+        resp = client.post("/api/webhooks/stedi/277ca", json={
+            "stedi_transaction_id": "TXN-003",
+            "claim_control_number": "PCN-001",
+            "stc_category": "A0",
         })
         assert resp.status_code == 200
         data = resp.json()
-        assert data["matched"] is False
+        assert data["status"] == "ok"
+        assert data["new_state"] == "adjudicating"
+
+    @patch("routes.billing.httpx.AsyncClient")
+    def test_277ca_r3_rejected(self, MockClient, client):
+        """R3 rejected — claim transitions to rejected."""
+        MockClient.return_value = _mock_277ca_client(claim_state="submitted")
+        resp = client.post("/api/webhooks/stedi/277ca", json={
+            "stedi_transaction_id": "TXN-004",
+            "claim_control_number": "PCN-001",
+            "stc_category": "R3",
+        })
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["status"] == "ok"
+        assert data["new_state"] == "rejected"
+
+    @patch("routes.billing.httpx.AsyncClient")
+    def test_277ca_a3_rejected(self, MockClient, client):
+        """A3 rejected — claim transitions to rejected."""
+        MockClient.return_value = _mock_277ca_client(claim_state="submitted")
+        resp = client.post("/api/webhooks/stedi/277ca", json={
+            "stedi_transaction_id": "TXN-005",
+            "claim_control_number": "PCN-001",
+            "stc_category": "A3",
+        })
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["status"] == "ok"
+        assert data["new_state"] == "rejected"
+
+    @patch("routes.billing.httpx.AsyncClient")
+    def test_277ca_e0_manual_review(self, MockClient, client):
+        """E0 payer error — no transition, warning returned."""
+        MockClient.return_value = _mock_277ca_client(claim_state="submitted")
+        resp = client.post("/api/webhooks/stedi/277ca", json={
+            "stedi_transaction_id": "TXN-006",
+            "claim_control_number": "PCN-001",
+            "stc_category": "E0",
+        })
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["status"] == "warning"
+        assert "manual review" in data["detail"].lower()
+
+    @patch("routes.billing.httpx.AsyncClient")
+    def test_277ca_a4_manual_review(self, MockClient, client):
+        """A4 not found — no transition, warning returned."""
+        MockClient.return_value = _mock_277ca_client(claim_state="submitted")
+        resp = client.post("/api/webhooks/stedi/277ca", json={
+            "stedi_transaction_id": "TXN-007",
+            "claim_control_number": "PCN-001",
+            "stc_category": "A4",
+        })
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["status"] == "warning"
+        assert "manual review" in data["detail"].lower()
+
+    @patch("routes.billing.httpx.AsyncClient")
+    def test_277ca_claim_not_found(self, MockClient, client):
+        """No matching claim — return 200 with warning."""
+        MockClient.return_value = _mock_277ca_client(claim_found=False)
+        resp = client.post("/api/webhooks/stedi/277ca", json={
+            "stedi_transaction_id": "TXN-008",
+            "claim_control_number": "UNKNOWN-PCN",
+            "stc_category": "A1",
+        })
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["status"] == "warning"
+        assert "claim not found" in data["detail"]
+
+    @patch("routes.billing.httpx.AsyncClient")
+    def test_277ca_claim_not_in_submitted_state(self, MockClient, client):
+        """Claim exists but not in submitted state — no transition, warning."""
+        MockClient.return_value = _mock_277ca_client(claim_state="adjudicating")
+        resp = client.post("/api/webhooks/stedi/277ca", json={
+            "stedi_transaction_id": "TXN-009",
+            "claim_control_number": "PCN-001",
+            "stc_category": "A1",
+        })
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["status"] == "warning"
+        assert "not in submitted state" in data["detail"]
+
+    def test_277ca_missing_control_number(self, client):
+        """Missing claim_control_number — return 200 with warning."""
+        resp = client.post("/api/webhooks/stedi/277ca", json={
+            "stedi_transaction_id": "TXN-010",
+            "stc_category": "A1",
+        })
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["status"] == "warning"
+        assert "missing" in data["detail"]
 
 
 # ---------------------------------------------------------------------------
