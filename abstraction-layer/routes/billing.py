@@ -1617,3 +1617,88 @@ async def appeal_escalate(req: EscalateRequest):
     })
 
     return {"appeal": new_appeal}
+
+
+# ---------------------------------------------------------------------------
+# BILL-019: AR Summary
+# ---------------------------------------------------------------------------
+
+ALL_CLAIM_STATES = [
+    "draft", "pending_info", "pending_auth", "validated", "held",
+    "submitted", "rejected", "adjudicating", "paid", "partial_paid",
+    "denied", "in_appeal", "appeal_won", "appeal_lost",
+    "pending_secondary", "patient_balance", "written_off", "closed", "voided",
+]
+
+
+@router.get("/ar/summary")
+async def ar_summary(
+    site: str = Query(..., description="Frappe site name for tenant isolation"),
+    date_from: Optional[str] = None,
+    date_to: Optional[str] = None,
+):
+    filters = []
+    if date_from:
+        filters.append(["date_of_service", ">=", date_from])
+    if date_to:
+        filters.append(["date_of_service", "<=", date_to])
+
+    fields = '["name","canonical_state","claim_charge_amount","paid_amount","patient_responsibility"]'
+    claims = await _list_frappe_docs(
+        "SM Claim",
+        filters=json.dumps(filters) if filters else "",
+        fields=fields,
+        limit=0,
+    )
+
+    by_state = {s: {"count": 0, "billed": 0.0} for s in ALL_CLAIM_STATES}
+
+    total_claims = 0
+    total_billed = 0.0
+    total_paid = 0.0
+    total_denied = 0.0
+    total_in_appeal = 0.0
+    total_patient_balance = 0.0
+    total_written_off = 0.0
+
+    for claim in claims:
+        state = claim.get("canonical_state", "draft")
+        billed = float(claim.get("claim_charge_amount") or 0)
+        paid = float(claim.get("paid_amount") or 0)
+
+        total_claims += 1
+        total_billed += billed
+        total_paid += paid
+
+        if state in by_state:
+            by_state[state]["count"] += 1
+            by_state[state]["billed"] += billed
+
+        if state == "denied":
+            total_denied += billed
+        elif state == "in_appeal":
+            total_in_appeal += billed
+        elif state == "patient_balance":
+            total_patient_balance += billed
+        elif state == "written_off":
+            total_written_off += billed
+
+    total_outstanding = round(total_billed - total_paid - total_written_off, 2)
+
+    for s in by_state:
+        by_state[s]["billed"] = round(by_state[s]["billed"], 2)
+
+    return {
+        "summary": {
+            "total_claims": total_claims,
+            "total_billed": round(total_billed, 2),
+            "total_paid": round(total_paid, 2),
+            "total_denied": round(total_denied, 2),
+            "total_in_appeal": round(total_in_appeal, 2),
+            "total_patient_balance": round(total_patient_balance, 2),
+            "total_written_off": round(total_written_off, 2),
+            "total_outstanding": total_outstanding,
+        },
+        "by_state": by_state,
+        "as_of": datetime.now(timezone.utc).isoformat(),
+    }
