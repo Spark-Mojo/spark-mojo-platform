@@ -60,3 +60,4 @@ skills/ralph/SKILL.md
 
 # Medplum config contains db/redis passwords — never commit
 medplum/medplum.config.json
+abstraction-layer/.coverage
