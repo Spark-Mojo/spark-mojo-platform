@@ -1,194 +1,210 @@
-# Overnight Task Queue — Session 40
-# WKBD-001 + BILL-011 through BILL-021
-
-## How Ralph Uses This File
-
-Work stories in priority order, top to bottom. Each story gets its own
-feature branch. After each story passes all gates, merge to main and deploy
-before moving to the next story.
-
-For each story:
-1. Check for a COMPLETE marker file at repo root (e.g., WKBD-001-COMPLETE).
-   If it exists, skip to the next story.
-2. Check for a BLOCKED marker file at repo root (e.g., BLOCKED-WKBD-001.md).
-   If it exists, skip to the next story.
-3. Check that all dependency COMPLETE markers exist. If any dependency is
-   missing its COMPLETE marker (and also does not have a BLOCKED marker),
-   skip this story for now - it will be retried after its dependency completes.
-   If a dependency has a BLOCKED marker, this story is also blocked - write
-   BLOCKED-[ID].md noting the blocked dependency and skip to the next story.
-4. Create branch: `git checkout -b story/[branch-name]`
-5. Read the full story spec from the absolute path listed below.
-6. Read CLAUDE.md for conventions, gotchas, and Definition of Done.
-7. Build exactly what the spec says. Nothing more. Nothing less.
-8. If ambiguous on any architectural decision: write BLOCKED-[ID].md
-   at repo root and move to the next story. Never improvise on architecture.
-9. Run all quality gates (see CLAUDE.md Definition of Done for your story type).
-10. When all gates pass:
-    a. Commit using the exact commit message from the story spec.
-    b. Push the feature branch: `git push origin [branch-name]`
-    c. Merge to main: `git checkout main && git merge story/[branch-name] && git push origin main`
-    d. Deploy to VPS: `ssh sparkmojo 'cd /home/ops/spark-mojo-platform && ./deploy.sh'`
-    e. Wait for deploy.sh to complete. If it exits non-zero, write BLOCKED-[ID]-DEPLOY.md
-       and stop. Do not proceed to the next story on a failed deploy.
-    f. Touch COMPLETE marker: `touch [STORY-ID]-COMPLETE`
-    g. Remove the PLAN file: `rm -f PLAN-[STORY-ID].md`
-    h. Append a line to QUEUE-PROGRESS.md: `[STORY-ID]: COMPLETE at [timestamp]`
-11. Move to next story.
-
+# Fix Run — Session 41
+# Generated: Session 41 Morning Verification, April 11 2026
+## How to Use This File
+Work stories in priority order. Each story gets its own branch (code stories) 
+or executes directly (infra stories). For each story:
+1. Check for COMPLETE marker (e.g., FIX-41-001-COMPLETE). If exists, skip.
+2. Check for BLOCKED marker (e.g., BLOCKED-FIX-41-001.md). If exists, skip.
+3. Check dependencies — all dependency COMPLETE markers must exist first.
+4. Read full story spec below.
+5. Read CLAUDE.md for conventions.
+6. Build exactly what the spec says — nothing more.
+7. Run all quality gates.
+8. If ambiguous on architecture, write BLOCKED-FIX-41-NNN.md and move on.
+9. Commit/deploy/mark complete per story type.
 ## Retry Policy
-
-If a story fails verification, the builder gets another attempt. After 5
-consecutive failures on the same story, write BLOCKED-[STORY-ID].md with
-the exact failure details from all 5 attempts and move to the next story.
-Do not burn the entire run on one broken story.
-
-## Governance Repo
-
-All story specs are in the governance repo at:
-/Users/jamesilsley/GitHub/sparkmojo-internal/
-
+After 5 consecutive failures, write BLOCKED and move on.
 ## Story Queue
-
----
-
-### WKBD-001 — `story/wkbd-001-task-mode`
-Add task_mode field (active/watching/snoozed) to SM Task DocType.
-Add POST /api/modules/tasks/update_mode endpoint.
-Add task_mode filter to GET /api/modules/tasks/list.
-Type: DocType field addition + Python API
-Spec: /Users/jamesilsley/GitHub/sparkmojo-internal/platform/feature-library/stories/WKBD-001-task-mode.md
+### FIX-41-001 — `story/fix-41-001-route-registration`
+Wire 4 missing and broken billing routes in the FastAPI abstraction layer.
+Type: Python FastAPI
 Dependencies: None
-Note: This story must complete and deploy before BILL-013 runs.
-      BILL-013 depends on task_mode existing on SM Task.
-
----
-
-### BILL-011 — `story/bill-011-277ca-webhook`
-277CA acknowledgment webhook handler. Stedi posts 277CA to
-/api/webhooks/stedi/277ca. Handler parses response, transitions
-SM Claim state via transition_state().
-Type: Python API (webhook handler)
-Spec: /Users/jamesilsley/GitHub/sparkmojo-internal/platform/feature-library/stories/BILL-011-277ca-webhook-handler.md
+### FIX-41-002 — `story/fix-41-002-test-auth-fixture`
+Add authenticated test client fixture to conftest.py. Fixes all 26 test_tasks.py auth failures.
+Type: Python FastAPI (test infrastructure)
 Dependencies: None
-
----
-
-### BILL-012 — `story/bill-012-835-era-state-integration`
-Wire existing 835 ERA processor (BILL-004) into the state machine
-(BILL-006 through BILL-010). ERA processing now drives SM Claim
-state transitions via transition_state().
-Type: Python API (integration)
-Spec: /Users/jamesilsley/GitHub/sparkmojo-internal/platform/feature-library/stories/BILL-012-835-era-state-integration.md
+### FIX-41-003 — `story/fix-41-003-oauth-hostname`
+Fix Frappe host_name misconfiguration on poc-dev site causing Google OAuth redirect loop.
+Type: VPS Infrastructure — no git commit
 Dependencies: None
-
----
-
-### BILL-013 — `story/bill-013-sm-denial-doctype`
-SM Denial DocType. Created automatically when a claim transitions
-to denied. Stores CARC/RARC codes, payer info, denial metadata,
-and AI classification fields (ai_category, ai_appealable,
-ai_action, ai_confidence - populated in BILL-014).
-Type: Frappe DocType
-Dependencies: WKBD-001, BILL-012
-Spec: /Users/jamesilsley/GitHub/sparkmojo-internal/platform/feature-library/stories/BILL-013-sm-denial-doctype.md
-
----
-
-### BILL-014 — `story/bill-014-ai-denial-classification`
-after_insert hook on SM Denial. Calls AWS Bedrock (Claude Sonnet)
-to classify denial. Writes ai_category, ai_appealable, ai_action,
-ai_confidence back to the record. Graceful fallback on any error.
-Type: Python API (Frappe hook + Bedrock call)
-Dependencies: BILL-013
-Env vars required: AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY,
-                   AWS_REGION - all present in .env.poc
-Spec: /Users/jamesilsley/GitHub/sparkmojo-internal/platform/feature-library/stories/BILL-014-ai-denial-classification.md
-
----
-
-### BILL-015 — `story/bill-015-denial-worklist`
-Denial worklist API endpoint. Returns open denials for a tenant
-with filtering by payer, date range, ai_category, and state.
-Powers the billing coordinator's daily work queue.
-Type: Python API
-Dependencies: BILL-013
-Spec: /Users/jamesilsley/GitHub/sparkmojo-internal/platform/feature-library/stories/BILL-015-denial-worklist.md
-
----
-
-### BILL-016 — `story/bill-016-sm-appeal-doctype`
-SM Appeal DocType. Created manually by billing coordinator from
-a denied claim. Stores appeal level, letter content, submission
-status, and deadline. Links back to SM Denial and SM Claim.
-Type: Frappe DocType
-Dependencies: BILL-013
-Spec: /Users/jamesilsley/GitHub/sparkmojo-internal/platform/feature-library/stories/BILL-016-sm-appeal-doctype.md
-
----
-
-### BILL-017 — `story/bill-017-appeal-letter-generation`
-after_insert hook on SM Appeal. Calls AWS Bedrock (Claude Sonnet)
-to generate a draft appeal letter. Writes to appeal_letter field
-via frappe.db.set_value(). Updates linked WorkboardMojo task with
-a comment. Graceful fallback on any error.
-Type: Python API (Frappe hook + Bedrock call)
-Dependencies: BILL-016
-Env vars required: AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY,
-                   AWS_REGION - all present in .env.poc
-Spec: /Users/jamesilsley/GitHub/sparkmojo-internal/platform/feature-library/stories/BILL-017-appeal-letter-generation.md
-
----
-
-### BILL-018 — `story/bill-018-appeal-transitions`
-State machine transitions for SM Appeal. Appeal moves through
-draft, submitted, upheld, overturned, abandoned states.
-Wires into SM Claim state on appeal resolution.
-Type: Python API (state machine extension)
-Dependencies: BILL-016
-Spec: /Users/jamesilsley/GitHub/sparkmojo-internal/platform/feature-library/stories/BILL-018-appeal-transitions.md
-
----
-
-### BILL-019 — `story/bill-019-ar-summary`
-AR summary endpoint. Returns current accounts receivable totals
-for a tenant grouped by state bucket and payer. Single aggregate
-query, no pagination needed.
-Type: Python API
+### FIX-41-004 — `story/fix-41-004-dual-frontend-cleanup`
+Stop stale frappe-poc-frontend-1 container after confirming no active Traefik routing.
+Type: VPS Infrastructure — no git commit
+Dependencies: FIX-41-003
+### FIX-41-005 — `story/fix-41-005-kb-artifacts`
+Author KB artifacts for 10 stories missing from last night's run. Commit to sparkmojo-internal.
+Type: Documentation
 Dependencies: None
-Spec: /Users/jamesilsley/GitHub/sparkmojo-internal/platform/feature-library/stories/BILL-019-ar-summary.md
-
 ---
-
-### BILL-020 — `story/bill-020-ar-aging`
-AR aging report endpoint. Returns open claims bucketed by age
-(0-30, 31-60, 61-90, 91-120, 120+ days). Payer and state filters.
-Universal Aging Engine pattern - build generically.
-Type: Python API
-Dependencies: None
-Spec: /Users/jamesilsley/GitHub/sparkmojo-internal/platform/feature-library/stories/BILL-020-ar-aging.md
-
+## Story Specs
+### FIX-41-001: Route Registration and Wildcard Fix
+**Problem:** 4 billing routes returning 404 or wrong handler:
+- `/api/modules/billing/webhooks/277ca` — 404
+- `/api/modules/billing/appeals/transition` — 404
+- `/api/modules/billing/ar/aging` — 404
+- `/api/modules/billing/denials/analytics` — caught by `denials/{name}` wildcard
+**Steps:**
+1. Explore the abstraction layer structure. Find the main router file and all
+   billing sub-router files. Start at `abstraction-layer/main.py` or equivalent.
+2. For each missing route diagnose first:
+   - Is handler code present but sub-router not mounted?
+   - Is the route missing from the sub-router file entirely?
+   - Is the route present but below a wildcard (BILL-021 case)?
+3. Fix each:
+   - BILL-011 `/api/modules/billing/webhooks/277ca`:
+     If handler exists but sub-router not mounted, mount it.
+     If handler is missing entirely, create it per spec at:
+     /Users/jamesilsley/GitHub/sparkmojo-internal/platform/feature-library/stories/BILL-011-277ca-webhook-handler.md
+   - BILL-018 `/api/modules/billing/appeals/transition`:
+     Same pattern. Find handler, ensure route registered in router.
+   - BILL-020 `/api/modules/billing/ar/aging`:
+     Find the AR router. Add endpoint if missing. Ensure router mounted.
+   - BILL-021 `/api/modules/billing/denials/analytics`:
+     In the denials router file, the `analytics` route MUST be defined BEFORE
+     any `/{name}` wildcard route. Move or add it above the wildcard.
+4. Fast gate after each fix:
+   docker exec spark-mojo-platform-poc-api-1 python -m pytest tests/ -x -q --tb=short 2>&1 | tail -10
+5. Full gate (all 4 fixed):
+   docker exec spark-mojo-platform-poc-api-1 python -m pytest tests/ -q --tb=no 2>&1 | tail -5
+   PASS: 0 failures outside test_tasks.py (the 26 task failures are expected, fixed in FIX-41-002)
+6. Smoke all 4 routes FROM VPS:
+   curl -s -w "\nHTTP:%{http_code}" -X POST https://api.poc.sparkmojo.com/api/modules/billing/webhooks/277ca \
+     -H "Content-Type: application/json" \
+     -d '{"stedi_transaction_id":"TEST","claim_control_number":"NONEXISTENT","stc_category":"A1","stc_status":"test"}'
+   PASS: HTTP 200 with status:warning (claim not found is correct — endpoint exists)
+   curl -s -w "\nHTTP:%{http_code}" https://api.poc.sparkmojo.com/api/modules/billing/ar/aging
+   PASS: HTTP 200
+   curl -s -w "\nHTTP:%{http_code}" https://api.poc.sparkmojo.com/api/modules/billing/denials/analytics
+   PASS: HTTP 200 with analytics structure, NOT {"detail":"SM Denial 'analytics' not found"}
+   curl -s -w "\nHTTP:%{http_code}" -X POST https://api.poc.sparkmojo.com/api/modules/billing/appeals/transition \
+     -H "Content-Type: application/json" \
+     -d '{"appeal_id":"NONEXISTENT","new_state":"submitted"}'
+   PASS: HTTP 404 or 422 with app-level message (not generic FastAPI route-not-found)
+**Commit message:** `fix(billing): register missing routes for BILL-011, BILL-018, BILL-020, fix BILL-021 wildcard order`
+**Deploy after merge:** Yes — ssh sparkmojo 'cd /home/ops/spark-mojo-platform && ./deploy.sh'
 ---
-
-### BILL-021 — `story/bill-021-denial-analytics`
-Denial analytics endpoint. Returns denial rates, top denial
-reasons by CARC code, payer denial trends, and appeal success
-rates over a configurable date range.
-Type: Python API
-Dependencies: BILL-013
-Spec: /Users/jamesilsley/GitHub/sparkmojo-internal/platform/feature-library/stories/BILL-021-denial-analytics.md
-
+### FIX-41-002: test_tasks.py Auth Fixture
+**Problem:** All 26 tests in tests/test_tasks.py fail with 401. The ADMIN-001
+auth middleware requires X-Admin-Key header. Tests do not send it.
+**Steps:**
+1. Read existing conftest.py (in abstraction-layer/tests/ or tests/).
+   Look for how other passing test files handle auth — e.g., test_billing.py.
+   If they also use an unauthenticated client, check if there is an
+   ADMIN_SERVICE_KEY set in the test environment.
+2. Understand the auth setup from ADMIN-001:
+   The middleware checks X-Admin-Key header against ADMIN_SERVICE_KEY env var.
+   Options in order of preference:
+   a. If a test env ADMIN_SERVICE_KEY exists: add X-Admin-Key header to AsyncClient headers
+   b. If not: use app.dependency_overrides to bypass the auth dependency in tests
+   c. If neither works: check if there is a test-mode flag in the app config
+3. Add authenticated client fixture to conftest.py. Pattern will be something like:
+   @pytest.fixture
+   def auth_client():
+       headers = {"X-Admin-Key": os.getenv("ADMIN_SERVICE_KEY", "test-key")}
+       return AsyncClient(app=app, base_url="http://test", headers=headers)
+4. Update ALL tests in tests/test_tasks.py to use the auth fixture instead of
+   the unauthenticated client. Change the fixture only — do not touch assertions.
+5. Fast gate:
+   docker exec spark-mojo-platform-poc-api-1 python -m pytest tests/test_tasks.py -v --tb=short 2>&1 | tail -30
+   PASS: 0 failures
+6. Full gate:
+   docker exec spark-mojo-platform-poc-api-1 python -m pytest tests/ -q --tb=no 2>&1 | tail -5
+   PASS: 0 failures total
+**Commit message:** `fix(tests): add auth fixture to conftest.py, resolve 26 test_tasks.py auth failures`
+**Deploy after merge:** Yes — ssh sparkmojo 'cd /home/ops/spark-mojo-platform && ./deploy.sh'
 ---
-
+### FIX-41-003: OAuth host_name Fix (VPS Infrastructure — no git commit)
+**Problem:** poc-dev Frappe site has host_name set to poc-dev.app.sparkmojo.com.
+Traefik routes that subdomain to the React frontend. Google OAuth redirects land
+on the React app instead of Frappe Desk.
+**Steps — all via SSH:**
+1. Confirm current wrong value:
+   ssh sparkmojo 'docker exec frappe-poc-backend-1 bench --site poc-dev.sparkmojo.com config show 2>&1 | grep host_name'
+2. Set correct value:
+   ssh sparkmojo 'docker exec frappe-poc-backend-1 bench --site poc-dev.sparkmojo.com set-config host_name "https://poc-dev.sparkmojo.com"'
+3. Confirm correct value written:
+   ssh sparkmojo 'docker exec frappe-poc-backend-1 bench --site poc-dev.sparkmojo.com config show 2>&1 | grep host_name'
+   PASS: shows "https://poc-dev.sparkmojo.com"
+4. Deploy to restart with new config:
+   ssh sparkmojo 'cd /home/ops/spark-mojo-platform && ./deploy.sh'
+   PASS: exits 0
+5. Verify Frappe is reachable:
+   curl -s -o /dev/null -w "%{http_code}" https://poc-dev.sparkmojo.com/app
+   PASS: 200 or 302
+**No git commit.** Touch FIX-41-003-COMPLETE after step 5 passes.
+---
+### FIX-41-004: Dual Frontend Container Cleanup (VPS Infrastructure — no git commit)
+**Problem:** frappe-poc-frontend-1 (8 days old) is running alongside the current
+spark-mojo-platform-poc-frontend-1. May be serving stale frontend to some users.
+**Steps:**
+1. Check Traefik labels on stale container:
+   ssh sparkmojo 'docker inspect frappe-poc-frontend-1 --format "{{json .Config.Labels}}" | python3 -m json.tool 2>&1 | grep -i traefik'
+2. Decision:
+   - NO Traefik labels found: safe to stop. Continue to step 3.
+   - Traefik labels found pointing to live domain: write BLOCKED-FIX-41-004.md
+     with the label details. Do not stop the container. Mark blocked and move on.
+3. If safe to stop:
+   ssh sparkmojo 'docker stop frappe-poc-frontend-1'
+4. Verify active frontend still works:
+   curl -s -o /dev/null -w "%{http_code}" https://app.poc.sparkmojo.com
+   PASS: 200
+   FAIL: restart frappe-poc-frontend-1 immediately, write BLOCKED-FIX-41-004.md
+**No git commit.** Touch FIX-41-004-COMPLETE after step 4 passes.
+---
+### FIX-41-005: KB Artifacts for 10 Missing Stories
+**Work in governance repo:** /Users/jamesilsley/GitHub/sparkmojo-internal/
+**Stories and required files:**
+BILL-011 → platform/knowledge-base/billing/BILL-011-277ca-webhook/
+  DEPLOYMENT.md, DEFICIENCIES.md, EXTENSION-ROADMAP.md
+BILL-012 → platform/knowledge-base/billing/BILL-012-835-era-integration/
+  DEPLOYMENT.md, DEFICIENCIES.md, EXTENSION-ROADMAP.md
+BILL-014 → platform/knowledge-base/billing/BILL-014-ai-denial-classification/
+  DEPLOYMENT.md, DEFICIENCIES.md, EXTENSION-ROADMAP.md
+BILL-015 → platform/knowledge-base/billing/BILL-015-denial-worklist/
+  DEPLOYMENT.md, DEFICIENCIES.md, EXTENSION-ROADMAP.md
+BILL-017 → platform/knowledge-base/billing/BILL-017-appeal-letter-generation/
+  DEPLOYMENT.md, DEFICIENCIES.md, EXTENSION-ROADMAP.md
+BILL-018 → platform/knowledge-base/billing/BILL-018-appeal-transitions/
+  DEPLOYMENT.md, DEFICIENCIES.md, EXTENSION-ROADMAP.md
+BILL-019 → platform/knowledge-base/billing/BILL-019-ar-summary/
+  DEPLOYMENT.md, DEFICIENCIES.md, EXTENSION-ROADMAP.md
+BILL-020 → platform/knowledge-base/billing/BILL-020-ar-aging/
+  DEPLOYMENT.md, DEFICIENCIES.md, EXTENSION-ROADMAP.md
+BILL-021 → platform/knowledge-base/billing/BILL-021-denial-analytics/
+  DEPLOYMENT.md, DEFICIENCIES.md, EXTENSION-ROADMAP.md
+WKBD-001 → platform/knowledge-base/workboard/WKBD-001-task-mode/
+  DEPLOYMENT.md, INTERNAL-PLAYBOOK.md, USER-GUIDE.md, DEFICIENCIES.md, EXTENSION-ROADMAP.md
+Story specs at: /Users/jamesilsley/GitHub/sparkmojo-internal/platform/feature-library/stories/
+**Quality bar — billing stories (BILL-*):**
+- DEPLOYMENT.md: env var checklist, migration steps (if any), rollback procedure
+- DEFICIENCIES.md: honest record of what was stubbed or deferred
+- EXTENSION-ROADMAP.md: concrete next steps, spec'd to commissioning-ready level where possible
+**Quality bar — WKBD-001 (elevated — Platform Foundation):**
+Read the KB Artifacts section of the WKBD-001 spec carefully. It contains
+explicit instructions for each artifact. Non-negotiable requirements:
+- INTERNAL-PLAYBOOK.md must include a section titled exactly:
+  "This Is Foundation, Not Finish Line"
+  This section must document: what was built, what it intentionally enables
+  but does not yet implement, and a plain-language warning that building a
+  parallel task visibility mechanism outside task_mode is an architectural mistake.
+  Must reference DECISION-029.
+- USER-GUIDE.md must be fifth-grader readable with minimum 15 FAQs.
+  Use billing and sales examples for watching vs. active.
+- EXTENSION-ROADMAP.md is the most important artifact. Write it with genuine
+  ambition. Required sections: WKBD-002 through WKBD-005 each spec'd in enough
+  detail to commission directly, plus a product vision narrative section.
+- DEFICIENCIES.md must call out these 4 specific items:
+  snoozed auto-promotion scheduler not built (WKBD-002),
+  per-Mojo watching task registration not built,
+  notification logic on mode transitions not built,
+  WorkboardMojo UI not yet updated to filter by task_mode.
+**Commit:**
+cd /Users/jamesilsley/GitHub/sparkmojo-internal
+git add platform/knowledge-base/
+git commit -m "feat(kb): add missing KB artifacts for BILL-011 through BILL-021 and WKBD-001"
+git push origin main
+---
 ## Completion
-
-When all 13 stories are either COMPLETE or BLOCKED:
-
-1. Write QUEUE-COMPLETE.md at repo root with:
-   - Each story and its result (COMPLETE or BLOCKED)
-   - Any BLOCKED files and the exact reason recorded in each
-   - Test results summary (pass counts, coverage) for each story
-   - Total elapsed time from QUEUE-PROGRESS.md
-   - Any warnings or gotchas for James's morning verification
-
+When all 5 stories are either COMPLETE or BLOCKED:
+1. Write QUEUE-COMPLETE.md summarizing results.
 2. Output: LOOP_COMPLETE
