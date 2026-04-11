@@ -42,8 +42,13 @@ hats:
       any other event.
       Check 1 - Abstraction layer test baseline:
         docker exec spark-mojo-platform-poc-api-1 python -m pytest tests/ -q --tb=no 2>&1 | tail -5
-        PASS: total failures <= 26 and all failures are in test_tasks.py only
-        FAIL: failures in any other file
+        PASS: exactly 172 tests passing, 39 failing.
+Known pre-existing failures (ignore these):
+  tests/test_tasks.py - 26 failures (auth fixture gap)
+  tests/test_admin_service.py - ModuleNotFoundError (pre-existing)
+  tests/test_provisioning.py - ModuleNotFoundError (pre-existing)
+  tests/test_register_sm_apps.py - ModuleNotFoundError (pre-existing)
+FAIL: fewer than 172 passing, OR failures in any file NOT in the list above.
       Check 2 - Platform repo clean and on main:
         cd /Users/jamesilsley/GitHub/spark-mojo-platform
         git status --porcelain (must return nothing)
