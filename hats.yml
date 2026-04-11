@@ -40,65 +40,43 @@ hats:
       Run baseline checks in order. If any fail, write HEALTH-BLOCKED.md at
       repo root with exact failure, then print LOOP_COMPLETE. Do not emit
       any other event.
+
       Check 1 - Abstraction layer test baseline:
         docker exec spark-mojo-platform-poc-api-1 python -m pytest tests/ -q --tb=no 2>&1 | tail -5
-        PASS: exactly 172 tests passing, 39 failing.
-Known pre-existing failures (ignore these):
-  tests/test_tasks.py - 26 failures (auth fixture gap)
-  tests/test_admin_service.py - ModuleNotFoundError (pre-existing)
-  tests/test_provisioning.py - ModuleNotFoundError (pre-existing)
-  tests/test_register_sm_apps.py - ModuleNotFoundError (pre-existing)
-FAIL: fewer than 172 passing, OR failures in any file NOT in the list above.
+        PASS: exactly 172 passing, 39 failing across these 4 known files only -
+          tests/test_tasks.py (26 failures, auth fixture gap),
+          tests/test_admin_service.py (ModuleNotFoundError, pre-existing),
+          tests/test_provisioning.py (ModuleNotFoundError, pre-existing),
+          tests/test_register_sm_apps.py (ModuleNotFoundError, pre-existing).
+        FAIL: fewer than 172 passing, or failures in any file not listed above.
+
       Check 2 - Platform repo clean and on main:
         cd /Users/jamesilsley/GitHub/spark-mojo-platform
         git status --porcelain (must return nothing)
         git branch --show-current (must be main)
+
       Check 3 - Governance repo clean and on main:
         cd /Users/jamesilsley/GitHub/sparkmojo-internal
         git status --porcelain (must return nothing)
         git branch --show-current (must be main)
+
       Check 4 - No stale FIX-41 artifacts:
         cd /Users/jamesilsley/GitHub/spark-mojo-platform
         ls FIX-41-*-COMPLETE BLOCKED-FIX-41-*.md PLAN-FIX-41-*.md RETRY-FIX-41-*.count 2>/dev/null
         Must find nothing.
+
       Check 5 - VPS reachable:
         ssh sparkmojo 'echo OK'
         Must print OK.
+
       If all pass:
         Create QUEUE-PROGRESS.md:
           "# Queue Progress - Session 42 Fix Run\nStarted: [timestamp]\n"
         ralph emit "health.ok" "All checks passed."
+
       If ANY fail:
         Write HEALTH-BLOCKED.md with exact failure.
         Print LOOP_COMPLETE.
-  story_planner:
-    name: "Story Planner"
-    description: "Finds next buildable FIX-41 story, checks dependencies, writes PLAN file."
-    triggers: ["health.ok", "story.committed", "story.skipped"]
-    publishes: ["plan.ready", "story.skipped"]
-    max_activations: 24
-    instructions: |
-      Working directory: /Users/jamesilsley/GitHub/spark-mojo-platform/
-      Read PROMPT.md. Check for COMPLETE and BLOCKED markers at repo root.
-      Story IDs: FIX-41-001a, FIX-41-001b, FIX-41-001c, FIX-41-001d,
-                 FIX-41-002, FIX-41-003, FIX-41-005a, FIX-41-005b
-      Step 1 - Queue completion check:
-        A story is FINISHED if [ID]-COMPLETE or BLOCKED-[ID].md exists.
-        If all 8 are FINISHED:
-          Write QUEUE-COMPLETE.md with results summary table.
-          Print LOOP_COMPLETE.
-          Stop.
-      Step 2 - Find next buildable story (top to bottom):
-        a. COMPLETE marker exists? Skip.
-        b. BLOCKED marker exists? Skip.
-        c. All stories have Dependencies: None - skip dependency check.
-        d. RETRY-[ID].count >= 5? Write BLOCKED, emit story.skipped.
-      Step 3 - Write plan:
-        Read full story spec from path in PROMPT.md.
-        Write PLAN-[STORY-ID].md: story ID, branch name or "no-branch",
-        type, files to touch, gate commands, retry count.
-        Append to QUEUE-PROGRESS.md: "[ID]: started at [timestamp] (attempt [N])"
-        ralph emit "plan.ready" "[ID]: plan written, type: [type]"
   builder:
     name: "Builder"
     description: "Implements the plan exactly. Runs fast gates. Never improvises on architecture."
