@@ -905,6 +905,16 @@ async def denial_worklist(
     }
 
 
+@router.get("/denials/analytics")
+async def denial_analytics(
+    site: str = Query("", description="Frappe site name for tenant isolation"),
+    date_from: Optional[str] = None,
+    date_to: Optional[str] = None,
+):
+    """Denial analytics — payer rates, CARC trends, AI category breakdown."""
+    return await ar_denials(site=site, date_from=date_from, date_to=date_to)
+
+
 @router.get("/denials/{denial_name}", response_model=DenialDetailResponse)
 async def get_denial(denial_name: str):
     """Get full denial detail."""
@@ -1062,6 +1072,12 @@ async def stedi_277ca_webhook(request_body: dict):
         return {"status": "warning", "detail": f"transition failed: {exc}"}
 
     return {"status": "ok", "claim": claim_name, "new_state": to_state}
+
+
+@router.post("/webhooks/277ca")
+async def billing_277ca_webhook(request_body: dict):
+    """Forward to 277CA webhook handler (also available at /api/webhooks/stedi/277ca)."""
+    return await stedi_277ca_webhook(request_body)
 
 
 @webhook_router.post("/835")
@@ -1420,6 +1436,59 @@ async def _complete_all_billing_tasks_for_claim(claim_name: str):
                 pass
     except Exception as exc:
         logger.warning("Failed to complete billing tasks for claim %s: %s", claim_name, exc)
+
+
+class AppealTransitionRequest(BaseModel):
+    appeal_id: str
+    new_state: str
+    result_notes: Optional[str] = None
+    reason_code: Optional[str] = None
+    approved_by: Optional[str] = None
+    write_off_amount: Optional[float] = None
+
+
+@router.post("/appeals/transition")
+async def appeal_transition(req: AppealTransitionRequest):
+    """Generic appeal state transition — routes to the appropriate handler."""
+    state_map = {
+        "won": "appeal_won",
+        "adjudicating": "appeal_won",
+        "lost": "appeal_lost",
+        "denied": "appeal_lost",
+        "written_off": "appeal_write_off",
+        "write_off": "appeal_write_off",
+        "escalate": "appeal_escalate",
+        "escalated": "appeal_escalate",
+    }
+    handler_key = state_map.get(req.new_state)
+    if not handler_key:
+        raise HTTPException(
+            status_code=422,
+            detail=f"Unsupported appeal transition: '{req.new_state}'. "
+                   f"Valid states: {list(state_map.keys())}",
+        )
+    if handler_key == "appeal_won":
+        return await appeal_won(AppealWonRequest(
+            appeal_id=req.appeal_id, result_notes=req.result_notes,
+        ))
+    elif handler_key == "appeal_lost":
+        return await appeal_lost(AppealLostRequest(
+            appeal_id=req.appeal_id, result_notes=req.result_notes,
+        ))
+    elif handler_key == "appeal_write_off":
+        if not req.approved_by or not req.reason_code or req.write_off_amount is None:
+            raise HTTPException(
+                status_code=422,
+                detail="write_off requires approved_by, reason_code, and write_off_amount",
+            )
+        return await appeal_write_off(WriteOffRequest(
+            claim_id=req.appeal_id,
+            reason_code=req.reason_code,
+            approved_by=req.approved_by,
+            write_off_amount=req.write_off_amount,
+        ))
+    else:
+        return await appeal_escalate(EscalateRequest(appeal_id=req.appeal_id))
 
 
 @router.post("/appeals/won")
