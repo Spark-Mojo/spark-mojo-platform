@@ -1,0 +1,28 @@
+model-alpha
+GLM 5.1
+Z.ai
+202,752 context $1.26/M input tokens
+model-beta
+Claude Opus 4.6
+Anthropic
+1,000,000 context$30/M input tokens$150/M output tokens
+model-gamma
+Qwen 3.6 Plus
+Qwen
+1,000,000 context$0.325/M input tokens$1.95/M output tokens
+model-delta
+Claude Sonnet
+Anthropic
+1,000,000 context$3/M input tokens$15/M output tokens
+model-epsilon
+MiniMax2.7
+Minimax
+204,800 context$0.30/M input tokens$1.20/M output tokens
+model-zeta
+Kimi 2.5
+Moonshot
+262,144 context$0.3827/M input tokens$1.72/M output tokens (or Kimi coding plan $79/mo OR Alibaba Coding plan $50/mo up to 90,000 prompts per month - also includes qwen3.5-plus , kimi-k2.5 , glm-5, and MiniMax-M2.5 along with Kimi
+model-theta
+DeepSeek V3.2
+Deepseek
+163,840 context$0.26/M input tokens$0.38/M output tokens - note that DeepseekV4 is much anticipated and priced at $0.30/M input tokens	$0.50/M output	$0.03 Casche hit input with 1M token context
