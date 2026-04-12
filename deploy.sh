@@ -139,6 +139,7 @@ phase_1() {
   echo "[Phase 1] Pulling latest code..."
 
   cd "$DEPLOY_DIR"
+  git checkout main
   if ! git pull origin main; then
     echo "ABORT: git pull failed."
     echo "  If merge conflict: git status, resolve, then re-run."
