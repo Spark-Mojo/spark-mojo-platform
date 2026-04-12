@@ -62,7 +62,7 @@ hats:
 
       Check 4 - No stale FIX-41 artifacts:
         cd /Users/jamesilsley/GitHub/spark-mojo-platform
-        ls FIX-41-*-COMPLETE BLOCKED-FIX-41-*.md PLAN-FIX-41-*.md RETRY-FIX-41-*.count 2>/dev/null
+        ls FIX-42-*-COMPLETE BLOCKED-FIX-42-*.md PLAN-FIX-42-*.md RETRY-FIX-42-*.count 2>/dev/null
         Must find nothing.
 
       Check 5 - VPS reachable:

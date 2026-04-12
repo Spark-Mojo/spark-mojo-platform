@@ -49,6 +49,54 @@ The abstraction layer and Medplum stack run under `spark-mojo-platform` Docker C
 | Medplum Redis | `spark-mojo-platform-medplum-redis-1` | Medplum cache |
 
 Verify at any time: `ssh sparkmojo 'docker ps --format "{{.Names}}" | grep spark-mojo'`
+---
+
+## VPS Container Execution — Canonical Patterns
+
+### CORRECT pattern for Frappe bench commands:
+```bash
+ssh sparkmojo 'docker exec frappe-poc-backend-1 bash -c "cd /home/frappe/frappe-bench && bench --site poc-dev.sparkmojo.com <command>"'
+```
+
+### NEVER use these patterns (they fail):
+```
+# WRONG - frappe-poc is not a service in docker-compose.poc.yml
+docker compose -f docker-compose.poc.yml exec -T frappe-poc bash -c "..."
+
+# WRONG - --list-sites flag does not exist
+bench --list-sites
+
+# WRONG - internal.localhost does not exist as a site
+bench --site internal.localhost ...
+```
+
+### Site inventory (as of Session 43):
+- **poc-dev.sparkmojo.com** — kitchen sink, ALL apps installed, sm_billing lives here. Use this for all sm_billing commands.
+- **internal.sparkmojo.com** — Spark Mojo's own future client site, selective installs
+- **willow.sparkmojo.com** — Willow Center client site
+- **admin.sparkmojo.com** — admin site
+- To list sites: `ssh sparkmojo 'ls /home/frappe/frappe-bench/sites/'`
+
+### Test runner pre-flight (required before any bench run-tests):
+1. Install pytest if not present:
+   ```bash
+   ssh sparkmojo 'docker exec frappe-poc-backend-1 bash -c "cd /home/frappe/frappe-bench && ./env/bin/pip install pytest"'
+   ```
+2. Enable tests on the site:
+   ```bash
+   ssh sparkmojo 'docker exec frappe-poc-backend-1 bash -c "cd /home/frappe/frappe-bench && bench --site poc-dev.sparkmojo.com set-config allow_tests true"'
+   ```
+
+### Frappe bench execute module path format:
+```
+Use: {python_package}.{frappe_module}.{filename}.{function_name}
+The outer app directory (e.g. sm_billing/) is NOT part of the import path.
+
+CORRECT: sm_billing.sm_billing.appeal_letter_generator.generate_appeal_letter
+WRONG:   sm_billing.sm_billing.sm_billing.appeal_letter_generator.generate_appeal_letter
+```
+
+
 
 ---
 
