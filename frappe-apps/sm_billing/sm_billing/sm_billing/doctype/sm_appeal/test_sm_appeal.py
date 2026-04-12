@@ -90,6 +90,13 @@ class _Document:
 frappe_model_document.Document = _Document
 frappe_model.document = frappe_model_document
 
+# Save any pre-existing sys.modules entries so bench run-tests can restore real frappe
+# after the test session ends (Frappe v16 cleanup calls from frappe import _, throw).
+_saved_modules = {
+    k: sys.modules.get(k)
+    for k in ["frappe", "frappe.utils", "frappe.model", "frappe.model.document"]
+}
+
 # Register in sys.modules BEFORE importing sm_appeal
 sys.modules["frappe"] = frappe_mock
 sys.modules["frappe.utils"] = frappe_utils
@@ -100,6 +107,29 @@ sys.modules["frappe.model.document"] = frappe_model_document
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from sm_appeal import SMAppeal  # noqa: E402
+
+
+@pytest.fixture(autouse=True, scope="session")
+def _restore_frappe_in_sys_modules():
+    """Restore real frappe in sys.modules after the test session ends.
+
+    bench run-tests (Frappe v16) imports this file during test discovery,
+    replacing sys.modules["frappe"] with a bare mock. Without teardown the
+    mock stays in sys.modules through bench's own _cleanup_after_tests()
+    phase. That phase calls validate_doctype() -> from frappe import _, throw
+    on the mock, which has no _ attribute, producing:
+
+        ImportError: cannot import name '_' from 'frappe' (unknown location)
+
+    This fixture yields (letting all tests run), then restores the saved
+    originals so bench cleanup sees the real frappe again.
+    """
+    yield
+    for key, val in _saved_modules.items():
+        if val is not None:
+            sys.modules[key] = val
+        else:
+            sys.modules.pop(key, None)
 
 
 # ---------------------------------------------------------------------------
