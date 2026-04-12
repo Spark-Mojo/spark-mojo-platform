@@ -1,24 +1,21 @@
-# Queue Complete — Session 42 Fix Run
+# Queue Complete — Session 43 Fix Run
 
-All 8 stories completed successfully. No stories blocked.
+All 3 stories completed successfully. No stories blocked.
 
 ## Results
 
-| Story | Type | Result |
-|-------|------|--------|
-| FIX-41-001a | Python FastAPI | COMPLETE — 277CA webhook route registered |
-| FIX-41-001b | Python FastAPI | COMPLETE — Appeals transition route registered |
-| FIX-41-001c | Python FastAPI | COMPLETE — AR aging route registered |
-| FIX-41-001d | Python FastAPI | COMPLETE — Denials analytics route above wildcard |
-| FIX-41-002 | Python tests | COMPLETE — Auth fixture added, 26 test failures fixed |
-| FIX-41-003 | VPS infra | COMPLETE — OAuth host_name verified correct |
-| FIX-41-005a | Documentation | COMPLETE — 12 KB artifacts for BILL-011, -012, -014, -015 |
-| FIX-41-005b | Documentation | COMPLETE — 15 KB artifacts for BILL-017, -018, -019, -020, -021 |
+| Story | Branch | Type | Result |
+|-------|--------|------|--------|
+| FIX-42-001 | story/fix-42-001-bill021-analytics-logic | Python FastAPI | COMPLETE (78404eb) |
+| FIX-42-002 | story/fix-42-002-test-tasks-remaining | Python FastAPI tests | COMPLETE (9aa269f) |
+| FIX-42-003 | story/fix-42-003-wikimojo-lint | React JSX lint | COMPLETE (920918f) |
 
 ## Summary
 
-- **Code fixes** (001a-d, 002): Merged to main, deployed to VPS
-- **Infra fix** (003): OAuth hostname verified on poc-dev site
-- **KB artifacts** (005a, 005b): 27 documentation files committed to sparkmojo-internal
+- **FIX-42-001**: Fixed cpt_code field reference in denial analytics — queries SM Claim Line child table instead of SM Claim.
+- **FIX-42-002**: Fixed DEV_MODE env var in test conftest — force-sets instead of setdefault, resolving 26 test_tasks.py failures.
+- **FIX-42-003**: Removed 4 unused imports/variables in WikiMojo.jsx — lint now 0 errors, 0 warnings.
 
-8/8 COMPLETE, 0 BLOCKED.
+All 3 stories deployed to production VPS. Final deploy: 5/6 passed, 1 known pre-existing (J-027).
+
+3/3 COMPLETE, 0 BLOCKED.
