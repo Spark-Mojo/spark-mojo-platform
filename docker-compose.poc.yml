@@ -1,6 +1,16 @@
 # POC public deployment: React frontend + Mojo Abstraction Layer
 # Both routed via Traefik on root_web network
 # Run: docker compose -f docker-compose.poc.yml up -d --build
+#
+# NOTE: MariaDB is defined in /home/ops/frappe-poc/ (separate stack), not here.
+# GRANT HOST BINDING GOTCHA (see J-026, fixed Session 41):
+# When bench new-site creates a DB user, it GRANTs access from a specific
+# container IP. If the backend container is ever recreated, it gets a new IP
+# and the GRANT breaks with: MySQLdb.OperationalError: (1045, Access denied).
+# Fix: After any bench new-site, immediately re-GRANT with @'%':
+#   docker exec frappe-poc-db-1 mysql -u root -p[pass] -e \
+#   "GRANT ALL ON \`db_name\`.* TO 'db_name'@'%' IDENTIFIED BY 'pass'; FLUSH PRIVILEGES;"
+# Applied to willow.sparkmojo.com and internal.sparkmojo.com on April 11 2026.
 
 networks:
   root_web:
