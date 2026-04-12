@@ -241,6 +241,22 @@ git pull origin main
 4. **If you SSH in and modify ANY file**, commit and push before ending the session.
 5. **After pushing changes, always run deploy.sh.**
 
+## VPS Branch Gotcha — CRITICAL
+deploy.sh does NOT switch branches. If the VPS is on a feature branch,
+deploy.sh will pull and rebuild that branch, not main.
+
+Always verify before deploying:
+  ssh sparkmojo 'cd /home/ops/spark-mojo-platform && git branch --show-current'
+Must show: main
+
+If not on main:
+  ssh sparkmojo 'cd /home/ops/spark-mojo-platform && git checkout main && git pull origin main'
+Then run deploy.sh.
+
+The VPS was found on story/bill-009-state-log-doctype in Session 41,
+having silently deployed the wrong branch for multiple sessions.
+Consider adding `git checkout main` as the first line of deploy.sh.
+
 ---
 
 ## Known Gotchas
