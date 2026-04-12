@@ -90,8 +90,9 @@ class _Document:
 frappe_model_document.Document = _Document
 frappe_model.document = frappe_model_document
 
-# Save any pre-existing sys.modules entries so bench run-tests can restore real frappe
-# after the test session ends (Frappe v16 cleanup calls from frappe import _, throw).
+# Save any pre-existing sys.modules entries so bench run-tests can find the
+# real frappe after import. bench uses unittest.TestLoader (not pytest), so
+# fixtures never fire — we must restore synchronously at module level.
 _saved_modules = {
     k: sys.modules.get(k)
     for k in ["frappe", "frappe.utils", "frappe.model", "frappe.model.document"]
@@ -108,28 +109,27 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from sm_appeal import SMAppeal  # noqa: E402
 
-
-@pytest.fixture(autouse=True, scope="session")
-def _restore_frappe_in_sys_modules():
-    """Restore real frappe in sys.modules after the test session ends.
-
-    bench run-tests (Frappe v16) imports this file during test discovery,
-    replacing sys.modules["frappe"] with a bare mock. Without teardown the
-    mock stays in sys.modules through bench's own _cleanup_after_tests()
-    phase. That phase calls validate_doctype() -> from frappe import _, throw
-    on the mock, which has no _ attribute, producing:
-
-        ImportError: cannot import name '_' from 'frappe' (unknown location)
-
-    This fixture yields (letting all tests run), then restores the saved
-    originals so bench cleanup sees the real frappe again.
-    """
-    yield
-    for key, val in _saved_modules.items():
-        if val is not None:
-            sys.modules[key] = val
-        else:
-            sys.modules.pop(key, None)
+# Restore sys.modules immediately after importing SMAppeal.
+#
+# Why this works:
+#   sm_appeal.py's module-level "import frappe" already bound the mock to the
+#   sm_appeal module's own 'frappe' name at import time. That binding persists
+#   regardless of what sys.modules["frappe"] points to afterwards — so every
+#   SMAppeal method still calls through the mock, and all tests pass.
+#
+# Why this is necessary:
+#   bench run-tests uses unittest.TestLoader to discover tests. It imports this
+#   file (running all module-level code) then calls loadTestsFromModule(), which
+#   returns zero unittest.TestCase instances. bench then calls
+#   _cleanup_after_tests(), which triggers validate_doctype() ->
+#   "from frappe import _, throw". Without restoration the mock is still in
+#   sys.modules and that import fails:
+#     ImportError: cannot import name '_' from 'frappe' (unknown location)
+for _key, _val in _saved_modules.items():
+    if _val is not None:
+        sys.modules[_key] = _val
+    else:
+        sys.modules.pop(_key, None)
 
 
 # ---------------------------------------------------------------------------
