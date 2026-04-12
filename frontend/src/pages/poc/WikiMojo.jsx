@@ -1,7 +1,5 @@
-/* eslint-disable react/prop-types */
-import React, { useState, useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import { BookOpen, Search, FileText, Clock, ChevronRight, Users, Heart, Clipboard, Star } from 'lucide-react';
-import { cn } from '@/lib/utils';
 import MojoHeader from '@/components/mojo-patterns/MojoHeader';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -15,8 +13,6 @@ import {
   DrawerClose,
   DrawerFooter,
 } from '@/components/ui/drawer';
-
-const API_BASE = (import.meta.env.VITE_FRAPPE_URL || 'http://localhost:8000');
 
 /* ── Mock Data ─────────────────────────────────────────────────────── */
 
