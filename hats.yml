@@ -77,6 +77,37 @@ hats:
       If ANY fail:
         Write HEALTH-BLOCKED.md with exact failure.
         Print LOOP_COMPLETE.
+  story_planner:
+    name: "Story Planner"
+    description: "Finds next buildable FIX-42 story, checks dependencies, writes PLAN file."
+    triggers: ["health.ok", "story.committed", "story.skipped"]
+    publishes: ["plan.ready", "story.skipped"]
+    max_activations: 9
+    instructions: |
+      Working directory: /Users/jamesilsley/GitHub/spark-mojo-platform/
+      Read PROMPT.md. Check for COMPLETE and BLOCKED markers at repo root.
+
+      Story IDs: FIX-42-001, FIX-42-002, FIX-42-003
+
+      Step 1 - Queue completion check:
+        A story is FINISHED if [ID]-COMPLETE or BLOCKED-[ID].md exists.
+        If all 3 are FINISHED:
+          Write QUEUE-COMPLETE.md with results summary table.
+          Print LOOP_COMPLETE.
+          Stop.
+
+      Step 2 - Find next buildable story (top to bottom):
+        a. COMPLETE marker exists? Skip.
+        b. BLOCKED marker exists? Skip.
+        c. All stories have Dependencies: None - skip dependency check.
+        d. RETRY-[ID].count >= 5? Write BLOCKED, emit story.skipped.
+
+      Step 3 - Write plan:
+        Read full story spec from path in PROMPT.md.
+        Write PLAN-[STORY-ID].md: story ID, branch name,
+        type, files to touch, gate commands, retry count.
+        Append to QUEUE-PROGRESS.md: "[ID]: started at [timestamp] (attempt [N])"
+        ralph emit "plan.ready" "[ID]: plan written, type: [type]"     
   builder:
     name: "Builder"
     description: "Implements the plan exactly. Runs fast gates. Never improvises on architecture."
