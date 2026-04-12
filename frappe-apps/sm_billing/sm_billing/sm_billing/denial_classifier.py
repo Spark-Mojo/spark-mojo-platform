@@ -24,7 +24,7 @@ FALLBACK_RESULT = {
 
 VALID_CATEGORIES = {"correctable", "appealable", "terminal"}
 
-MODEL_ID = "anthropic.claude-sonnet-4-20250514"
+MODEL_ID = "anthropic.claude-3-haiku-20240307-v1:0"
 
 CLASSIFICATION_PROMPT = """\
 You are a medical billing denial classifier. Given the following denial information, classify it.
@@ -66,9 +66,15 @@ def classify_denial(carc_codes, rarc_codes, payer_name, cpt_codes):
         Never raises — returns FALLBACK_RESULT on any error.
     """
     try:
-        aws_key = os.environ.get("AWS_ACCESS_KEY_ID")
-        aws_secret = os.environ.get("AWS_SECRET_ACCESS_KEY")
-        aws_region = os.environ.get("AWS_REGION", "us-east-1")
+        try:
+            import frappe as _frappe
+            aws_key = _frappe.conf.get("aws_access_key_id") or os.environ.get("AWS_ACCESS_KEY_ID")
+            aws_secret = _frappe.conf.get("aws_secret_access_key") or os.environ.get("AWS_SECRET_ACCESS_KEY")
+            aws_region = _frappe.conf.get("aws_default_region") or os.environ.get("AWS_REGION", "us-east-1")
+        except Exception:
+            aws_key = os.environ.get("AWS_ACCESS_KEY_ID")
+            aws_secret = os.environ.get("AWS_SECRET_ACCESS_KEY")
+            aws_region = os.environ.get("AWS_REGION", "us-east-1")
 
         if not aws_key or not aws_secret:
             logger.warning("Missing AWS credentials for denial classification")
