@@ -3,7 +3,7 @@ cli:
 event_loop:
   starting_event: "session.start"
   completion_promise: "LOOP_COMPLETE"
-  max_iterations: 120
+  max_iterations: 45
   max_runtime_seconds: 28800
 adapters:
   claude:
@@ -43,12 +43,12 @@ hats:
 
       Check 1 - Abstraction layer test baseline:
         docker exec spark-mojo-platform-poc-api-1 python -m pytest tests/ -q --tb=no 2>&1 | tail -5
-        PASS: exactly 172 passing, 39 failing across these 4 known files only -
-          tests/test_tasks.py (26 failures, auth fixture gap),
+        PASS: 190 or more tests passing. Known failing files are acceptable:
+          tests/test_tasks.py (some remaining failures),
           tests/test_admin_service.py (ModuleNotFoundError, pre-existing),
           tests/test_provisioning.py (ModuleNotFoundError, pre-existing),
           tests/test_register_sm_apps.py (ModuleNotFoundError, pre-existing).
-        FAIL: fewer than 172 passing, or failures in any file not listed above.
+        FAIL: fewer than 190 passing, or failures in any file NOT listed above.
 
       Check 2 - Platform repo clean and on main:
         cd /Users/jamesilsley/GitHub/spark-mojo-platform
@@ -89,7 +89,7 @@ hats:
         Read the "## Retry Notes" section in PLAN-[STORY-ID].md.
         Address that specific failure before re-running gates.
       Determine story type from plan.
-      CODE stories (FIX-41-001a through FIX-41-001d, FIX-41-002):
+      CODE stories (FIX-42-001, FIX-42-002):
         cd /Users/jamesilsley/GitHub/spark-mojo-platform
         git checkout main && git pull origin main
         If branch exists: git checkout story/[name] && git merge main
@@ -100,14 +100,22 @@ hats:
           if [ -n "$CHANGED" ]; then python -m flake8 $CHANGED; fi
         Fast gate:
           docker exec spark-mojo-platform-poc-api-1 python -m pytest tests/ -x -q --tb=short 2>&1 | tail -10
-      INFRA story (FIX-41-003):
+      JSX story (FIX-42-003):
+        cd /Users/jamesilsley/GitHub/spark-mojo-platform
+        git checkout main && git pull origin main
+        If branch exists: git checkout story/[name] && git merge main
+        If new: git checkout -b story/[name]
+        Build exactly what plan and spec say.
+        Lint gate (scoped to WikiMojo.jsx only):
+          npx eslint frontend/src/pages/WikiMojo.jsx 2>&1 | wc -l
+          PASS: fewer lines than baseline 53
+        Build gate:
+          cd frontend && pnpm run build 2>&1 | tail -5
+          PASS: exits 0
+      INFRA story: none in this run. Skip this section.
         No branch. Execute SSH commands from spec directly.
         Verify outcome of each step before continuing.
-      DOCS stories (FIX-41-005a, FIX-41-005b):
-        cd /Users/jamesilsley/GitHub/sparkmojo-internal
-        Read each story spec before writing its artifacts.
-        Create directories and write all required files.
-        Fast gate: ls -la each output directory and confirm all files exist.
+      DOCS stories: none in this run. Skip this section.
       If architectural ambiguity:
         Write BLOCKED-[STORY-ID].md. Append to QUEUE-PROGRESS.md.
         ralph emit "story.skipped" "[ID]: architectural ambiguity"
@@ -124,71 +132,36 @@ hats:
     max_activations: 24
     instructions: |
       Read PLAN-[STORY-ID].md. Run ALL gates for this story type.
-      FIX-41-001a (BILL-011 webhook route):
-        Gate 1 - Test suite (no new failures outside test_tasks.py):
+      FIX-42-001 (BILL-021 analytics logic):
+        Gate 1 - Test suite (no new failures):
           docker exec spark-mojo-platform-poc-api-1 python -m pytest tests/ -q --tb=no 2>&1 | tail -5
-        Gate 2 - Route smoke test:
-          ssh sparkmojo 'curl -s -o /tmp/r.json -w "%{http_code}" -X POST
-          https://api.poc.sparkmojo.com/api/modules/billing/webhooks/277ca
-          -H "Content-Type: application/json"
-          -d "{\"stedi_transaction_id\":\"T\",\"claim_control_number\":\"X\",\"stc_category\":\"A1\",\"stc_status\":\"t\"}"
-          && cat /tmp/r.json'
-          PASS: HTTP 200 with status:warning
+          PASS: 190+ passing, failures only in known files
+        Gate 2 - Analytics route:
+          ssh sparkmojo 'curl -s -w "\nHTTP:%{http_code}" https://api.poc.sparkmojo.com/api/modules/billing/denials/analytics'
+          PASS: HTTP 200 with analytics data structure
+          FAIL: HTTP 417 or "Field not permitted in query"
+        Gate 3 - Deploy:
+          ssh sparkmojo 'cd /home/ops/spark-mojo-platform && ./deploy.sh --backend-only'
+        Gate 4 - Post-deploy recheck Gate 2.
+      FIX-42-002 (remaining test_tasks.py failures):
+        Gate 1 - test_tasks.py failures reduced:
+          docker exec spark-mojo-platform-poc-api-1 python -m pytest tests/test_tasks.py -q --tb=no 2>&1 | tail -3
+          PASS: 0 failed
+        Gate 2 - Full suite:
+          docker exec spark-mojo-platform-poc-api-1 python -m pytest tests/ -q --tb=no 2>&1 | tail -3
+          PASS: failures only in known pre-existing files
+        Gate 3 - Deploy:
+          ssh sparkmojo 'cd /home/ops/spark-mojo-platform && ./deploy.sh --backend-only'
+      FIX-42-003 (WikiMojo lint):
+        Gate 1 - Lint count reduced:
+          npx eslint frontend/src/pages/WikiMojo.jsx --format compact 2>&1 | wc -l
+          PASS: fewer than 53
+        Gate 2 - Build still passes:
+          cd frontend && pnpm run build 2>&1 | tail -5
+          PASS: exits 0
         Gate 3 - Deploy:
           ssh sparkmojo 'cd /home/ops/spark-mojo-platform && ./deploy.sh'
-        Gate 4 - Post-deploy recheck smoke test. PASS: still HTTP 200.
-      FIX-41-001b (BILL-018 appeals route):
-        Gate 1 - Test suite clean.
-        Gate 2 - Route smoke: POST /api/modules/billing/appeals/transition
-          with {"appeal_id":"X","new_state":"submitted"}
-          PASS: HTTP 404 or 422 with app-level message (NOT generic {"detail":"Not Found"})
-        Gate 3 - Deploy.
-        Gate 4 - Post-deploy recheck.
-      FIX-41-001c (BILL-020 AR aging route):
-        Gate 1 - Test suite clean.
-        Gate 2 - Route smoke: GET /api/modules/billing/ar/aging
-          PASS: HTTP 200
-        Gate 3 - Deploy.
-        Gate 4 - Post-deploy recheck.
-      FIX-41-001d (BILL-021 wildcard fix):
-        Gate 1 - Test suite clean.
-        Gate 2 - Route smoke: GET /api/modules/billing/denials/analytics
-          PASS: HTTP 200 with analytics structure
-          FAIL: {"detail":"SM Denial 'analytics' not found"}
-        Gate 3 - Also verify /api/modules/billing/denials/[real-denial-name]
-          still works (wildcard route not broken).
-        Gate 4 - Deploy.
-        Gate 5 - Post-deploy recheck both routes.
-      FIX-41-002 (auth fixture):
-        Gate 1 - test_tasks.py zero failures:
-          docker exec spark-mojo-platform-poc-api-1 python -m pytest tests/test_tasks.py -q --tb=no 2>&1 | tail -5
-          PASS: 0 failed
-        Gate 2 - Full suite zero failures:
-          docker exec spark-mojo-platform-poc-api-1 python -m pytest tests/ -q --tb=no 2>&1 | tail -5
-          PASS: 0 failed
-        Gate 3 - Deploy.
-      FIX-41-003 (OAuth host_name):
-        Gate 1 - host_name correct:
-          ssh sparkmojo 'docker exec frappe-poc-backend-1 bench --site poc-dev.sparkmojo.com config show 2>&1 | grep host_name'
-          PASS: shows "https://poc-dev.sparkmojo.com"
-        Gate 2 - Frappe accessible:
-          curl -s -o /dev/null -w "%{http_code}" https://poc-dev.sparkmojo.com/app
-          PASS: 200 or 302
-      FIX-41-005a (KB billing-a):
-        Gate - All 12 files exist:
-          ls /Users/jamesilsley/GitHub/sparkmojo-internal/platform/knowledge-base/billing/BILL-011-277ca-webhook/
-          ls /Users/jamesilsley/GitHub/sparkmojo-internal/platform/knowledge-base/billing/BILL-012-835-era-integration/
-          ls /Users/jamesilsley/GitHub/sparkmojo-internal/platform/knowledge-base/billing/BILL-014-ai-denial-classification/
-          ls /Users/jamesilsley/GitHub/sparkmojo-internal/platform/knowledge-base/billing/BILL-015-denial-worklist/
-          PASS: each directory contains DEPLOYMENT.md, DEFICIENCIES.md, EXTENSION-ROADMAP.md
-      FIX-41-005b (KB billing-b):
-        Gate - All 15 files exist:
-          ls /Users/jamesilsley/GitHub/sparkmojo-internal/platform/knowledge-base/billing/BILL-017-appeal-letter-generation/
-          ls /Users/jamesilsley/GitHub/sparkmojo-internal/platform/knowledge-base/billing/BILL-018-appeal-transitions/
-          ls /Users/jamesilsley/GitHub/sparkmojo-internal/platform/knowledge-base/billing/BILL-019-ar-summary/
-          ls /Users/jamesilsley/GitHub/sparkmojo-internal/platform/knowledge-base/billing/BILL-020-ar-aging/
-          ls /Users/jamesilsley/GitHub/sparkmojo-internal/platform/knowledge-base/billing/BILL-021-denial-analytics/
-          PASS: each directory contains DEPLOYMENT.md, DEFICIENCIES.md, EXTENSION-ROADMAP.md
+          (Full deploy for frontend change - not backend-only)
       Retry budget for all stories:
         Read RETRY-[ID].count (0 if missing). Increment on failure. Write back.
         >= 5: Write BLOCKED-[ID].md, append to QUEUE-PROGRESS.md,
@@ -208,14 +181,16 @@ hats:
     max_activations: 12
     instructions: |
       Read PLAN-[STORY-ID].md. Determine story type.
-      CODE stories (FIX-41-001a through FIX-41-001d, FIX-41-002):
+      CODE stories (FIX-42-001, FIX-42-002):
         cd /Users/jamesilsley/GitHub/spark-mojo-platform
         git add -A
         git commit -m "[commit message from story spec]"
         git push origin story/[branch]
         git checkout main && git pull origin main
         git merge story/[branch] && git push origin main
-        ssh sparkmojo 'cd /home/ops/spark-mojo-platform && ./deploy.sh'
+        ssh sparkmojo 'cd /home/ops/spark-mojo-platform && ./deploy.sh --backend-only'
+        Note: FIX-42-003 is a frontend change - use ./deploy.sh
+        (without --backend-only) for that story only.
         On deploy failure:
           Write BLOCKED-[STORY-ID]-DEPLOY.md with full deploy output.
           Do NOT touch COMPLETE marker.
@@ -226,19 +201,6 @@ hats:
           Append to QUEUE-PROGRESS.md: "[ID]: COMPLETE at [timestamp]"
         Cleanup either way:
           rm -f PLAN-[STORY-ID].md RETRY-[STORY-ID].count
-      INFRA story (FIX-41-003):
-        No git commit.
-        touch FIX-41-003-COMPLETE
-        rm -f PLAN-FIX-41-003.md
-        Append to QUEUE-PROGRESS.md: "FIX-41-003: COMPLETE at [timestamp]"
-      DOCS stories (FIX-41-005a, FIX-41-005b):
-        cd /Users/jamesilsley/GitHub/sparkmojo-internal
-        git add platform/knowledge-base/
-        git commit -m "[commit message from story spec]"
-        git push origin main
-        cd /Users/jamesilsley/GitHub/spark-mojo-platform
-        touch [STORY-ID]-COMPLETE
-        rm -f PLAN-[STORY-ID].md RETRY-[STORY-ID].count
-        Append to QUEUE-PROGRESS.md: "[ID]: COMPLETE at [timestamp]"
+      No INFRA or DOCS stories in this run.
       ALWAYS emit regardless of deploy outcome:
         ralph emit "story.committed" "[ID]: committed, merged, [deployed/deploy-FAILED/infra-complete/docs-committed]."
