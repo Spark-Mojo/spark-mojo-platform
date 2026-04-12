@@ -1905,12 +1905,27 @@ async def ar_denials(
         limit=0,
     )
 
-    claim_fields = '["name","canonical_state","payer","cpt_code","state_changed_at"]'
+    claim_fields = '["name","canonical_state","payer","state_changed_at"]'
     claims = await _list_frappe_docs(
         "SM Claim",
         fields=claim_fields,
         limit=0,
     )
+
+    claim_line_fields = '["parent","cpt_code"]'
+    claim_lines = await _list_frappe_docs(
+        "SM Claim Line",
+        fields=claim_line_fields,
+        limit=0,
+    )
+    cpt_by_claim = {}
+    for line in claim_lines:
+        parent = line.get("parent")
+        if parent and parent not in cpt_by_claim:
+            cpt_by_claim[parent] = line.get("cpt_code")
+    for claim in claims:
+        claim["cpt_code"] = cpt_by_claim.get(claim["name"])
+
     claims_by_name = {c["name"]: c for c in claims}
 
     if date_from and date_to:

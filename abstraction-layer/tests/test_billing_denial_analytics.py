@@ -21,70 +21,60 @@ MOCK_CLAIMS = [
         "name": "CLM-001",
         "canonical_state": "denied",
         "payer": "Aetna",
-        "cpt_code": "90837",
         "state_changed_at": _days_ago(5),
     },
     {
         "name": "CLM-002",
         "canonical_state": "adjudicating",
         "payer": "Aetna",
-        "cpt_code": "90837",
         "state_changed_at": _days_ago(10),
     },
     {
         "name": "CLM-003",
         "canonical_state": "denied",
         "payer": "Aetna",
-        "cpt_code": "90834",
         "state_changed_at": _days_ago(8),
     },
     {
         "name": "CLM-004",
         "canonical_state": "denied",
         "payer": "BCBS",
-        "cpt_code": "90837",
         "state_changed_at": _days_ago(3),
     },
     {
         "name": "CLM-005",
         "canonical_state": "submitted",
         "payer": "BCBS",
-        "cpt_code": "90834",
         "state_changed_at": _days_ago(12),
     },
     {
         "name": "CLM-006",
         "canonical_state": "paid",
         "payer": "Aetna",
-        "cpt_code": "90837",
         "state_changed_at": _days_ago(2),
     },
     {
         "name": "CLM-007",
         "canonical_state": "submitted",
         "payer": "Aetna",
-        "cpt_code": "90837",
         "state_changed_at": _days_ago(14),
     },
     {
         "name": "CLM-008",
         "canonical_state": "submitted",
         "payer": "Aetna",
-        "cpt_code": "90837",
         "state_changed_at": _days_ago(6),
     },
     {
         "name": "CLM-009",
         "canonical_state": "submitted",
         "payer": "Aetna",
-        "cpt_code": "90837",
         "state_changed_at": _days_ago(7),
     },
     {
         "name": "CLM-010",
         "canonical_state": "submitted",
         "payer": "Aetna",
-        "cpt_code": "90837",
         "state_changed_at": _days_ago(9),
     },
 ]
@@ -118,6 +108,19 @@ MOCK_DENIALS = [
             {"carc_code": "PR-1", "carc_description": "Deductible amount"},
         ],
     },
+]
+
+MOCK_CLAIM_LINES = [
+    {"parent": "CLM-001", "cpt_code": "90837"},
+    {"parent": "CLM-002", "cpt_code": "90837"},
+    {"parent": "CLM-003", "cpt_code": "90834"},
+    {"parent": "CLM-004", "cpt_code": "90837"},
+    {"parent": "CLM-005", "cpt_code": "90834"},
+    {"parent": "CLM-006", "cpt_code": "90837"},
+    {"parent": "CLM-007", "cpt_code": "90837"},
+    {"parent": "CLM-008", "cpt_code": "90837"},
+    {"parent": "CLM-009", "cpt_code": "90837"},
+    {"parent": "CLM-010", "cpt_code": "90837"},
 ]
 
 MOCK_PRIOR_DENIALS = []
@@ -155,6 +158,7 @@ async def test_denial_rate_by_payer(client, mock_frappe):
     mock_frappe.side_effect = _mock_list_side_effect([
         MOCK_DENIALS,
         MOCK_CLAIMS,
+        MOCK_CLAIM_LINES,
         MOCK_PRIOR_DENIALS,
     ])
     resp = await client.get("/api/modules/billing/ar/denials?site=poc-dev")
@@ -174,6 +178,7 @@ async def test_top_carc_codes(client, mock_frappe):
     mock_frappe.side_effect = _mock_list_side_effect([
         MOCK_DENIALS,
         MOCK_CLAIMS,
+        MOCK_CLAIM_LINES,
         MOCK_PRIOR_DENIALS,
     ])
     resp = await client.get("/api/modules/billing/ar/denials?site=poc-dev")
@@ -189,6 +194,7 @@ async def test_denial_rate_by_cpt(client, mock_frappe):
     mock_frappe.side_effect = _mock_list_side_effect([
         MOCK_DENIALS,
         MOCK_CLAIMS,
+        MOCK_CLAIM_LINES,
         MOCK_PRIOR_DENIALS,
     ])
     resp = await client.get("/api/modules/billing/ar/denials?site=poc-dev")
@@ -206,6 +212,7 @@ async def test_by_ai_category(client, mock_frappe):
     mock_frappe.side_effect = _mock_list_side_effect([
         MOCK_DENIALS,
         MOCK_CLAIMS,
+        MOCK_CLAIM_LINES,
         MOCK_PRIOR_DENIALS,
     ])
     resp = await client.get("/api/modules/billing/ar/denials?site=poc-dev")
@@ -224,6 +231,7 @@ async def test_empty_period(client, mock_frappe):
     mock_frappe.side_effect = _mock_list_side_effect([
         [],
         MOCK_CLAIMS,
+        MOCK_CLAIM_LINES,
         [],
     ])
     resp = await client.get(
@@ -254,6 +262,7 @@ async def test_avg_days_to_resolution(client, mock_frappe):
     mock_frappe.side_effect = _mock_list_side_effect([
         [MOCK_DENIALS[0]],
         resolved_claims,
+        MOCK_CLAIM_LINES,
         [],
     ])
     resp = await client.get("/api/modules/billing/ar/denials?site=poc-dev")
@@ -271,6 +280,7 @@ async def test_trend_calculation(client, mock_frappe):
     mock_frappe.side_effect = _mock_list_side_effect([
         MOCK_DENIALS,
         MOCK_CLAIMS,
+        MOCK_CLAIM_LINES,
         prior_denials_with_data,
     ])
     resp = await client.get(
@@ -288,6 +298,7 @@ async def test_response_structure(client, mock_frappe):
     mock_frappe.side_effect = _mock_list_side_effect([
         MOCK_DENIALS,
         MOCK_CLAIMS,
+        MOCK_CLAIM_LINES,
         MOCK_PRIOR_DENIALS,
     ])
     resp = await client.get("/api/modules/billing/ar/denials?site=poc-dev")
