@@ -13,7 +13,7 @@ from httpx import ASGITransport, AsyncClient
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-os.environ.setdefault("DEV_MODE", "true")
+os.environ["DEV_MODE"] = "true"
 os.environ.setdefault("FRAPPE_URL", "http://localhost:8080")
 os.environ.setdefault("FRAPPE_API_KEY", "test")
 os.environ.setdefault("FRAPPE_API_SECRET", "test")
