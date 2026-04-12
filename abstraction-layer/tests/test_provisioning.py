@@ -175,7 +175,11 @@ class TestListEndpoints:
     """Test GET endpoints return correct structure."""
 
     def test_list_sites_empty(self, client):
-        resp = client.get("/api/admin/sites")
+        # ADMIN_FRAPPE_URL is set at module import time so patching os.environ
+        # in the fixture is insufficient. Patch the module-level variable directly
+        # so the early-return path is taken and no real Frappe call is made.
+        with patch("routes.provisioning.ADMIN_FRAPPE_URL", ""):
+            resp = client.get("/api/admin/sites")
         assert resp.status_code == 200
         assert resp.json() == {"data": []}
 

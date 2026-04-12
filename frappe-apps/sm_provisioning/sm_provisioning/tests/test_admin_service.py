@@ -11,8 +11,6 @@ SCRIPTS_DIR = os.path.join(
     os.path.dirname(__file__),
     "..",
     "..",
-    "frappe-apps",
-    "sm_provisioning",
     "scripts",
 )
 sys.path.insert(0, os.path.abspath(SCRIPTS_DIR))

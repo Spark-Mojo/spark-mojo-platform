@@ -7,7 +7,7 @@ import pytest
 
 # Add scripts directory to path for import
 sys.path.insert(0, os.path.join(
-    os.path.dirname(__file__), '..', '..', 'frappe-apps', 'sm_provisioning', 'scripts'
+    os.path.dirname(__file__), '..', '..', 'scripts'
 ))
 
 
