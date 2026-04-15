@@ -24,7 +24,7 @@ FALLBACK_RESULT = {
 
 VALID_CATEGORIES = {"correctable", "appealable", "terminal"}
 
-MODEL_ID = "anthropic.claude-sonnet-4-20250514"
+MODEL_ID = "anthropic.claude-haiku-4-5-20251001-v1:0"
 
 CLASSIFICATION_PROMPT = """\
 You are a medical billing denial classifier. Given the following denial information, classify it.
