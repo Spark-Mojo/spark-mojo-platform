@@ -66,6 +66,14 @@ class _Document:
 frappe_model_document.Document = _Document
 frappe_model.document = frappe_model_document
 
+# Save any pre-existing sys.modules entries so bench run-tests can find the
+# real frappe after import. bench uses unittest.TestLoader (not pytest), so
+# fixtures never fire — we must restore synchronously at module level.
+_saved_modules = {
+    k: sys.modules.get(k)
+    for k in ["frappe", "frappe.utils", "frappe.model", "frappe.model.document"]
+}
+
 # Register in sys.modules BEFORE importing sm_denial
 sys.modules["frappe"] = frappe_mock
 sys.modules["frappe.utils"] = frappe_utils
@@ -76,6 +84,16 @@ sys.modules["frappe.model.document"] = frappe_model_document
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from sm_denial import SMDenial, APPEAL_WINDOW_DAYS  # noqa: E402
+
+# Restore sys.modules immediately after importing SMDenial.
+# SMDenial's module-level 'import frappe' already bound the mock; the mock
+# stays in sm_denial's namespace and tests still work. But bench run-tests
+# needs the real frappe back in sys.modules for its own cleanup phase.
+for _key, _val in _saved_modules.items():
+    if _val is not None:
+        sys.modules[_key] = _val
+    else:
+        sys.modules.pop(_key, None)
 
 
 # ---------------------------------------------------------------------------

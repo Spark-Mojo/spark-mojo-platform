@@ -90,6 +90,14 @@ class _Document:
 frappe_model_document.Document = _Document
 frappe_model.document = frappe_model_document
 
+# Save any pre-existing sys.modules entries so bench run-tests can find the
+# real frappe after import. bench uses unittest.TestLoader (not pytest), so
+# fixtures never fire — we must restore synchronously at module level.
+_saved_modules = {
+    k: sys.modules.get(k)
+    for k in ["frappe", "frappe.utils", "frappe.model", "frappe.model.document"]
+}
+
 # Register in sys.modules BEFORE importing sm_appeal
 sys.modules["frappe"] = frappe_mock
 sys.modules["frappe.utils"] = frappe_utils
@@ -100,6 +108,28 @@ sys.modules["frappe.model.document"] = frappe_model_document
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from sm_appeal import SMAppeal  # noqa: E402
+
+# Restore sys.modules immediately after importing SMAppeal.
+#
+# Why this works:
+#   sm_appeal.py's module-level "import frappe" already bound the mock to the
+#   sm_appeal module's own 'frappe' name at import time. That binding persists
+#   regardless of what sys.modules["frappe"] points to afterwards — so every
+#   SMAppeal method still calls through the mock, and all tests pass.
+#
+# Why this is necessary:
+#   bench run-tests uses unittest.TestLoader to discover tests. It imports this
+#   file (running all module-level code) then calls loadTestsFromModule(), which
+#   returns zero unittest.TestCase instances. bench then calls
+#   _cleanup_after_tests(), which triggers validate_doctype() ->
+#   "from frappe import _, throw". Without restoration the mock is still in
+#   sys.modules and that import fails:
+#     ImportError: cannot import name '_' from 'frappe' (unknown location)
+for _key, _val in _saved_modules.items():
+    if _val is not None:
+        sys.modules[_key] = _val
+    else:
+        sys.modules.pop(_key, None)
 
 
 # ---------------------------------------------------------------------------
