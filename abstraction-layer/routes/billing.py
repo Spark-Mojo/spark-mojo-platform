@@ -17,6 +17,7 @@ from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel
 
 from connectors.stedi import check_eligibility, StediTimeoutError, StediAPIError
+from secrets_loader import SecretNotFoundError, read_secret
 
 logger = logging.getLogger("abstraction-layer.billing")
 
@@ -24,16 +25,26 @@ router = APIRouter(tags=["billing"])
 webhook_router = APIRouter(tags=["billing-webhooks"])
 
 FRAPPE_URL = os.getenv("FRAPPE_URL", "http://localhost:8080")
-FRAPPE_API_KEY = os.getenv("FRAPPE_API_KEY", "")
-FRAPPE_API_SECRET = os.getenv("FRAPPE_API_SECRET", "")
-STEDI_API_KEY = os.getenv("STEDI_API_KEY", "")
 STEDI_SANDBOX = os.getenv("STEDI_SANDBOX", "false").lower() == "true"
 STEDI_BASE_URL = "https://healthcare.us.stedi.com/2024-04-01"
 
 
+def _read_secret_or_empty(name: str) -> str:
+    try:
+        return read_secret(name)
+    except SecretNotFoundError:
+        return ""
+
+
+STEDI_API_KEY = _read_secret_or_empty("stedi_api_key")
+
+
 def _frappe_headers():
     return {
-        "Authorization": f"token {FRAPPE_API_KEY}:{FRAPPE_API_SECRET}",
+        "Authorization": (
+            f"token {read_secret('frappe_api_key')}:"
+            f"{read_secret('frappe_api_secret')}"
+        ),
         "Content-Type": "application/json",
     }
 

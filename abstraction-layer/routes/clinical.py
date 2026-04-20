@@ -15,21 +15,23 @@ from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel
 
 from connectors.medplum_connector import MedplumClient, MedplumProjectScopeError
+from secrets_loader import read_secret
 
 logger = logging.getLogger("abstraction-layer.clinical")
 
 router = APIRouter(tags=["clinical"])
 
 FRAPPE_URL = os.getenv("FRAPPE_URL", "http://localhost:8080")
-FRAPPE_API_KEY = os.getenv("FRAPPE_API_KEY", "")
-FRAPPE_API_SECRET = os.getenv("FRAPPE_API_SECRET", "")
 
 _medplum = MedplumClient()
 
 
 def _frappe_headers():
     return {
-        "Authorization": f"token {FRAPPE_API_KEY}:{FRAPPE_API_SECRET}",
+        "Authorization": (
+            f"token {read_secret('frappe_api_key')}:"
+            f"{read_secret('frappe_api_secret')}"
+        ),
         "Content-Type": "application/json",
     }
 

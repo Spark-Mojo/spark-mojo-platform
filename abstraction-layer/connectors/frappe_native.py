@@ -10,6 +10,8 @@ import os
 import httpx
 from typing import Any
 
+from secrets_loader import SecretNotFoundError, read_secret
+
 from .base import BaseConnector
 
 
@@ -55,7 +57,10 @@ class FrappeNativeConnector(BaseConnector):
             # TODO: Fall back to dynamic lookup from SM Connector Config
             return {"error": f"Unknown capability: {capability}", "records": []}
 
-        api_key = os.getenv("FRAPPE_API_KEY", "")
+        try:
+            api_key = read_secret("frappe_api_key")
+        except SecretNotFoundError:
+            api_key = ""
         headers = {
             "Authorization": f"token {api_key}" if api_key else "",
             "Content-Type": "application/json",

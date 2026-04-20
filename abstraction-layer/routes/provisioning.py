@@ -23,6 +23,7 @@ from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, field_validator
 
 from connectors.medplum_connector import MedplumClient
+from secrets_loader import SecretNotFoundError, read_secret
 
 logger = logging.getLogger("abstraction-layer.provisioning")
 
@@ -30,15 +31,23 @@ router = APIRouter(tags=["provisioning"])
 
 medplum_client = MedplumClient()
 
+
+def _read_secret_or_empty(name: str) -> str:
+    try:
+        return read_secret(name)
+    except SecretNotFoundError:
+        return ""
+
+
 # Environment configuration — no hardcoded secrets
 FRAPPE_CONTAINER = os.getenv("FRAPPE_CONTAINER_NAME", "frappe-poc-backend-1")
-MARIADB_ROOT_PASSWORD = os.getenv("MARIADB_ROOT_PASSWORD", "")
+MARIADB_ROOT_PASSWORD = _read_secret_or_empty("mariadb_root_password")
 MEDPLUM_BASE_URL = os.getenv("MEDPLUM_BASE_URL", "")
 N8N_BASE_URL = os.getenv("N8N_BASE_URL", "")
 FRAPPE_HOST = os.getenv("FRAPPE_HOST", "localhost")
 ADMIN_FRAPPE_URL = os.getenv("ADMIN_FRAPPE_URL", "")
-ADMIN_API_KEY = os.getenv("ADMIN_API_KEY", "")
-ADMIN_API_SECRET = os.getenv("ADMIN_API_SECRET", "")
+ADMIN_API_KEY = _read_secret_or_empty("admin_api_key")
+ADMIN_API_SECRET = _read_secret_or_empty("admin_api_secret")
 
 # Template directory — templates live in sparkmojo-internal governance repo
 # but are copied to this path at deploy time. Fallback to local path for dev.
@@ -493,7 +502,7 @@ async def step_10_register_site(
 
     # Trigger registry refresh
     try:
-        admin_key = os.getenv("ADMIN_SERVICE_KEY", "")
+        admin_key = _read_secret_or_empty("admin_service_key")
         headers = {"X-Admin-Key": admin_key} if admin_key else {}
         async with httpx.AsyncClient() as client:
             await client.post(
