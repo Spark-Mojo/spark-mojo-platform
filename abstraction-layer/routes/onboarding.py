@@ -16,17 +16,19 @@ import httpx
 from fastapi import APIRouter, Depends, HTTPException, Request
 
 from auth import get_current_user
+from secrets_loader import read_secret
 
 router = APIRouter(prefix="/api/modules/onboarding", tags=["onboarding"])
 
 FRAPPE_URL = os.getenv("FRAPPE_URL", "http://localhost:8080")
-FRAPPE_API_KEY = os.getenv("FRAPPE_API_KEY", "")
-FRAPPE_API_SECRET = os.getenv("FRAPPE_API_SECRET", "")
 
 
 def _headers():
     return {
-        "Authorization": f"token {FRAPPE_API_KEY}:{FRAPPE_API_SECRET}",
+        "Authorization": (
+            f"token {read_secret('frappe_api_key')}:"
+            f"{read_secret('frappe_api_secret')}"
+        ),
         "Content-Type": "application/json",
     }
 

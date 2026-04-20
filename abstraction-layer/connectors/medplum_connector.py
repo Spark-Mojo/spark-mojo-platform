@@ -12,6 +12,8 @@ import time
 
 import httpx
 
+from secrets_loader import SecretNotFoundError, read_secret
+
 
 class MedplumProjectScopeError(Exception):
     """Raised when a FHIR data method is called without a valid project_id."""
@@ -23,7 +25,10 @@ class MedplumClient:
     def __init__(self):
         self.base_url = os.getenv("MEDPLUM_BASE_URL", "").rstrip("/")
         self.client_id = os.getenv("MEDPLUM_CLIENT_ID", "")
-        self.client_secret = os.getenv("MEDPLUM_CLIENT_SECRET", "")
+        try:
+            self.client_secret = read_secret("medplum_client_secret")
+        except SecretNotFoundError:
+            self.client_secret = ""
         self._access_token = None
         self._token_expires_at = 0.0
         self._http = httpx.AsyncClient()

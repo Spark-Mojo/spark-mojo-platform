@@ -16,6 +16,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
 from auth import get_current_user
+from secrets_loader import read_secret
 
 
 class CreateTaskBody(BaseModel):
@@ -71,8 +72,6 @@ class CompleteTaskBody(BaseModel):
 router = APIRouter(prefix="/api/modules/tasks", tags=["tasks"])
 
 FRAPPE_URL = os.getenv("FRAPPE_URL", "http://localhost:8080")
-FRAPPE_API_KEY = os.getenv("FRAPPE_API_KEY", "")
-FRAPPE_API_SECRET = os.getenv("FRAPPE_API_SECRET", "")
 
 RESOLVED_STATES = ("Completed", "Canceled", "Failed")
 
@@ -85,7 +84,10 @@ LIST_FIELDS = [
 
 def _headers():
     return {
-        "Authorization": f"token {FRAPPE_API_KEY}:{FRAPPE_API_SECRET}",
+        "Authorization": (
+            f"token {read_secret('frappe_api_key')}:"
+            f"{read_secret('frappe_api_secret')}"
+        ),
         "Content-Type": "application/json",
     }
 

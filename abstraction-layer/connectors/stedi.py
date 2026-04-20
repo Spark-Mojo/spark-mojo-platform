@@ -11,9 +11,18 @@ from datetime import datetime, timezone
 
 import httpx
 
+from secrets_loader import SecretNotFoundError, read_secret
+
 logger = logging.getLogger("abstraction-layer.stedi")
 
-STEDI_API_KEY = os.getenv("STEDI_API_KEY", "")
+
+def _stedi_api_key() -> str:
+    try:
+        return read_secret("stedi_api_key")
+    except SecretNotFoundError:
+        return ""
+
+
 STEDI_BASE_URL = "https://healthcare.us.stedi.com/2024-04-01"
 
 
@@ -32,7 +41,7 @@ class StediAPIError(Exception):
 
 def _stedi_headers():
     return {
-        "Authorization": f"Key {STEDI_API_KEY}",
+        "Authorization": f"Key {_stedi_api_key()}",
         "Content-Type": "application/json",
     }
 

@@ -17,8 +17,16 @@ import httpx
 
 from connectors.base import BaseConnector
 from connectors import frappe_native, simplepractice, valant, plane
+from secrets_loader import SecretNotFoundError, read_secret
 
 logger = logging.getLogger("abstraction-layer.registry")
+
+
+def _read_secret_or_empty(name: str) -> str:
+    try:
+        return read_secret(name)
+    except SecretNotFoundError:
+        return ""
 
 # Map of connector names to their implementations
 CONNECTOR_MAP = {
@@ -43,8 +51,8 @@ class SiteRegistry:
         self._sites: dict[str, dict] = {}
         self._last_loaded: float = 0.0
         self._admin_url = os.getenv("ADMIN_FRAPPE_URL", "")
-        self._admin_api_key = os.getenv("ADMIN_API_KEY", "")
-        self._admin_api_secret = os.getenv("ADMIN_API_SECRET", "")
+        self._admin_api_key = _read_secret_or_empty("admin_api_key")
+        self._admin_api_secret = _read_secret_or_empty("admin_api_secret")
 
     async def load(self):
         """Load registry from SM Site Registry DocType, falling back to env var."""

@@ -16,14 +16,13 @@ import httpx
 from fastapi import APIRouter, Request, HTTPException
 from fastapi.responses import RedirectResponse
 
+from secrets_loader import read_secret
+
 router = APIRouter(prefix="/auth", tags=["auth"])
 
 GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID", "")
-GOOGLE_CLIENT_SECRET = os.getenv("GOOGLE_CLIENT_SECRET", "")
 FRONTEND_URL = os.getenv("FRONTEND_URL", "https://app.poc.sparkmojo.com")
 FRAPPE_URL = os.getenv("FRAPPE_URL", "http://frontend:8080")
-FRAPPE_API_KEY = os.getenv("FRAPPE_API_KEY", "")
-FRAPPE_API_SECRET = os.getenv("FRAPPE_API_SECRET", "")
 
 GOOGLE_AUTH_URL = "https://accounts.google.com/o/oauth2/v2/auth"
 GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token"
@@ -79,7 +78,7 @@ async def google_callback(request: Request, code: str = "", state: str = "", err
     async with httpx.AsyncClient() as client:
         token_resp = await client.post(GOOGLE_TOKEN_URL, data={
             "client_id": GOOGLE_CLIENT_ID,
-            "client_secret": GOOGLE_CLIENT_SECRET,
+            "client_secret": read_secret("google_client_secret"),
             "code": code,
             "grant_type": "authorization_code",
             "redirect_uri": _get_redirect_uri(request),
@@ -108,7 +107,12 @@ async def google_callback(request: Request, code: str = "", state: str = "", err
 
     # Verify user exists in Frappe (don't auto-create for POC security)
     async with httpx.AsyncClient() as client:
-        frappe_headers = {"Authorization": f"token {FRAPPE_API_KEY}:{FRAPPE_API_SECRET}"}
+        frappe_headers = {
+            "Authorization": (
+                f"token {read_secret('frappe_api_key')}:"
+                f"{read_secret('frappe_api_secret')}"
+            )
+        }
         user_resp = await client.get(
             f"{FRAPPE_URL}/api/resource/User/{urllib.parse.quote(email)}",
             headers=frappe_headers,

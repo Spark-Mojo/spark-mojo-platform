@@ -14,10 +14,18 @@ load_dotenv()
 import httpx
 from fastapi import Request, Header, HTTPException
 
+from secrets_loader import SecretNotFoundError, read_secret
 from session_store import get_session
 
 FRAPPE_URL = os.getenv("FRAPPE_URL", "http://localhost:8080")
 DEV_MODE = os.getenv("DEV_MODE", "true").lower() in ("true", "1", "yes")
+
+
+def _read_secret_or_empty(name: str) -> str:
+    try:
+        return read_secret(name)
+    except SecretNotFoundError:
+        return ""
 
 
 DEV_USER = {
@@ -83,8 +91,8 @@ async def get_current_user(request: Request) -> dict:
     # Fetch roles for authenticated user via token auth (works regardless of cookie type)
     roles = []
     try:
-        api_key = os.getenv("FRAPPE_API_KEY", "")
-        api_secret = os.getenv("FRAPPE_API_SECRET", "")
+        api_key = _read_secret_or_empty("frappe_api_key")
+        api_secret = _read_secret_or_empty("frappe_api_secret")
         async with httpx.AsyncClient() as client:
             resp = await client.get(
                 f"{FRAPPE_URL}/api/method/frappe.client.get_list",
@@ -111,7 +119,7 @@ async def get_current_user(request: Request) -> dict:
     }
 
 
-ADMIN_SERVICE_KEY = os.getenv("ADMIN_SERVICE_KEY", "")
+ADMIN_SERVICE_KEY = _read_secret_or_empty("admin_service_key")
 
 
 async def verify_admin_key(x_admin_key: str = Header(None, alias="X-Admin-Key")) -> None:
