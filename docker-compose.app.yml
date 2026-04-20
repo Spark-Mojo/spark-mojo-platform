@@ -14,6 +14,30 @@ networks:
     external: true
     name: frappe-poc_frappe_network
 
+# Docker Compose secrets — mounted into poc-api at /run/secrets/<name>.
+# Files are seeded on the VPS at /home/ops/spark-mojo-platform/secrets/<name>
+# (0600, not committed — see .gitignore). The abstraction layer's
+# read_secret() helper (SEC-001) reads from SECRETS_DIR with env-var fallback.
+secrets:
+  google_client_secret:
+    file: ./secrets/google_client_secret
+  frappe_api_key:
+    file: ./secrets/frappe_api_key
+  frappe_api_secret:
+    file: ./secrets/frappe_api_secret
+  stedi_api_key:
+    file: ./secrets/stedi_api_key
+  medplum_client_secret:
+    file: ./secrets/medplum_client_secret
+  admin_service_key:
+    file: ./secrets/admin_service_key
+  admin_api_key:
+    file: ./secrets/admin_api_key
+  admin_api_secret:
+    file: ./secrets/admin_api_secret
+  mariadb_root_password:
+    file: ./secrets/mariadb_root_password
+
 services:
   # ── React Frontend ──────────────────────────────────────────
   poc-frontend:
@@ -61,6 +85,19 @@ services:
       - frappe_network
     env_file:
       - .env.poc
+    environment:
+      # read_secret() (SEC-001) looks here first, then falls back to env vars.
+      SECRETS_DIR: /run/secrets
+    secrets:
+      - google_client_secret
+      - frappe_api_key
+      - frappe_api_secret
+      - stedi_api_key
+      - medplum_client_secret
+      - admin_service_key
+      - admin_api_key
+      - admin_api_secret
+      - mariadb_root_password
     labels:
       - "traefik.enable=true"
       # Health endpoint — all hosts

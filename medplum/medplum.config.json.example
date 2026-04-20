@@ -23,11 +23,11 @@
     "port": 5432,
     "dbname": "medplum",
     "username": "medplum",
-    "password": "MEDPLUM_DB_PASSWORD_FROM_ENV_POC"
+    "password": "${DB_PASSWORD}"
   },
   "redis": {
     "host": "medplum-redis",
     "port": 6379,
-    "password": "MEDPLUM_REDIS_PASSWORD_FROM_ENV_POC"
+    "password": "${REDIS_PASSWORD}"
   }
 }
