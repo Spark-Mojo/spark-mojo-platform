@@ -61,3 +61,6 @@ skills/ralph/SKILL.md
 # Medplum config contains db/redis passwords — never commit
 medplum/medplum.config.json
 abstraction-layer/.coverage
+
+# SEC-002: mounted secret files live here on the VPS. Never commit.
+secrets/

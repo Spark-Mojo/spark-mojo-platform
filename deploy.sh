@@ -267,6 +267,26 @@ else:
 }
 
 # ══════════════════════════════════════════════════════════════════════════════
+# PHASE 2.5 — Render config files from mounted secrets (SEC-002)
+# ══════════════════════════════════════════════════════════════════════════════
+#
+# Medplum v5.x reads DB/Redis passwords from medplum.config.json, not env vars
+# (CLAUDE.md gotcha). The tracked template uses ${DB_PASSWORD} / ${REDIS_PASSWORD}
+# placeholders; this phase renders the real file from secrets/medplum_db_password
+# and secrets/medplum_redis_password via envsubst. Must run before Phase 3 so
+# Medplum restarts cleanly if it gets recycled later in the deploy.
+#
+phase_2_5_render_configs() {
+  echo ""
+  echo "[Phase 2.5] Rendering config files from secrets..."
+
+  cd "$DEPLOY_DIR"
+  bash scripts/render-medplum-config.sh
+
+  echo "[Phase 2.5] DONE"
+}
+
+# ══════════════════════════════════════════════════════════════════════════════
 # PHASE 3 — Run bench migrate on all registered sites
 # ══════════════════════════════════════════════════════════════════════════════
 phase_3() {
@@ -626,6 +646,15 @@ fi
 
 should_run 1 && phase_1
 should_run 2 && phase_2
+
+# Phase 2.5 renders medplum/medplum.config.json from secrets before any
+# subsequent service touches the Medplum stack. Only runs on a full deploy
+# (not --verify-only, not --phase N) — invoke explicitly if you need it alone:
+#   bash scripts/render-medplum-config.sh
+if [ "$VERIFY_ONLY" = false ] && [ -z "$RUN_PHASE" ]; then
+  phase_2_5_render_configs
+fi
+
 should_run 3 && phase_3
 should_run 4 && phase_4
 if [ "$BACKEND_ONLY" = true ] && [ -z "$RUN_PHASE" ]; then
