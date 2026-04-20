@@ -8,7 +8,7 @@
 
 1. **Structural cleanup** — split `docker-compose.poc.yml` into three stack files + umbrella. No behavior change.
 2. **Runtime isolation** — move secrets from `environment:` / `.env` substitution to Docker Compose `secrets:` blocks that mount as files in `/run/secrets/*`. Apps refactored to read from files.
-3. **Source of truth** — Infisical becomes canonical. `deploy.sh` fetches secrets from Infisical at deploy time. Monthly rotation cron.
+3. **Source of truth** — Infisical becomes canonical. `deploy.sh` fetches secrets from Infisical at deploy time. Monthly sync cron (rotation cadence is owned by DECISION-031, not this plan).
 4. **PHI hardening** — per-site Frappe `encryption_key` in Infisical, auditd on secret files, access logging, documented rotation runbook.
 
 **Tech Stack:**
@@ -17,7 +17,7 @@
 - Docker Compose v2 `secrets:` blocks (file-mount semantics, not Swarm secrets)
 - Existing stack: Frappe / FastAPI abstraction layer / Medplum v5.x / Traefik
 - `auditd` + `ausearch` on Ubuntu 24.04
-- `cron` for monthly rotation
+- `cron` for monthly Infisical→VPS sync (not rotation — see DECISION-031)
 - `gitleaks` for CI secret-scanning
 
 **Out of scope:**
@@ -27,12 +27,26 @@
 
 ---
 
+## Locked decisions (see DECISION-031)
+
+The following are resolved and not open for change during implementation. If a task appears to contradict them, stop and write `BLOCKED-*.md`.
+
+- **Topology:** two Infisical projects — `sm-platform-shared` (infrastructure + non-PHI-tenant secrets) and `sm-willow` (Willow-specific, PHI-adjacent material). Each has `dev` and `prod` environments.
+- **Access tokens:** two Machine Identity service tokens, read-only, one per host:
+  - Mac: `~/.infisical-token-dev` — reads `dev` environment on both projects
+  - VPS: `/home/ops/.infisical-token-prod` — reads `prod` environment on both projects
+- **Service token rotation:** 90 days (Infisical-native).
+- **Secret rotation cadence:** per matrix in DECISION-031. Monthly cron in Task 3.4 is a **sync**, not a rotation — it pulls current Infisical values and redeploys changed services.
+- **Fallback (SOPS + age):** activates only on the three triggers listed in DECISION-031. Do not invoke proactively.
+
+---
+
 ## Prerequisites
 
 Before starting Phase 1:
 
 - [ ] Immediate secret-hygiene fixes from 2026-04-20 audit are landed on `main` (commit `5af875c`). Verify: `git log --oneline main | grep 5af875c`.
-- [ ] Infisical organization + project provisioned by James. Project name suggestion: `spark-mojo-platform-poc`.
+- [ ] Infisical organization provisioned by James. Two projects created: `sm-platform-shared` and `sm-willow`. Each with `dev` and `prod` environments. (Topology per DECISION-031.)
 - [ ] `INFISICAL_TOKEN` generated (machine token, project-scoped, read-only to start). Stored in Bitwarden password vault under a dedicated "Infisical tokens" folder.
 - [ ] Baseline backup of current `.env.poc` taken and stored encrypted offline. Source of truth for Phase 3's import.
 - [ ] `platform/decisions/DECISION-XXX-secrets-management.md` drafted in `sparkmojo-internal` governance repo (architecture lock).
@@ -632,7 +646,7 @@ git add scripts/infisical-fetch.sh deploy.sh
 git commit -m "feat(deploy): fetch secrets from Infisical at deploy time"
 ```
 
-### Task 3.4: Rotation automation
+### Task 3.4: Monthly Infisical→VPS sync cron
 
 **Files:**
 - Create: `scripts/rotate-secrets.sh`
