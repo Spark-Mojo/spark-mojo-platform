@@ -2,17 +2,18 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Move Spark Mojo Platform secret handling from plaintext `.env.poc` + tracked-at-risk `medplum.config.json` to a Bitwarden Secrets Manager (BWS)-backed, Docker Compose `secrets:`-mounted, split-compose architecture that is acceptable for PHI workloads (Willow).
+**Goal:** Move Spark Mojo Platform secret handling from plaintext `.env.poc` + tracked-at-risk `medplum.config.json` to a Infisical-backed, Docker Compose `secrets:`-mounted, split-compose architecture that is acceptable for PHI workloads (Willow).
 
 **Architecture:** Four sequential phases, each ending in a deployed working state:
 
 1. **Structural cleanup** — split `docker-compose.poc.yml` into three stack files + umbrella. No behavior change.
 2. **Runtime isolation** — move secrets from `environment:` / `.env` substitution to Docker Compose `secrets:` blocks that mount as files in `/run/secrets/*`. Apps refactored to read from files.
-3. **Source of truth** — BWS becomes canonical. `deploy.sh` fetches secrets from BWS at deploy time. Monthly rotation cron.
-4. **PHI hardening** — per-site Frappe `encryption_key` in BWS, auditd on secret files, access logging, documented rotation runbook.
+3. **Source of truth** — Infisical becomes canonical. `deploy.sh` fetches secrets from Infisical at deploy time. Monthly rotation cron.
+4. **PHI hardening** — per-site Frappe `encryption_key` in Infisical, auditd on secret files, access logging, documented rotation runbook.
 
 **Tech Stack:**
-- Bitwarden Secrets Manager (BWS) + `bws` CLI (Rust binary, single-file install)
+- Infisical (cloud free tier; self-host on DO fallback if cost ever bites or PHI compliance requires owned infra)
+- `infisical` CLI (Go binary; install via apt, brew, or official installer)
 - Docker Compose v2 `secrets:` blocks (file-mount semantics, not Swarm secrets)
 - Existing stack: Frappe / FastAPI abstraction layer / Medplum v5.x / Traefik
 - `auditd` + `ausearch` on Ubuntu 24.04
@@ -31,8 +32,8 @@
 Before starting Phase 1:
 
 - [ ] Immediate secret-hygiene fixes from 2026-04-20 audit are landed on `main` (commit `5af875c`). Verify: `git log --oneline main | grep 5af875c`.
-- [ ] BWS organization + project provisioned by James. Project name suggestion: `spark-mojo-platform-poc`.
-- [ ] `BWS_ACCESS_TOKEN` generated (machine token, project-scoped, read-only to start). Stored in Bitwarden password vault under a dedicated "BWS tokens" folder.
+- [ ] Infisical organization + project provisioned by James. Project name suggestion: `spark-mojo-platform-poc`.
+- [ ] `INFISICAL_TOKEN` generated (machine token, project-scoped, read-only to start). Stored in Bitwarden password vault under a dedicated "Infisical tokens" folder.
 - [ ] Baseline backup of current `.env.poc` taken and stored encrypted offline. Source of truth for Phase 3's import.
 - [ ] `platform/decisions/DECISION-XXX-secrets-management.md` drafted in `sparkmojo-internal` governance repo (architecture lock).
 
@@ -46,7 +47,7 @@ Before starting Phase 1:
 - `docker-compose.app.yml` — poc-api (FastAPI), poc-frontend (nginx)
 - `docker-compose.yml` — umbrella (`include:` the three above)
 - `secrets/` — gitignored local dev secret files (one file per secret, 0600)
-- `scripts/bws-fetch.sh` — `bws secret get` wrapper used by deploy.sh
+- `scripts/infisical-fetch.sh` — `infisical export` wrapper used by deploy.sh
 - `scripts/rotate-secrets.sh` — monthly rotation entry point
 - `scripts/audit-secret-access.sh` — ausearch-based secret-file-access report
 - `.github/workflows/secret-scan.yml` — gitleaks CI
@@ -56,7 +57,7 @@ Before starting Phase 1:
 - `docker-compose.poc.yml` — eventually deleted after umbrella replaces it
 - `abstraction-layer/auth.py`, `abstraction-layer/google_auth.py` — `os.getenv` → `read_secret("google_client_secret")` helper
 - `medplum/medplum.config.json.example` — documented generator flow, never hand-written passwords
-- `.gitignore` — add `secrets/`, `*.env.runtime`, `.bws-token`
+- `.gitignore` — add `secrets/`, `*.env.runtime`, `.infisical-token`
 - `CLAUDE.md` — secret-handling gotchas rewritten
 
 **Untracked on VPS after Phase 3 ships:**
@@ -501,87 +502,125 @@ Hit `https://api.poc.sparkmojo.com/auth/google` → 307 to Google → callback �
 
 ---
 
-## Phase 3: BWS as source of truth + rotation automation
+## Phase 3: Infisical as source of truth + rotation automation
 
 **Risk:** High. External dependency, deploy-time failure modes.
-**Ships when:** `deploy.sh` pulls secrets from BWS; `rotate-secrets.sh` runs monthly; manual editing of `.env.poc` is no longer required (and `.env.poc` is removed from VPS).
+**Ships when:** `deploy.sh` pulls secrets from Infisical; `rotate-secrets.sh` runs monthly; manual editing of `.env.poc` is no longer required (and `.env.poc` is removed from VPS).
 
-### Task 3.1: Install `bws` CLI on VPS
+### Task 3.1: Install the Infisical CLI on VPS
 
 - [ ] **Step 1: Install**
 
 ```bash
-ssh sparkmojo 'curl -LO https://github.com/bitwarden/sdk-sm/releases/latest/download/bws-x86_64-unknown-linux-gnu.zip && unzip -o bws-x86_64-unknown-linux-gnu.zip && sudo mv bws /usr/local/bin/ && bws --version'
+ssh sparkmojo 'curl -1sLf https://artifacts-cli.infisical.com/setup.deb.sh | sudo -E bash && sudo apt-get install -y infisical && infisical --version'
 ```
-Expected: version string printed.
+Expected: version string printed (e.g. `0.x.y`). If the apt repo is unreachable from DO later, fall back to the static binary from `https://github.com/Infisical/infisical/releases/latest`.
 
-- [ ] **Step 2: Provision token file**
+- [ ] **Step 2: Create a Machine Identity in the Infisical UI**
 
-On VPS, as ops:
+Web UI: Organization → Access Control → Machine Identities → Create. Scope it to **one project only** (`spark-mojo-platform-poc`), **one environment** (`prod`), read-only. Generate a service token.
+
+- [ ] **Step 3: Provision token file on VPS**
+
 ```bash
-touch /home/ops/.bws-token
-chmod 600 /home/ops/.bws-token
-# Paste BWS_ACCESS_TOKEN value into the file
+ssh sparkmojo 'umask 077; touch /home/ops/.infisical-token; chmod 600 /home/ops/.infisical-token'
+# Then paste the service token into that file via: ssh sparkmojo 'cat > /home/ops/.infisical-token'
 ```
 
-### Task 3.2: Seed BWS with current secret values
+- [ ] **Step 4: Record the project slug and environment**
+
+In `scripts/infisical-fetch.sh` (Task 3.3) you will reference `INFISICAL_PROJECT_ID` (the project UUID, visible in the URL of the project dashboard) and `INFISICAL_ENV=prod`. Note them in CREDENTIALS.md (governance repo).
+
+### Task 3.2: Seed the Infisical project with current secret values
+
+Infisical stores secrets by **name** per **environment** inside a **project**. No UUID manifest is needed — the fetch script pulls everything in the project/environment.
 
 - [ ] **Step 1: Enumerate secrets in .env.poc**
 
 ```bash
-ssh sparkmojo 'grep -v "^#\|^$" /home/ops/spark-mojo-platform/.env.poc | cut -d= -f1'
+ssh sparkmojo 'grep -vE "^#|^$" /home/ops/spark-mojo-platform/.env.poc | cut -d= -f1 | sort'
+```
+Expected: a short list of KEY names (15–25 entries).
+
+- [ ] **Step 2: Classify each key**
+
+For each name, mark it in CREDENTIALS.md as one of:
+- **secret** → goes into Infisical `prod` environment
+- **non-secret config** (URLs, client IDs, feature flags) → stays in `.env.poc` or moves to a committed `config.prod.env` file
+
+- [ ] **Step 3: Import classified secrets into Infisical**
+
+Simplest path — import the whole `.env.poc` via the web UI (Project → Secrets → Import → Upload .env), then delete the non-secret keys from the project. Alternative CLI path:
+
+```bash
+# Run locally after copying .env.poc down temporarily
+infisical login  # interactive, one-time
+infisical secrets set --projectId <id> --env prod --from-env-file .env.poc.filtered
 ```
 
-- [ ] **Step 2: Create one BWS secret per entry**
+Delete the local copy when done.
 
-Using the web UI or `bws secret create`, populate the BWS project. Record each secret's UUID.
+- [ ] **Step 4: Verify**
 
-- [ ] **Step 3: Write a name→UUID manifest**
-
-Create `secrets/bws-manifest.yml` (gitignored). Format:
-```yaml
-google_client_secret: 11111111-2222-3333-4444-555555555555
-medplum_db_password: aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee
-# ...
+```bash
+ssh sparkmojo 'export INFISICAL_TOKEN=$(</home/ops/.infisical-token); infisical secrets --projectId <id> --env prod | head'
 ```
+Expected: the KEY names you seeded, no values in terminal (Infisical CLI masks values by default in list view).
 
-### Task 3.3: Write the BWS fetch script
+### Task 3.3: Write the Infisical fetch script
 
 **Files:**
-- Create: `scripts/bws-fetch.sh`
+- Create: `scripts/infisical-fetch.sh`
 
 - [ ] **Step 1: Implement**
 
 ```bash
 #!/usr/bin/env bash
+# Materialises every secret in the configured Infisical project/environment
+# as one file per secret in ./secrets/<lowercase_name>, 0600.
+# Called by deploy.sh Phase 0.5 and scripts/rotate-secrets.sh.
 set -euo pipefail
-# Fetches all secrets listed in secrets/bws-manifest.yml from BWS,
-# writes each to secrets/<name> with 0600.
 
-export BWS_ACCESS_TOKEN="$(<"$HOME/.bws-token")"
-MANIFEST="${1:-secrets/bws-manifest.yml}"
-OUTPUT_DIR="${2:-secrets}"
+INFISICAL_PROJECT_ID="${INFISICAL_PROJECT_ID:?set in /etc/default/spark-mojo or shell}"
+INFISICAL_ENV="${INFISICAL_ENV:-prod}"
+OUTPUT_DIR="${1:-secrets}"
 
-mkdir -p "$OUTPUT_DIR" && chmod 700 "$OUTPUT_DIR"
+export INFISICAL_TOKEN="$(<"$HOME/.infisical-token")"
 
-while IFS=': ' read -r name uuid; do
-  [ -z "$name" ] && continue
-  [[ "$name" =~ ^# ]] && continue
-  value="$(bws secret get "$uuid" --output json | jq -r '.value')"
-  umask 077
-  printf '%s\n' "$value" > "$OUTPUT_DIR/$name"
-done < "$MANIFEST"
+mkdir -p "$OUTPUT_DIR"
+chmod 700 "$OUTPUT_DIR"
 
-echo "Fetched $(ls "$OUTPUT_DIR" | wc -l) secrets"
+# Export all secrets as dotenv, then fan out to one-file-per-secret.
+TMPFILE="$(mktemp)"
+trap 'shred -u "$TMPFILE" 2>/dev/null || rm -f "$TMPFILE"' EXIT
+umask 077
+
+infisical export \
+  --projectId "$INFISICAL_PROJECT_ID" \
+  --env "$INFISICAL_ENV" \
+  --format=dotenv \
+  > "$TMPFILE"
+
+# Parse dotenv line by line: KEY="value" or KEY=value
+while IFS= read -r line; do
+  [[ -z "$line" || "$line" =~ ^# ]] && continue
+  key="${line%%=*}"
+  value="${line#*=}"
+  # Strip surrounding quotes if present
+  value="${value%\"}"; value="${value#\"}"
+  printf '%s\n' "$value" > "$OUTPUT_DIR/$(echo "$key" | tr '[:upper:]' '[:lower:]')"
+done < "$TMPFILE"
+
+echo "Fetched $(ls "$OUTPUT_DIR" | wc -l) secrets from Infisical ($INFISICAL_ENV)"
 ```
 
 - [ ] **Step 2: Hook into deploy.sh**
 
-New `phase_0_5_fetch_secrets()` before `phase_1_pull()`:
+New `phase_0_5_fetch_secrets()` called before `phase_1_pull()`:
 ```bash
 phase_0_5_fetch_secrets() {
-  echo "[Phase 0.5] Fetching secrets from BWS..."
-  bash scripts/bws-fetch.sh
+  echo "[Phase 0.5] Fetching secrets from Infisical..."
+  bash scripts/infisical-fetch.sh
   echo "[Phase 0.5] DONE"
 }
 ```
@@ -589,8 +628,8 @@ phase_0_5_fetch_secrets() {
 - [ ] **Step 3: Commit**
 
 ```bash
-git add scripts/bws-fetch.sh deploy.sh
-git commit -m "feat(deploy): fetch secrets from Bitwarden Secrets Manager"
+git add scripts/infisical-fetch.sh deploy.sh
+git commit -m "feat(deploy): fetch secrets from Infisical at deploy time"
 ```
 
 ### Task 3.4: Rotation automation
@@ -603,11 +642,11 @@ git commit -m "feat(deploy): fetch secrets from Bitwarden Secrets Manager"
 
 ```bash
 #!/usr/bin/env bash
-# Monthly: refetch all secrets from BWS and rebuild containers.
-# BWS is the source of truth; anyone rotating a secret updates BWS.
+# Monthly: refetch all secrets from Infisical and rebuild containers.
+# Infisical is the source of truth; anyone rotating a secret updates Infisical.
 set -euo pipefail
 cd /home/ops/spark-mojo-platform
-bash scripts/bws-fetch.sh
+bash scripts/infisical-fetch.sh
 sudo docker compose -f docker-compose.app.yml up -d --force-recreate
 ```
 
@@ -622,16 +661,22 @@ sudo docker compose -f docker-compose.app.yml up -d --force-recreate
 
 ```bash
 git add scripts/rotate-secrets.sh
-git commit -m "feat(ops): monthly BWS-backed secret rotation script"
+git commit -m "feat(ops): monthly Infisical-backed secret rotation script"
 ```
 
 ### Task 3.5: Retire .env.poc
 
-- [ ] **Step 1: Verify all secrets are in BWS manifest**
+- [ ] **Step 1: Verify all secrets are in Infisical**
 
-Compare `.env.poc` contents against `bws-manifest.yml`. No drift.
+Dump `.env.poc` keys and the Infisical `prod` keys. Diff should be empty (modulo non-secret config keys intentionally kept outside Infisical).
 
-- [ ] **Step 2: Deploy once more from BWS, confirm all services healthy**
+```bash
+diff \
+  <(grep -vE "^#|^$" /home/ops/spark-mojo-platform/.env.poc | cut -d= -f1 | sort) \
+  <(INFISICAL_TOKEN=$(</home/ops/.infisical-token) infisical secrets --projectId <id> --env prod --plain | awk '{print $1}' | sort)
+```
+
+- [ ] **Step 2: Deploy once more from Infisical, confirm all services healthy**
 
 - [ ] **Step 3: Move .env.poc to encrypted offline backup**
 
@@ -642,13 +687,13 @@ Store the .gpg file in offline backup.
 
 - [ ] **Step 4: Update CLAUDE.md**
 
-Rewrite the "Medplum docker compose MUST use `--env-file .env.poc`" gotcha. New narrative: "Secrets are fetched from BWS by `deploy.sh` Phase 0.5. Materialized to `/home/ops/spark-mojo-platform/secrets/*` (0600). Compose mounts them via `secrets:` blocks."
+Rewrite the "Medplum docker compose MUST use `--env-file .env.poc`" gotcha. New narrative: "Secrets are fetched from Infisical by `deploy.sh` Phase 0.5. Materialized to `/home/ops/spark-mojo-platform/secrets/*` (0600). Compose mounts them via `secrets:` blocks."
 
 - [ ] **Step 5: Commit doc update**
 
 ```bash
 git add CLAUDE.md
-git commit -m "docs: update CLAUDE.md gotchas for BWS secrets model"
+git commit -m "docs: update CLAUDE.md gotchas for Infisical secrets model"
 ```
 
 ---
@@ -656,7 +701,7 @@ git commit -m "docs: update CLAUDE.md gotchas for BWS secrets model"
 ## Phase 4: PHI hardening
 
 **Risk:** Low-medium. Policy + audit infra.
-**Ships when:** auditd rules are active; per-site Frappe encryption keys are in BWS; rotation runbook is published.
+**Ships when:** auditd rules are active; per-site Frappe encryption keys are in Infisical; rotation runbook is published.
 
 ### Task 4.1: auditd rules for secret files
 
@@ -683,19 +728,21 @@ ssh sparkmojo 'sudo cp /home/ops/spark-mojo-platform/docs/ops/auditd-rules/spark
 sudo ausearch -k sm_secrets --start today -i | head -100
 ```
 
-### Task 4.2: Per-site Frappe encryption_key in BWS
+### Task 4.2: Per-site Frappe encryption_key in Infisical
 
 - [ ] **Step 1: Generate new encryption_key for each site**
 
 ```bash
-ssh sparkmojo 'for SITE in poc-dev internal willow admin; do
-  python3 -c "import secrets, base64; print(base64.urlsafe_b64encode(secrets.token_bytes(32)).decode())"
-done'
+for SITE in poc_dev internal willow admin; do
+  KEY=$(python3 -c "import secrets, base64; print(base64.urlsafe_b64encode(secrets.token_bytes(32)).decode())")
+  echo "$SITE: $KEY"
+done
 ```
+Write the output to a scratch file locally; paste each into Infisical in the next step; then shred the scratch file.
 
-- [ ] **Step 2: Store each in BWS**
+- [ ] **Step 2: Store each in Infisical**
 
-Secret names: `frappe_encryption_key_poc_dev`, `frappe_encryption_key_internal`, etc. Add UUIDs to manifest.
+Create secrets in the `prod` environment of the Infisical project with names `frappe_encryption_key_poc_dev`, `frappe_encryption_key_internal`, `frappe_encryption_key_willow`, `frappe_encryption_key_admin`. Next `./deploy.sh` materialises them into `secrets/frappe_encryption_key_*` automatically.
 
 - [ ] **Step 3: Update site configs**
 
@@ -714,7 +761,7 @@ Note: this will invalidate existing encrypted passwords (e.g. email account pass
 
 - [ ] **Step 1: Write runbook**
 
-Cover: emergency rotation (suspected compromise), monthly planned rotation, new-secret onboarding, Frappe encryption key rotation, BWS access token rotation.
+Cover: emergency rotation (suspected compromise), monthly planned rotation, new-secret onboarding, Frappe encryption key rotation, Infisical access token rotation.
 
 - [ ] **Step 2: Commit**
 
@@ -761,7 +808,76 @@ Checked against the 2026-04-20 audit punch list:
 
 Gaps knowingly deferred:
 - Rotating FastAPI config hot-reload (no app restart on rotation) — defer to a separate plan; requires app-level watcher, not in scope.
-- Moving PHI workloads onto a segmented host — defer; document in DECISION-XXX as a known next step before external PHI go-live.
-- BAA with Bitwarden — defer to legal/compliance; flag as gating dependency for PHI go-live.
+- Moving PHI workloads onto a segmented host — defer; document in DECISION-031 as a known next step before external PHI go-live.
+- BAA with Infisical — defer to legal/compliance; flag as gating dependency for external PHI go-live. (Infisical offers BAA on Enterprise; not required for internal dev.)
 
-Type/name consistency: `read_secret(name)` used consistently across tasks; `SECRETS_DIR` env var name used consistently; BWS manifest uses `secrets/bws-manifest.yml` path consistently.
+Type/name consistency: `read_secret(name)` used consistently; `SECRETS_DIR` env var name used consistently; Infisical project/environment names (`spark-mojo-platform-poc` / `prod`) referenced consistently.
+
+---
+
+## Appendix A: SOPS + age fallback path
+
+Use this appendix if:
+- Infisical Cloud's free tier ever becomes insufficient **and** self-hosting Infisical is undesirable.
+- A compliance auditor demands zero third-party SaaS in the secrets path.
+- You want an escape hatch that keeps secrets versioned in git.
+
+**Model:** Secrets live encrypted in the repo at `secrets/prod.env.enc`. An `age` private key on the VPS decrypts at deploy time. Rotating a secret = `sops secrets/prod.env.enc` → edit → commit → deploy.
+
+**Migration from Infisical → SOPS:**
+1. `infisical export --env=prod --format=dotenv > /tmp/prod.env`
+2. `age-keygen -o ~/.sops-age-key.txt` on VPS; copy public key.
+3. Create `.sops.yaml` in repo root with the age recipient.
+4. `sops --encrypt /tmp/prod.env > secrets/prod.env.enc`; commit the `.enc` file.
+5. Replace `scripts/infisical-fetch.sh` with `scripts/sops-fetch.sh`:
+   ```bash
+   #!/usr/bin/env bash
+   set -euo pipefail
+   export SOPS_AGE_KEY_FILE="$HOME/.sops-age-key.txt"
+   sops --decrypt secrets/prod.env.enc > /tmp/sm.env
+   trap 'shred -u /tmp/sm.env' EXIT
+   mkdir -p secrets && chmod 700 secrets
+   umask 077
+   while IFS= read -r line; do
+     [[ -z "$line" || "$line" =~ ^# ]] && continue
+     key="${line%%=*}"; value="${line#*=}"
+     value="${value%\"}"; value="${value#\"}"
+     printf '%s\n' "$value" > "secrets/$(echo "$key" | tr '[:upper:]' '[:lower:]')"
+   done < /tmp/sm.env
+   ```
+6. `shred /tmp/prod.env` locally. Never commit the plaintext.
+
+**Rotation workflow:** `sops secrets/prod.env.enc` opens the encrypted file in your editor with decryption; save re-encrypts. Commit the change, run `./deploy.sh`.
+
+**Key management is the risk:** lose the age key and every encrypted secret is unrecoverable. Mitigate with a second recipient (e.g. a key held in a hardware token or escrowed offline).
+
+---
+
+## Appendix B: Digital Ocean migration impact
+
+This plan is VPS-agnostic. The migration from the current Hostinger-style VPS to Digital Ocean does not change the secrets architecture — only the host substrate. Sequence the two migrations deliberately.
+
+**Recommended order:** **Secrets migration first, then DO migration.** Reasons:
+- After Phase 3 lands, `.env.poc` is gone. The new DO droplet never needs a plaintext secrets file copied to it — it fetches from Infisical on first deploy.
+- The only state that has to move to DO is the Infisical service token (`/home/ops/.infisical-token`, one file), Traefik certs/volumes, Docker volumes (Postgres data, Medplum binary storage), and git-tracked code.
+- If DO migration happens first, every copied `.env.poc` has to be scrubbed on the old host, and the cutover has a window where secrets live on two boxes.
+
+**Steps unique to DO migration (orthogonal to this plan):**
+1. Provision DO droplet (Ubuntu 24.04, same size or +1 vCPU). Note the new public IPv4.
+2. Install Docker, Compose, `infisical`, `ssh` keys, `ops` user.
+3. `scp -r /home/ops/.infisical-token` from old host to new. Chmod 600.
+4. Update DNS in Cloudflare (or current DNS provider) for all `*.sparkmojo.com` records → new IP. Low TTL 24h in advance.
+5. On new droplet: `git clone https://github.com/Spark-Mojo/spark-mojo-platform.git /home/ops/spark-mojo-platform && cd $_ && ./deploy.sh`. Phase 0.5 pulls secrets from Infisical automatically.
+6. Restore Docker volumes (Postgres, Medplum) from backup — this is the only stateful migration concern. Follow an existing VPS backup/restore runbook.
+7. Verify end-to-end against smoke_test.sh.
+8. Decommission old VPS: shred secrets, snapshot, destroy after 7-day soak.
+
+**What does NOT need to change in the repo during DO migration:**
+- `docker-compose.*.yml` (host-agnostic)
+- `deploy.sh` (the `ssh sparkmojo` alias in CLAUDE.md just points at the new host)
+- `CLAUDE.md` (update only the IP/hostname references; everything else is identical)
+
+**What to update in governance repo:**
+- `CREDENTIALS.md` — new VPS provider, new DO project ID, new IPv4
+- `DECISION-016-environment-topology-and-build-sequence.md` — note DO as the new substrate if it isn't already there
+- Any runbook that references the old host's specifics (paths are identical — just the provider name)
