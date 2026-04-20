@@ -4,7 +4,7 @@ cli:
 event_loop:
   starting_event: "session.start"
   completion_promise: "LOOP_COMPLETE"
-  max_iterations: 60        # 2 stories * 15 iterations with headroom
+  max_iterations: 200        # 2 stories * 15 iterations with headroom
   max_runtime_seconds: 28800  # 8 hours — guarantees completion by morning
 
 core:
@@ -23,7 +23,7 @@ core:
 
 adapters:
   claude:
-    timeout: 1200  # 20 minutes per iteration — required for overnight reliability
+    timeout: 12000  
 
 memories:
   enabled: true

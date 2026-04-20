@@ -13,3 +13,7 @@
 | FIX-42-001  | COMPLETE (already on main: 78404eb, deployed) | 2026-04-12T01:30Z |
 | FIX-42-002  | COMPLETE (no changes needed — tests already pass on main) | 2026-04-12T02:00Z |
 | FIX-42-003  | COMPLETE (already on main: 920918f) | 2026-04-12T02:15Z |
+| SEC-001     | started at 2026-04-20T18:30Z (attempt 1) | 2026-04-20T18:30Z |
+| SEC-001     | COMPLETE (merged 32eab49, deployed, /auth/google 307 verified) | 2026-04-20T22:37:45Z |
+| SEC-002     | started at 2026-04-20T22:45Z (attempt 1) | 2026-04-20T22:45Z |
+| SEC-002     | BLOCKED (verification failed — plan vs spec mismatch on .env.poc cleanup; deploy itself OK) | 2026-04-20T22:52Z |
