@@ -1,0 +1,281 @@
+cli:
+  backend: "claude"
+
+event_loop:
+  starting_event: "session.start"
+  completion_promise: "LOOP_COMPLETE"
+  max_iterations: 60        # 2 stories * 15 iterations with headroom
+  max_runtime_seconds: 28800  # 8 hours — guarantees completion by morning
+
+core:
+  guardrails:
+    - "Primary working directory: /Users/jamesilsley/GitHub/spark-mojo-platform/"
+    - "Governance repo: /Users/jamesilsley/GitHub/sparkmojo-internal/"
+    - "Story specs live at /Users/jamesilsley/GitHub/sparkmojo-internal/platform/feature-library/stories/SEC-00N-*.md"
+    - "Architecture decision of record: /Users/jamesilsley/GitHub/sparkmojo-internal/platform/decisions/DECISION-031-secrets-management.md"
+    - "Deploy command: ssh sparkmojo 'cd /home/ops/spark-mojo-platform && git pull origin main && ./deploy.sh'"
+    - "NEVER use `docker compose restart` as a substitute for deploy.sh (CLAUDE.md gotcha)."
+    - "NEVER run `bench install-app` or `bench get-app` without explicit story instruction (CLAUDE.md rule 11)."
+    - "NEVER modify files directly on the VPS. All changes go through git and ./deploy.sh."
+    - "NEVER commit secret values to any file tracked in git. Template placeholders only."
+    - "Frontend is JSX (not TypeScript). These stories do not touch frontend/."
+    - "Coverage threshold: 70% for abstraction-layer (pytest --cov-fail-under=70)."
+
+adapters:
+  claude:
+    timeout: 1200  # 20 minutes per iteration — required for overnight reliability
+
+memories:
+  enabled: true
+  inject: auto
+  budget: 2000
+
+tasks:
+  enabled: true
+
+hats:
+  health_check:
+    name: "Health Check"
+    description: "Verifies baseline health before build work. Halts run if broken."
+    triggers: ["session.start"]
+    publishes: ["health.ok"]
+    max_activations: 1
+    instructions: |
+      Run these checks in order. If ANY fails, write HEALTH-BLOCKED.md at repo
+      root with the exact failure and print LOOP_COMPLETE. Do not emit any event.
+
+      Check 1 — abstraction-layer tests pass on current main:
+        cd /Users/jamesilsley/GitHub/spark-mojo-platform/abstraction-layer && \
+          pytest tests/ --cov=. --cov-report=term-missing --cov-fail-under=70
+        Required: exit 0.
+
+      Check 2 — both repos clean and on main:
+        cd /Users/jamesilsley/GitHub/spark-mojo-platform && \
+          git status --porcelain && git branch --show-current
+        cd /Users/jamesilsley/GitHub/sparkmojo-internal && \
+          git status --porcelain && git branch --show-current
+        Required: spark-mojo-platform branch=main, porcelain empty.
+        sparkmojo-internal may have uncommitted working-tree modifications from
+        James — that's expected. Require: branch=main only.
+
+      Check 3 — no stale run artifacts in spark-mojo-platform:
+        cd /Users/jamesilsley/GitHub/spark-mojo-platform && \
+          ls *-COMPLETE BLOCKED-*.md PLAN-*.md RETRY-*.count QUEUE-*.md HEALTH-BLOCKED.md 2>/dev/null
+        Required: no output.
+
+      Check 4 — deploy target reachable:
+        ssh sparkmojo 'echo OK'
+        Required: "OK" in stdout, exit 0.
+
+      Check 5 — VPS is on main:
+        ssh sparkmojo 'cd /home/ops/spark-mojo-platform && git branch --show-current'
+        Required: main.
+
+      If all pass:
+        Create QUEUE-PROGRESS.md with a header line and UTC start timestamp.
+        ralph emit "health.ok" "All 5 checks passed."
+
+      If any fail:
+        Write HEALTH-BLOCKED.md with the exact failing command and its stderr.
+        Print LOOP_COMPLETE.
+
+  story_planner:
+    name: "Story Planner"
+    description: "Finds next buildable story, checks dependencies and retry budget, writes the build plan."
+    triggers: ["health.ok", "story.committed", "story.skipped"]
+    publishes: ["plan.ready", "story.skipped"]
+    max_activations: 6
+    instructions: |
+      Read /Users/jamesilsley/GitHub/spark-mojo-platform/PROMPT.md.
+      Walk the Story Queue top to bottom.
+
+      Step 1 — Queue completion check:
+        A story is FINISHED when [STORY-ID]-COMPLETE OR BLOCKED-[STORY-ID].md
+        exists at repo root.
+        If all stories are FINISHED:
+          Write QUEUE-COMPLETE.md summarising each story's status (COMPLETE /
+          BLOCKED) with the BLOCKED reason if applicable.
+          Print LOOP_COMPLETE. Stop.
+
+      Step 2 — Pick next buildable story:
+        a. If [ID]-COMPLETE exists → skip.
+        b. If BLOCKED-[ID].md exists → skip.
+        c. Check dependencies in spec:
+           - Dependency BLOCKED → write BLOCKED-[ID].md noting the blocked dep,
+             append to QUEUE-PROGRESS.md,
+             ralph emit "story.skipped" "[ID]: blocked by [DEP]". Stop.
+           - Dependency not yet COMPLETE → skip for now.
+           - All deps COMPLETE → buildable. Proceed.
+        d. Check retry budget: if RETRY-[ID].count exists and >= 5:
+             Write BLOCKED-[ID].md noting retry exhaustion, append to QUEUE-PROGRESS.md,
+             ralph emit "story.skipped" "[ID]: retry budget exhausted". Stop.
+
+      Step 3 — Write the plan:
+        Read the spec from the absolute path in PROMPT.md (SEC-001 or SEC-002 spec).
+        Read /Users/jamesilsley/GitHub/spark-mojo-platform/CLAUDE.md for project
+        conventions and Definition of Done.
+        Read /Users/jamesilsley/GitHub/sparkmojo-internal/platform/decisions/DECISION-031-secrets-management.md.
+        Write PLAN-[STORY-ID].md at repo root with:
+          - Story ID, branch name, story type (Python API | VPS Infra)
+          - Files to create / modify (absolute paths)
+          - Exact gate commands (fast + full)
+          - Retry count (read from RETRY-[ID].count, 0 if missing)
+          - Commit message from spec
+        Append to QUEUE-PROGRESS.md: "[ID]: started at [UTC timestamp] (attempt N)"
+        ralph emit "plan.ready" "[ID]: plan written, type: [type], attempt N"
+
+  builder:
+    name: "Builder"
+    description: "Implements the plan using TDD. Runs fast gates. Never improvises on architecture."
+    triggers: ["plan.ready", "build.retry"]
+    publishes: ["build.ready", "story.skipped"]
+    max_activations: 6
+    instructions: |
+      Read PLAN-[STORY-ID].md at repo root.
+
+      If this is a retry (build.retry trigger):
+        Read the "## Retry Notes" section at the bottom of PLAN-[STORY-ID].md
+        for the previous failure. Address that specific failure first.
+
+      Set up branch:
+        cd /Users/jamesilsley/GitHub/spark-mojo-platform
+        git checkout main && git pull origin main
+        If branch story/[name] already exists (retry): git checkout story/[name] && git merge main
+        Else: git checkout -b story/[name]
+
+      TDD discipline (SEC-001 especially):
+        1. Write the failing test(s) FIRST.
+        2. Run them, confirm they fail with the expected error.
+        3. Implement the minimum code to make them pass.
+        4. Re-run tests; confirm green.
+        5. Refactor only if needed.
+
+      Build exactly what the spec and plan say. Nothing more.
+      Do NOT touch files listed in CLAUDE.md "Do Not Touch".
+      Do NOT commit secret values into any tracked file.
+
+      If architectural ambiguity (spec contradicts code, or unclear how to
+      proceed without making a design choice):
+        Write BLOCKED-[STORY-ID].md with the specific question, append to
+        QUEUE-PROGRESS.md,
+        ralph emit "story.skipped" "[ID]: architectural ambiguity: [short desc]". Stop.
+
+      Fast gates (run after each meaningful change):
+        SEC-001 (Python API):
+          cd abstraction-layer && pytest tests/test_secrets_loader.py -v
+          Required: all 4 tests pass.
+        SEC-002 (VPS Infra):
+          docker compose -f docker-compose.app.yml --env-file .env.poc config > /dev/null
+          docker compose -f docker-compose.medplum.yml --env-file .env.poc config > /dev/null
+          (Validation only — no VPS access needed locally. Full validation in verifier.)
+
+      On useful discovery (timing, gotcha, convention learned):
+        ralph tools memory add "description" -t fix --tags sec-phase-2
+
+      When fast gates pass:
+        ralph emit "build.ready" "[ID]: implementation complete, fast gates pass"
+
+  verifier:
+    name: "Verifier"
+    description: "Runs the full gate suite per Definition of Done. Enforces the 5-retry budget. Never commits."
+    triggers: ["build.ready"]
+    publishes: ["story.verified", "build.retry", "story.skipped"]
+    max_activations: 6
+    instructions: |
+      Read PLAN-[STORY-ID].md. Run ALL gates for this story type.
+
+      SEC-001 (Python API) full gates:
+        cd /Users/jamesilsley/GitHub/spark-mojo-platform/abstraction-layer
+        pytest tests/ --cov=. --cov-report=term-missing --cov-fail-under=70
+          Required: exit 0, coverage >= 70%.
+        grep -rnE 'os\.(getenv|environ).{0,3}GOOGLE_CLIENT_SECRET' .
+          Required: no matches (all migrated to read_secret()).
+
+      SEC-002 (VPS Infra) full gates:
+        cd /Users/jamesilsley/GitHub/spark-mojo-platform
+        # 1. Compose configs validate
+        for F in docker-compose.app.yml docker-compose.medplum.yml docker-compose.yml; do
+          docker compose -f "$F" --env-file .env.poc config > /dev/null || exit 1
+        done || FAIL=1
+        # 2. Renderer script exists and is executable
+        test -x scripts/render-medplum-config.sh || FAIL=1
+        # 3. deploy.sh has phase_2_5 wired in
+        grep -q 'phase_2_5_render_configs' deploy.sh || FAIL=1
+        # 4. .env.example placeholders syntactically valid for envsubst
+        grep -E '\$\{(DB|REDIS)_PASSWORD\}' medplum/medplum.config.json.example || FAIL=1
+        # 5. gitignore includes secrets/
+        grep -q '^secrets/$\|^secrets/' .gitignore || FAIL=1
+
+      Retry budget:
+        Read RETRY-[ID].count (treat missing as 0).
+        On failure: increment and write back.
+        If count >= 5:
+          Write BLOCKED-[ID].md summarising every failure observed.
+          Append to QUEUE-PROGRESS.md: "[ID]: BLOCKED (retries exhausted)"
+          git checkout main
+          rm -f RETRY-[ID].count
+          ralph emit "story.skipped" "[ID]: blocked after 5 failures". Stop.
+        If count < 5:
+          Append exact failing command and error output to PLAN-[ID].md
+          under a "## Retry Notes" section (create if missing).
+          ralph emit "build.retry" "[ID]: attempt N/5 failed. [exact error]"
+
+      All gates pass:
+        ralph emit "story.verified" "[ID]: all gates pass. [brief summary]"
+
+  committer:
+    name: "Committer"
+    description: "Commits verified work, merges to main, deploys to VPS, marks complete, cleans up."
+    triggers: ["story.verified"]
+    publishes: ["story.committed"]
+    max_activations: 3
+    instructions: |
+      Read PLAN-[STORY-ID].md. Use the commit message from the spec verbatim.
+
+      Step 1 — Commit on the feature branch:
+        cd /Users/jamesilsley/GitHub/spark-mojo-platform
+        git add -A
+        git commit -m "[commit message from spec]"
+        git push origin story/[name]
+
+      Step 2 — Merge to main:
+        git checkout main
+        git pull origin main
+        git merge --no-ff story/[name] -m "merge: [STORY-ID] [short title]"
+        git push origin main
+
+      Step 3 — Deploy to VPS:
+        ssh sparkmojo 'cd /home/ops/spark-mojo-platform && git pull origin main && ./deploy.sh' 2>&1 | tail -60
+
+        Required on success: "Deploy complete" in stdout, all Phase 7 checks
+        at 5/6 or 6/6 (J-027 is a known-pre-existing WARN, not a failure).
+
+        On deploy failure:
+          Write BLOCKED-[STORY-ID]-DEPLOY.md with the full deploy tail.
+          Append to QUEUE-PROGRESS.md: "[ID]: BLOCKED (deploy failed) at [timestamp]"
+          Do NOT touch [STORY-ID]-COMPLETE.
+          Continue to step 5 (cleanup) and step 7 (emit). Do NOT stop.
+
+      Step 4 — Post-deploy verification (per story):
+        SEC-001:
+          ssh sparkmojo 'curl -s -o /dev/null -D - -X GET https://api.poc.sparkmojo.com/auth/google | head -5'
+          Required: "HTTP/2 307" and client_id=664352319997 in location header.
+        SEC-002:
+          ssh sparkmojo 'docker exec spark-mojo-platform-poc-api-1 ls /run/secrets/'
+          Required: lists `google_client_secret` (and other secrets per the spec).
+          ssh sparkmojo 'docker inspect spark-mojo-platform-poc-api-1 | grep -iE "(PASSWORD|SECRET|TOKEN)" | grep -v "/run/secrets"'
+          Required: no matches.
+
+        On verification failure (but deploy succeeded):
+          Same treatment as deploy failure — BLOCKED marker, no COMPLETE marker,
+          continue to cleanup.
+
+      Step 5 — Mark complete (only if deploy + verification passed):
+        touch [STORY-ID]-COMPLETE
+        Append to QUEUE-PROGRESS.md: "[ID]: COMPLETE at [UTC timestamp]"
+
+      Step 6 — Cleanup:
+        rm -f PLAN-[STORY-ID].md RETRY-[STORY-ID].count
+
+      Step 7 — ALWAYS emit (even on deploy failure):
+        ralph emit "story.committed" "[ID]: committed, merged, [deployed/deploy-FAILED]."
