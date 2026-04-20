@@ -1,0 +1,28 @@
+# Frappe stack — placeholder / cross-stack marker.
+#
+# The Frappe cluster (backend, frontend, db, scheduler, websocket, redis-cache,
+# redis-queue, configurator, create-site) is NOT defined in this repo. It lives
+# in a separate compose project on the VPS at:
+#
+#     /home/ops/frappe-poc/
+#
+# managed as its own Docker Compose project (project name: `frappe-poc`). The
+# only coupling with this repo is the shared external network
+# `frappe-poc_frappe_network`, which Medplum and poc-api attach to so they can
+# reach `frappe-poc-backend-1` by DNS.
+#
+# This file exists so that the umbrella `docker-compose.yml` can `include:` it
+# without error, and so future work that brings Frappe into this repo's compose
+# tree has a natural landing pad. It currently declares only the shared
+# networks (as external) so compose config validates cleanly.
+#
+# See CLAUDE.md "Container Names — Critical Reference" and Architecture rule
+# 17 ("frappe-apps/ is not volume-mounted in the POC — this is intentional").
+
+networks:
+  root_web:
+    external: true
+    name: root_web
+  frappe_network:
+    external: true
+    name: frappe-poc_frappe_network

@@ -10,7 +10,9 @@ set -eo pipefail
 
 # ── Constants ────────────────────────────────────────────────────────────────
 DEPLOY_DIR="/home/ops/spark-mojo-platform"
-COMPOSE_FILE="docker-compose.poc.yml"
+COMPOSE_FILE="docker-compose.yml"               # umbrella — full-stack operations
+APP_COMPOSE_FILE="docker-compose.app.yml"       # app-only — Phase 5/6 rebuilds
+# docker-compose.poc.yml retained on disk for 7-day soak; not referenced here.
 FRAPPE_BACKEND="frappe-poc-backend-1"
 FRAPPE_WORKERS="frappe-poc-queue-short-1 frappe-poc-queue-long-1 frappe-poc-scheduler-1"
 ALL_FRAPPE_CONTAINERS="$FRAPPE_BACKEND $FRAPPE_WORKERS"
@@ -384,8 +386,8 @@ phase_5() {
   echo "[Phase 5] Rebuilding abstraction layer..."
 
   cd "$DEPLOY_DIR"
-  sudo docker compose -f "$COMPOSE_FILE" --env-file .env.poc build --no-cache poc-api
-  sudo docker compose -f "$COMPOSE_FILE" --env-file .env.poc up -d poc-api
+  sudo docker compose -f "$APP_COMPOSE_FILE" --env-file .env.poc build --no-cache poc-api
+  sudo docker compose -f "$APP_COMPOSE_FILE" --env-file .env.poc up -d poc-api
 
   # Wait a moment for uvicorn to start
   sleep 3
@@ -425,8 +427,8 @@ phase_6() {
   fi
   echo "  Working tree clean: frontend/ matches git HEAD"
 
-  sudo docker compose -f "$COMPOSE_FILE" --env-file .env.poc build --no-cache poc-frontend
-  sudo docker compose -f "$COMPOSE_FILE" --env-file .env.poc up -d poc-frontend
+  sudo docker compose -f "$APP_COMPOSE_FILE" --env-file .env.poc build --no-cache poc-frontend
+  sudo docker compose -f "$APP_COMPOSE_FILE" --env-file .env.poc up -d poc-frontend
 
   sleep 2
 

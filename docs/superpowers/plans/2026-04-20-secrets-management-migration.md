@@ -84,6 +84,8 @@ Before starting Phase 1:
 **Risk:** Low. Structural refactor, no behavior change.
 **Ships when:** `deploy.sh` succeeds end-to-end using the new compose files; all 6/6 Phase 7 checks pass on the VPS.
 
+**Scope correction (discovered during execution):** The Frappe cluster is NOT in `docker-compose.poc.yml` — it lives in a separate compose project on the VPS at `/home/ops/frappe-poc/`. So Task 1.1 produces a documented stub `docker-compose.frappe.yml` that declares only the shared external networks; there are no services to extract. The meaningful split is Medplum vs app, plus the umbrella. Absorbing `frappe-poc` into this repo is out of scope for this plan and would be its own initiative with its own risk profile.
+
 ### Task 1.1: Extract Frappe services
 
 **Files:**

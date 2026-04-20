@@ -1,0 +1,16 @@
+# Umbrella compose file — includes the three split stacks.
+#
+# Phase 1 of the secrets-management migration (see
+# docs/superpowers/plans/2026-04-20-secrets-management-migration.md).
+#
+# Usage:
+#   docker compose --env-file .env.poc config    # validate merged topology
+#   docker compose --env-file .env.poc up -d     # bring up all three stacks
+#
+# The legacy docker-compose.poc.yml is retained for a 7-day soak and will be
+# removed after no-regression verification.
+
+include:
+  - path: docker-compose.frappe.yml
+  - path: docker-compose.medplum.yml
+  - path: docker-compose.app.yml

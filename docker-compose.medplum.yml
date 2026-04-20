@@ -1,0 +1,88 @@
+# Medplum FHIR stack — split out from docker-compose.poc.yml in Phase 1 of the
+# secrets-management migration. Services are copied verbatim from the source.
+#
+# Env vars consumed: MEDPLUM_DB_PASSWORD, MEDPLUM_REDIS_PASSWORD
+# Run with:
+#   docker compose -f docker-compose.medplum.yml --env-file .env.poc up -d
+#
+# See CLAUDE.md gotcha: "Medplum docker compose MUST use `--env-file .env.poc`".
+
+networks:
+  root_web:
+    external: true
+    name: root_web
+  frappe_network:
+    external: true
+    name: frappe-poc_frappe_network
+
+services:
+  # ── Medplum FHIR Server ─────────────────────────────────────
+  medplum:
+    image: medplum/medplum-server:latest
+    networks:
+      - frappe_network
+    environment:
+      - MEDPLUM_PORT=8103
+      - MEDPLUM_BASE_URL=http://medplum:8103
+      - MEDPLUM_DATABASE_HOST=medplum-postgres
+      - MEDPLUM_DATABASE_PORT=5432
+      - MEDPLUM_DATABASE_DBNAME=medplum
+      - MEDPLUM_DATABASE_USERNAME=medplum
+      - MEDPLUM_DATABASE_PASSWORD=${MEDPLUM_DB_PASSWORD}
+      - MEDPLUM_REDIS_HOST=medplum-redis
+      - MEDPLUM_REDIS_PORT=6379
+      - MEDPLUM_REDIS_PASSWORD=${MEDPLUM_REDIS_PASSWORD}
+      - MEDPLUM_MAX_JSON_SIZE=16mb
+      - MEDPLUM_AUDIT_EVENT_LOG_ENABLED=true
+      - MEDPLUM_AUDIT_EVENT_IN_DATABASE=true
+    volumes:
+      - ./medplum/medplum.config.json:/usr/src/medplum/medplum.config.json:ro
+    depends_on:
+      medplum-postgres:
+        condition: service_healthy
+      medplum-redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:8103/healthcheck', r => process.exit(r.statusCode === 200 ? 0 : 1)).on('error', () => process.exit(1))"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+    restart: unless-stopped
+
+  # ── Medplum PostgreSQL ───────────────────────────────────────
+  medplum-postgres:
+    image: postgres:16-alpine
+    networks:
+      - frappe_network
+    environment:
+      - POSTGRES_DB=medplum
+      - POSTGRES_USER=medplum
+      - POSTGRES_PASSWORD=${MEDPLUM_DB_PASSWORD}
+    volumes:
+      - medplum-postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U medplum -d medplum"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  # ── Medplum Redis ────────────────────────────────────────────
+  medplum-redis:
+    image: redis:7-alpine
+    networks:
+      - frappe_network
+    command: redis-server --requirepass ${MEDPLUM_REDIS_PASSWORD} --maxmemory 256mb --maxmemory-policy allkeys-lru
+    volumes:
+      - medplum-redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${MEDPLUM_REDIS_PASSWORD}", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+volumes:
+  medplum-postgres-data:
+  medplum-redis-data:
