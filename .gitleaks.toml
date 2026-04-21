@@ -1,0 +1,6 @@
+[extend]
+useDefault = true
+
+[allowlist]
+# False positive: featureKey="billing_mojo_v2_enabled" in bakeoff docs is a feature flag name, not a secret
+paths = ["factory/bakeoff/"]
