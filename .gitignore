@@ -8,6 +8,12 @@ dist/
 .env.local
 .env.*.local
 
+# SEC-004: non-secret runtime config — host-local (mirrors .env.poc pattern).
+# Values (URLs, public client IDs, feature flags) are not secret but are
+# host-specific, so kept out of the repo for DO migration flexibility.
+config.prod.env
+config.dev.env
+
 # macOS
 .DS_Store
 .DS_Store?

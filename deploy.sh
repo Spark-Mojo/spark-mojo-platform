@@ -434,8 +434,8 @@ phase_5() {
   echo "[Phase 5] Rebuilding abstraction layer..."
 
   cd "$DEPLOY_DIR"
-  sudo docker compose -f "$APP_COMPOSE_FILE" --env-file .env.poc build --no-cache poc-api
-  sudo docker compose -f "$APP_COMPOSE_FILE" --env-file .env.poc up -d poc-api
+  sudo docker compose -f "$APP_COMPOSE_FILE" --env-file config.prod.env build --no-cache poc-api
+  sudo docker compose -f "$APP_COMPOSE_FILE" --env-file config.prod.env up -d poc-api
 
   # Wait a moment for uvicorn to start
   sleep 3
@@ -475,8 +475,8 @@ phase_6() {
   fi
   echo "  Working tree clean: frontend/ matches git HEAD"
 
-  sudo docker compose -f "$APP_COMPOSE_FILE" --env-file .env.poc build --no-cache poc-frontend
-  sudo docker compose -f "$APP_COMPOSE_FILE" --env-file .env.poc up -d poc-frontend
+  sudo docker compose -f "$APP_COMPOSE_FILE" --env-file config.prod.env build --no-cache poc-frontend
+  sudo docker compose -f "$APP_COMPOSE_FILE" --env-file config.prod.env up -d poc-frontend
 
   sleep 2
 

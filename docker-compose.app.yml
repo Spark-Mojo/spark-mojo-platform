@@ -84,7 +84,10 @@ services:
       - root_web
       - frappe_network
     env_file:
-      - .env.poc
+      # SEC-004: non-secret runtime config only. Secrets live in Infisical and
+      # are mounted as files below via `secrets:`. config.prod.env replaces
+      # the retired .env.poc; see DECISION-031.
+      - config.prod.env
     environment:
       # read_secret() (SEC-001) looks here first, then falls back to env vars.
       SECRETS_DIR: /run/secrets
