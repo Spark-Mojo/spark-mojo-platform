@@ -4,7 +4,7 @@
 # load-bearing for routing — do not reorder or re-prioritise.
 #
 # Run with:
-#   docker compose -f docker-compose.app.yml --env-file .env.poc up -d
+#   docker compose -f docker-compose.app.yml --env-file config.prod.env up -d
 
 networks:
   root_web:

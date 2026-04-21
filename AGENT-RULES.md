@@ -243,7 +243,7 @@ src/components/
 | 9.4 | **Bench container is `frappe-poc-backend-1`** — NOT `spark-mojo-platform-poc-frappe-1` |
 | 9.5 | **Frontend build always uses `--no-cache`** — prevents stale bundle serving |
 | 9.6 | **docker compose on VPS requires `-f` flag:** `docker compose -f docker-compose.poc.yml ...` |
-| 9.7 | **Medplum requires `--env-file .env.poc`** — without it, all vars are blank |
+| 9.7 | **Runtime secrets live in Infisical** — `deploy.sh` Phase 0.5 fetches them to `secrets/<name>` (0600). Compose mounts at `/run/secrets/*`. `read_secret()` in Python. Never `os.getenv` for secrets. See `docs/ops/secret-rotation-runbook.md`. |
 | 9.8 | **After `docker compose down/up`, restart frontend container last** — nginx caches backend IP |
 | 9.9 | **HostRegexp rules do NOT trigger ACME cert issuance** — every subdomain needs explicit `Host()` rule |
 | 9.10 | **VPS must always be a clean checkout of main** |
@@ -254,11 +254,11 @@ src/components/
 | 9.15 | **Phase 7 runs 6+ end-to-end verification checks** before deploy is considered complete |
 | 9.16 | **`deploy.sh --verify-only` shows 5/6 on admin** — this is expected (SM Task not on admin site) |
 | 9.17 | **Never grep for React component names in production bundles** — Vite minifies them. Grep for unique string literals |
-| 9.18 | **Medplum v5.x ignores env vars for database/redis config** — must configure via `medplum/medplum.config.json` on VPS |
+| 9.18 | **Medplum v5.x ignores env vars for database/redis config** — `medplum/medplum.config.json` is rendered at deploy time (Phase 2.5) from `secrets/medplum_db_password` + `secrets/medplum_redis_password`. Never hand-edit. |
 | 9.19 | **Setup wizard must be suppressed on every new site** — `frappe.db.set_single_value('System Settings', 'setup_complete', 1)` |
 | 9.20 | **Non-installable apps in apps.txt cause total Frappe outage** — `ModuleNotFoundError` on startup |
-| 9.21 | **`.env.poc` canonical path:** `/home/ops/spark-mojo-platform/.env.poc` — NOT `/home/ops/frappe-poc/.env.poc` |
-| 9.22 | **Never commit `.env`, `.env.poc`, or `medplum/medplum.config.json`** |
+| 9.21 | **`.env.poc` is RETIRED (SEC-004)** — encrypted archive at `/home/ops/backups/env-poc-archive-20260421.gpg`. Non-secret runtime config now lives in `config.prod.env` (VPS-local, gitignored). Secrets are in Infisical. |
+| 9.22 | **Never commit any of:** `.env`, `.env.poc`, `config.prod.env`, `medplum/medplum.config.json`, `secrets/*`, `.infisical-*`. All are in `.gitignore`. |
 
 ### Routing — Three Distinct Hosts
 
@@ -446,7 +446,7 @@ ALL must be true:
 | 19.9 | **Never run `git pull` manually on VPS** — always deploy.sh |
 | 19.10 | **Never skip the Prep Run before overnight builds** |
 | 19.11 | **Never delete BLOCKED-*.md files** — James must manually resolve then archive |
-| 19.12 | **Never commit `.env`, `.env.poc`, or `medplum.config.json`** |
+| 19.12 | **Never commit any host-local secret/config file** — `.env`, `.env.poc`, `config.prod.env`, `medplum.config.json`, `secrets/*`, `.infisical-*` are all gitignored |
 | 19.13 | **Never use `class` for Tailwind dark mode** — use `['selector', '[data-theme="dark"]']` |
 
 ---

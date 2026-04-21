@@ -1,11 +1,20 @@
 # Medplum FHIR stack — split out from docker-compose.poc.yml in Phase 1 of the
 # secrets-management migration. Services are copied verbatim from the source.
 #
-# Env vars consumed: MEDPLUM_DB_PASSWORD, MEDPLUM_REDIS_PASSWORD
-# Run with:
-#   docker compose -f docker-compose.medplum.yml --env-file .env.poc up -d
+# Env vars consumed for compose-time substitution: MEDPLUM_DB_PASSWORD,
+# MEDPLUM_REDIS_PASSWORD. These come from Infisical via secrets/<name> files
+# (SEC-003/SEC-004). deploy.sh does not restart Medplum; when you need to
+# manually recreate it (e.g. after a password rotation), export from
+# secrets/ first:
 #
-# See CLAUDE.md gotcha: "Medplum docker compose MUST use `--env-file .env.poc`".
+#   cd /home/ops/spark-mojo-platform
+#   MEDPLUM_DB_PASSWORD=$(<secrets/medplum_db_password) \
+#   MEDPLUM_REDIS_PASSWORD=$(<secrets/medplum_redis_password) \
+#     sudo -E docker compose -f docker-compose.medplum.yml up -d
+#
+# Medplum server itself reads DB/Redis config from medplum/medplum.config.json,
+# which is rendered at deploy time by scripts/render-medplum-config.sh from
+# the same secret files. See docs/ops/secret-rotation-runbook.md.
 
 networks:
   root_web:

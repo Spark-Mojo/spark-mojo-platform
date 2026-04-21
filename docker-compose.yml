@@ -4,8 +4,15 @@
 # docs/superpowers/plans/2026-04-20-secrets-management-migration.md).
 #
 # Usage:
-#   docker compose --env-file .env.poc config    # validate merged topology
-#   docker compose --env-file .env.poc up -d     # bring up all three stacks
+#   # validate merged topology (after exporting Medplum passwords from secrets/):
+#   MEDPLUM_DB_PASSWORD=$(<secrets/medplum_db_password) \
+#   MEDPLUM_REDIS_PASSWORD=$(<secrets/medplum_redis_password) \
+#     docker compose config
+#
+#   # In practice you never bring up the whole umbrella by hand — use deploy.sh.
+#   # The app stack uses --env-file config.prod.env (non-secret runtime config);
+#   # the Medplum stack uses the exported env vars above; Frappe lives in a
+#   # separate compose project at /home/ops/frappe-poc/.
 #
 # The legacy docker-compose.poc.yml is retained for a 7-day soak and will be
 # removed after no-regression verification.
