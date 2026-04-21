@@ -229,6 +229,8 @@ One line per decision. Rationale is in `platform/decisions/`. Do not re-litigate
 | EHR strategy | Two paths: (A) connector for clients retaining existing EHR, (B) Spark Mojo as EHR via Medplum (preferred). |
 | Configuration model | SM staff configure client instances via Configuration Mojo based on onboarding questionnaire. Clients do not self-configure except user management and role assignment. |
 | Unified workboard contract | All Mojos create WorkboardMojo Tasks via POST /api/modules/tasks/create. No parallel queues. Mojo views are lenses. See DECISION-029. |
+| Google OAuth auth ownership | MAL owns all Google OAuth. Single callback URI. Scales to unlimited tenants. Per-site Frappe login retired. See DECISION-030. |
+| Platform authentication strategy | MAL is sole JWT issuer. All upstream auth methods terminate at MAL. Opinionated per-tenant deployment via Configuration Mojo. HIPAA tenants require MFA. See DECISION-032. |
 
 ---
 
@@ -269,6 +271,7 @@ story. This is a live security gap.
 
 *Authored: Session 30, April 7, 2026. Updated: Session 32, April 8, 2026. Section 10 (process documentation) removed - see platform/FACTORY-DESIGN.md.*
 *Updated: Session 39, April 10, 2026. Leg 1 language updated to "trackable work items" (action or observable). Rule 14 added (unified workboard mandate). DECISION-029 locked.*
+*Updated: Session A2, April 20, 2026. DECISION-030 (Google OAuth auth ownership) and DECISION-032 (platform authentication strategy) added to Section 7.*
 *James Ilsley verbal confirmation on record in session transcripts.*
 *Maintained by: Claude Chat (strategy). Updated via CoWork at end of session.*
 *This document is the highest-authority governance document on the platform.*
