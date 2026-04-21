@@ -17,3 +17,6 @@
 | SEC-001     | COMPLETE (merged 32eab49, deployed, /auth/google 307 verified) | 2026-04-20T22:37:45Z |
 | SEC-002     | started at 2026-04-20T22:45Z (attempt 1) | 2026-04-20T22:45Z |
 | SEC-002     | BLOCKED (verification failed — plan vs spec mismatch on .env.poc cleanup; deploy itself OK) | 2026-04-20T22:52Z |
+| SEC-002     | COMPLETE (interactive fix: 9 migrated secrets stripped from VPS .env.poc, re-verified; cea28e5) | 2026-04-20T23:30Z |
+| SEC-003     | COMPLETE (Infisical integration via Universal Auth; phase_0_5_fetch_secrets live; commits 72f114a + e0dc786; deploy 5/6 + OAuth 307) | 2026-04-21T03:00Z |
+| SEC-004     | COMPLETE (.env.poc shredded, archive at /home/ops/backups/env-poc-archive-20260421.gpg; monthly cron installed; runbook published; commits f5959a7 + a727433; post-retirement deploy 5/6) | 2026-04-21T04:40Z |
