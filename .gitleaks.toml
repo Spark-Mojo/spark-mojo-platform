@@ -2,5 +2,10 @@
 useDefault = true
 
 [allowlist]
-# False positive: featureKey="billing_mojo_v2_enabled" in bakeoff docs is a feature flag name, not a secret
-paths = ["factory/bakeoff/"]
+# .tmp.driveupload/ contains Google Drive sync artifacts with example JWTs from documentation
+# factory/bakeoff/ contains model evaluation results with sample code snippets
+paths = [
+  '''\.tmp\.driveupload/''',
+  '''factory/bakeoff/''',
+]
+description = "Drive upload artifacts and bakeoff docs contain example tokens, not real secrets"
