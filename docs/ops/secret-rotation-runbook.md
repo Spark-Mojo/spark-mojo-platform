@@ -167,19 +167,57 @@ A lost token means you cannot deploy until you replace it. Rotate immediately (s
 
 **This is a planned-maintenance procedure. Do not attempt it as an emergency response unless PHI has already been exposed.**
 
-Frappe encrypts certain field types (email passwords, integration tokens stored via the `Password` field type) with `site_config.json:encryption_key`. Changing the key means re-encrypting every stored value. The mechanics:
+Frappe encrypts certain field types (integration tokens, Social Login Key secrets, API secrets stored via the `Password` field type) with `site_config.json:encryption_key`. The encryption_key is a Fernet key (32-byte URL-safe base64); Frappe uses it directly via `cryptography.fernet.Fernet(key.encode())`.
 
-1. **Backup first.** `ssh sparkmojo 'docker exec frappe-poc-backend-1 bench --site <site> backup --with-files'`. Copy the backup off the VPS.
-2. **Generate a new key.** `python3 -c "import secrets, base64; print(base64.urlsafe_b64encode(secrets.token_bytes(32)).decode())"`.
-3. **Update Infisical.** `sm-platform-shared/prod` for non-PHI sites, `sm-willow/prod` for the Willow site. Key name: `frappe_encryption_key_<site>` (e.g. `frappe_encryption_key_poc_dev`, `frappe_encryption_key_willow`).
-4. **Re-key via bench.** On the Frappe backend container, there is no built-in `bench rotate-encryption-key` command in current Frappe versions — the operation has to be done manually:
-   - Decrypt every `Password` field with the old key.
-   - Update `site_config.json:encryption_key` to the new value.
-   - Re-encrypt every `Password` field with the new key.
-   This is destructive if interrupted. Do not attempt on `willow.sparkmojo.com` until it has been rehearsed on `internal.sparkmojo.com` end-to-end.
-5. **Propagate via the normal flow.** Once Infisical is updated, `rotate-secrets.sh` will write the new file into `secrets/`, and the next deploy (or the next container restart) will pick it up.
+**Important:** User login passwords (stored in `__Auth` with `encrypted=0`) are bcrypt hashes and are NOT affected by encryption_key rotation. Only entries with `encrypted=1` in `__Auth` need re-encryption.
 
-**Full automation of Frappe encryption_key rotation is SEC-005 scope.** Until that ships, treat this procedure as high-risk manual maintenance.
+### Tested procedure (SEC-005, April 21 2026)
+
+**Order:** internal (zero encrypted entries) → willow (zero) → admin (1 entry) → poc-dev (2 entries). Always start with the lowest-risk site.
+
+1. **Inventory encrypted entries** on the target site:
+   ```bash
+   ssh sparkmojo 'docker exec frappe-poc-backend-1 bash -c "cd /home/frappe/frappe-bench && bench --site <site> mariadb --no-auto-rehash -e \"SELECT doctype, name, fieldname, encrypted FROM \`__Auth\` WHERE encrypted=1;\""'
+   ```
+
+2. **Backup.** `ssh sparkmojo 'docker exec frappe-poc-backend-1 bench --site <site> backup --with-files'`. Note the backup timestamp for rollback.
+
+3. **Update Infisical.** New key in the appropriate project (`sm-platform-shared/prod` for non-PHI sites, `sm-willow/prod` for Willow). Key name: `frappe_encryption_key_<site_slug>` (e.g. `frappe_encryption_key_poc_dev`). Then fetch: `ssh sparkmojo 'cd /home/ops/spark-mojo-platform && bash scripts/infisical-fetch.sh'`.
+
+4. **If the site has zero `encrypted=1` entries:** simply set the new key directly. Copy the key file into the container and use a Python script to write it to `site_config.json` (avoid shell quoting issues with base64 strings — use `docker cp` + `json.dump`, not `bench set-config`).
+
+5. **If the site has `encrypted=1` entries — rekey procedure:**
+   - Copy the new key file into the container: `docker cp secrets/frappe_encryption_key_<slug> frappe-poc-backend-1:/tmp/new_enc_key`
+   - Run a Python rekey script (using the bench virtualenv `./env/bin/python3`) that:
+     a. Reads the old key from `site_config.json`
+     b. Connects to MariaDB directly (using `MySQLdb` + credentials from `site_config.json` and `common_site_config.json`)
+     c. For each `__Auth` entry with `encrypted=1`: decrypt with old Fernet key, re-encrypt with new Fernet key, UPDATE the row
+     d. Commits the transaction
+     e. Writes the new key to `site_config.json`
+     f. Verifies every `encrypted=1` entry decrypts with the new key
+   - **If any decrypt/re-encrypt fails: the script rolls back the DB transaction and exits non-zero. Restore from backup.**
+   - Clean up: `docker exec -u root frappe-poc-backend-1 rm -f /tmp/new_enc_key`
+
+6. **Restart Frappe workers** so the new key takes effect:
+   ```bash
+   ssh sparkmojo 'cd /home/ops/frappe-poc && sudo docker compose restart backend scheduler'
+   ssh sparkmojo 'sudo docker restart frappe-poc-frontend-1'
+   ```
+
+7. **Spot-check decryption** on a known encrypted field:
+   ```bash
+   ssh sparkmojo 'docker exec frappe-poc-backend-1 bash -c "cd /home/frappe/frappe-bench && bench --site <site> execute frappe.utils.password.get_decrypted_password --args \"[\\\"Social Login Key\\\", \\\"google\\\", \\\"client_secret\\\"]\""'
+   ```
+
+8. **Run `deploy.sh --verify-only`** — should return baseline 5/6 (admin site expected to show 5/6).
+
+### Gotchas discovered during SEC-005 rotation
+
+- **`bench set-config encryption_key` mangles base64 values** due to shell quoting. Use `docker cp` + Python `json.dump` instead.
+- **`frappe.init()` + `frappe.connect()` from a standalone script fails** with log directory errors. Use direct `MySQLdb` connection instead of the Frappe ORM for the rekey script.
+- **Sites created without an explicit `encryption_key`** get one auto-generated on first `get_encryption_key()` call. Run `bench execute frappe.utils.password.get_encryption_key` to materialize it before attempting rotation.
+- **User passwords are unaffected** — they're bcrypt hashes (`encrypted=0`). The rekey only touches `encrypted=1` rows.
+- **The Fernet key is used directly** — no key derivation. `Fernet(key.encode())` is all that's needed.
 
 ---
 
@@ -210,4 +248,4 @@ ssh sparkmojo 'tail -50 /home/ops/deploy-logs/rotate.log'
 - **BAA with Infisical** (required before Willow external PHI go-live) — legal/compliance, tracked in DECISION-031 "Future Scaling".
 - **Fallback to SOPS + age** (if Infisical ever becomes untenable) — see `docs/superpowers/plans/2026-04-20-secrets-management-migration.md` Appendix A.
 - **Docker volume encrypted backups** — separate ops backlog.
-- **auditd rules on `secrets/`** — SEC-005 scope.
+- **auditd log forwarding to SIEM** — deferred per DECISION-031 Future Scaling; internal auditd only for now.
