@@ -134,6 +134,34 @@ phase_0() {
 }
 
 # ══════════════════════════════════════════════════════════════════════════════
+# PHASE 0.5 — Fetch secrets from Infisical (SEC-003)
+# ══════════════════════════════════════════════════════════════════════════════
+#
+# Infisical is the source of truth for all runtime secrets (DECISION-031).
+# This phase materialises every secret in the configured projects/environment
+# into one file per secret at $DEPLOY_DIR/secrets/<lowercase_name> (0600).
+# Those files are mounted into containers via Compose `secrets:` blocks at
+# /run/secrets/<name> and read by apps via the read_secret() helper.
+#
+# Non-secret config for this phase lives in /etc/default/spark-mojo
+# (INFISICAL_PROJECT_IDS, INFISICAL_ENV).
+# Universal Auth credentials live in:
+#   /home/ops/.infisical-ua-client-id       (0600, ops:ops)
+#   /home/ops/.infisical-ua-client-secret   (0600, ops:ops)
+#
+# Aborts the whole deploy non-zero if Infisical is unreachable or auth fails.
+#
+phase_0_5_fetch_secrets() {
+  echo ""
+  echo "[Phase 0.5] Fetching secrets from Infisical..."
+
+  cd "$DEPLOY_DIR"
+  bash scripts/infisical-fetch.sh
+
+  echo "[Phase 0.5] DONE"
+}
+
+# ══════════════════════════════════════════════════════════════════════════════
 # PHASE 1 — Pull latest code
 # ══════════════════════════════════════════════════════════════════════════════
 phase_1() {
@@ -642,6 +670,13 @@ phase_7() {
 # Phase 0 always runs (pre-flight)
 if should_run 0 || [ "$VERIFY_ONLY" = true ] || [ -n "$RUN_PHASE" ]; then
   phase_0
+fi
+
+# Phase 0.5 fetches secrets from Infisical before anything else touches the
+# stack. Only runs on a full deploy — not --verify-only, not --phase N.
+# To pull secrets standalone: bash scripts/infisical-fetch.sh
+if [ "$VERIFY_ONLY" = false ] && [ -z "$RUN_PHASE" ]; then
+  phase_0_5_fetch_secrets
 fi
 
 should_run 1 && phase_1

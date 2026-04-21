@@ -64,3 +64,12 @@ abstraction-layer/.coverage
 
 # SEC-002: mounted secret files live here on the VPS. Never commit.
 secrets/
+
+# SEC-003: Infisical credentials. These files live outside the repo
+# (in $HOME on each host), but this guards against accidental moves.
+.infisical-token
+.infisical-token-prod
+.infisical-token-dev
+.infisical-ua-client-id
+.infisical-ua-client-secret
+.infisical-*
