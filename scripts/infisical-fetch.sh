@@ -75,17 +75,26 @@ done
 # Parse the aggregated dotenv stream: one file per KEY at $OUTPUT_DIR/<key-lowercased>.
 # Later occurrences of a key overwrite earlier ones — project order in
 # INFISICAL_PROJECT_IDS determines precedence (last-write-wins).
+#
+# Infisical exports as KEY='value' (single-quoted). We strip single OR double
+# quotes if present, and write WITHOUT a trailing newline to match the byte
+# format that SEC-002 established (read_secret() and bash $(<file) strip
+# trailing newlines anyway — but consistent byte format means the
+# rotate-secrets.sh hash-comparison doesn't false-positive on first run).
 COUNT=0
 while IFS= read -r line; do
   [[ -z "$line" || "$line" =~ ^# ]] && continue
   key="${line%%=*}"
   value="${line#*=}"
-  # Strip surrounding double quotes if present.
-  value="${value%\"}"
-  value="${value#\"}"
+  # Strip surrounding single OR double quotes if present.
+  if [[ "$value" == \"*\" ]]; then
+    value="${value#\"}"; value="${value%\"}"
+  elif [[ "$value" == \'*\' ]]; then
+    value="${value#\'}"; value="${value%\'}"
+  fi
   # Lowercase key to match /run/secrets/<name> convention used by Compose secrets: mounts.
   fname="$(echo "$key" | tr '[:upper:]' '[:lower:]')"
-  printf '%s\n' "$value" > "$OUTPUT_DIR/$fname"
+  printf '%s' "$value" > "$OUTPUT_DIR/$fname"
   COUNT=$((COUNT + 1))
 done < "$TMPFILE"
 
