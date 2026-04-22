@@ -83,5 +83,124 @@
     "label": "SM Commission Eligible",
     "default": "1",
     "insert_after": "sm_discount_amount"
+  },
+  {
+    "doctype": "Custom Field",
+    "name": "Subscription-sm_billing_motion",
+    "dt": "Subscription",
+    "fieldname": "sm_billing_motion",
+    "fieldtype": "Select",
+    "label": "SM Billing Motion",
+    "options": "self_serve\nmanaged_account",
+    "insert_after": "end_date"
+  },
+  {
+    "doctype": "Custom Field",
+    "name": "Subscription-sm_setup_fee",
+    "dt": "Subscription",
+    "fieldname": "sm_setup_fee",
+    "fieldtype": "Currency",
+    "label": "SM Setup Fee",
+    "default": "0",
+    "insert_after": "sm_billing_motion"
+  },
+  {
+    "doctype": "Custom Field",
+    "name": "Subscription-sm_base_platform_fee",
+    "dt": "Subscription",
+    "fieldname": "sm_base_platform_fee",
+    "fieldtype": "Currency",
+    "label": "SM Base Platform Fee",
+    "default": "0",
+    "insert_after": "sm_setup_fee"
+  },
+  {
+    "doctype": "Custom Field",
+    "name": "Subscription-sm_discount_type",
+    "dt": "Subscription",
+    "fieldname": "sm_discount_type",
+    "fieldtype": "Select",
+    "label": "SM Discount Type",
+    "options": "none\npromo_code\nnegotiated",
+    "insert_after": "sm_base_platform_fee"
+  },
+  {
+    "doctype": "Custom Field",
+    "name": "Subscription-sm_discount_value",
+    "dt": "Subscription",
+    "fieldname": "sm_discount_value",
+    "fieldtype": "Currency",
+    "label": "SM Discount Value",
+    "default": "0",
+    "insert_after": "sm_discount_type"
+  },
+  {
+    "doctype": "Custom Field",
+    "name": "Subscription-sm_effective_rate",
+    "dt": "Subscription",
+    "fieldname": "sm_effective_rate",
+    "fieldtype": "Currency",
+    "label": "SM Effective Rate",
+    "default": "0",
+    "read_only": 1,
+    "insert_after": "sm_discount_value"
+  },
+  {
+    "doctype": "Custom Field",
+    "name": "Subscription-sm_invoice_cadence",
+    "dt": "Subscription",
+    "fieldname": "sm_invoice_cadence",
+    "fieldtype": "Select",
+    "label": "SM Invoice Cadence",
+    "options": "monthly\nannual",
+    "insert_after": "sm_effective_rate"
+  },
+  {
+    "doctype": "Custom Field",
+    "name": "Subscription-sm_annual_discount_pct",
+    "dt": "Subscription",
+    "fieldname": "sm_annual_discount_pct",
+    "fieldtype": "Percent",
+    "label": "SM Annual Discount Pct",
+    "default": "0",
+    "insert_after": "sm_invoice_cadence"
+  },
+  {
+    "doctype": "Custom Field",
+    "name": "Subscription-sm_payment_method_type",
+    "dt": "Subscription",
+    "fieldname": "sm_payment_method_type",
+    "fieldtype": "Select",
+    "label": "SM Payment Method Type",
+    "options": "card\ninvoice",
+    "insert_after": "sm_annual_discount_pct"
+  },
+  {
+    "doctype": "Custom Field",
+    "name": "Subscription-sm_net_terms",
+    "dt": "Subscription",
+    "fieldname": "sm_net_terms",
+    "fieldtype": "Select",
+    "label": "SM Net Terms",
+    "options": "due_on_receipt\nnet_15\nnet_30\nnet_45\nnet_60",
+    "insert_after": "sm_payment_method_type"
+  },
+  {
+    "doctype": "Custom Field",
+    "name": "Subscription-sm_contract_term_start",
+    "dt": "Subscription",
+    "fieldname": "sm_contract_term_start",
+    "fieldtype": "Date",
+    "label": "SM Contract Term Start",
+    "insert_after": "sm_net_terms"
+  },
+  {
+    "doctype": "Custom Field",
+    "name": "Subscription-sm_contract_term_end",
+    "dt": "Subscription",
+    "fieldname": "sm_contract_term_end",
+    "fieldtype": "Date",
+    "label": "SM Contract Term End",
+    "insert_after": "sm_contract_term_start"
   }
 ]
