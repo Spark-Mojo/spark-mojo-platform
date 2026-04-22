@@ -23,6 +23,7 @@ core:
 adapters:
   claude:
     timeout: 1800
+    model: "claude-opus-4-6"
 
 memories:
   enabled: true
