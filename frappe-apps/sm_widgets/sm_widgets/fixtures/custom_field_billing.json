@@ -1,6 +1,7 @@
 [
   {
     "doctype": "Custom Field",
+    "name": "Item-sm_mojo_id",
     "dt": "Item",
     "fieldname": "sm_mojo_id",
     "fieldtype": "Data",
@@ -9,6 +10,7 @@
   },
   {
     "doctype": "Custom Field",
+    "name": "Item-sm_action_id",
     "dt": "Item",
     "fieldname": "sm_action_id",
     "fieldtype": "Data",
@@ -17,6 +19,7 @@
   },
   {
     "doctype": "Custom Field",
+    "name": "Item-sm_billing_type",
     "dt": "Item",
     "fieldname": "sm_billing_type",
     "fieldtype": "Select",
@@ -26,6 +29,7 @@
   },
   {
     "doctype": "Custom Field",
+    "name": "Item-sm_included_units",
     "dt": "Item",
     "fieldname": "sm_included_units",
     "fieldtype": "Int",
@@ -35,6 +39,7 @@
   },
   {
     "doctype": "Custom Field",
+    "name": "Item-sm_invoice_line_label",
     "dt": "Item",
     "fieldname": "sm_invoice_line_label",
     "fieldtype": "Data",
@@ -43,6 +48,7 @@
   },
   {
     "doctype": "Custom Field",
+    "name": "Item-sm_commission_eligible",
     "dt": "Item",
     "fieldname": "sm_commission_eligible",
     "fieldtype": "Check",
@@ -52,6 +58,7 @@
   },
   {
     "doctype": "Custom Field",
+    "name": "Sales Invoice Item-sm_quoted_rack_rate",
     "dt": "Sales Invoice Item",
     "fieldname": "sm_quoted_rack_rate",
     "fieldtype": "Currency",
@@ -60,6 +67,7 @@
   },
   {
     "doctype": "Custom Field",
+    "name": "Sales Invoice Item-sm_discount_amount",
     "dt": "Sales Invoice Item",
     "fieldname": "sm_discount_amount",
     "fieldtype": "Currency",
@@ -68,6 +76,7 @@
   },
   {
     "doctype": "Custom Field",
+    "name": "Sales Invoice Item-sm_commission_eligible",
     "dt": "Sales Invoice Item",
     "fieldname": "sm_commission_eligible",
     "fieldtype": "Check",
