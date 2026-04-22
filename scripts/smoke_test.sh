@@ -61,6 +61,38 @@ for i in "${!SITES[@]}"; do
 
 done
 
+# TEST 5 (standalone): Billing fixture verification
+echo ""
+echo "=== Billing fixture verification ==="
+GOVERNANCE_ROOT="$(cd "$(dirname "$0")/../.." && pwd)/sparkmojo-internal"
+if [[ -d "$GOVERNANCE_ROOT/platform/feature-library/stories" ]]; then
+  FIXTURE_FAILS=0
+  FIXTURE_COUNT=0
+  for STORY_DIR in "$GOVERNANCE_ROOT"/platform/feature-library/stories/ACCT-*/; do
+    STORY_ID=$(basename "$STORY_DIR")
+    FIXTURE_FILE="${STORY_DIR}billing-fixture.json"
+    if [[ -f "$FIXTURE_FILE" ]]; then
+      FIXTURE_COUNT=$((FIXTURE_COUNT + 1))
+      if bash "$(dirname "$0")/verify-billing-fixture.sh" "$STORY_ID" >/dev/null 2>&1; then
+        echo "  ✓ $STORY_ID"
+      else
+        echo "  ✗ $STORY_ID — invalid fixture"
+        FIXTURE_FAILS=$((FIXTURE_FAILS + 1))
+      fi
+    fi
+  done
+  if [[ $FIXTURE_COUNT -eq 0 ]]; then
+    echo "  (no ACCT billing fixtures found — skipping)"
+  elif [[ $FIXTURE_FAILS -eq 0 ]]; then
+    echo "✓ All $FIXTURE_COUNT billing fixtures valid"
+  else
+    echo "✗ $FIXTURE_FAILS billing fixture(s) invalid"
+    FAILURES=$((FAILURES + FIXTURE_FAILS))
+  fi
+else
+  echo "  (governance repo not found at $GOVERNANCE_ROOT — skipping)"
+fi
+
 echo ""
 if [[ $FAILURES -eq 0 ]]; then
   echo "All smoke tests passed across ${#SITES[@]} sites."

@@ -220,6 +220,12 @@ hats:
           under a "## Retry Notes" section (create if missing).
           ralph emit "build.retry" "[ID]: attempt N/5 failed. [exact error]"
 
+      Billing fixture gate (ACCT stories only):
+        If the story ID starts with "ACCT-":
+          cd /Users/jamesilsley/GitHub/sparkmojo-internal
+          bash /Users/jamesilsley/GitHub/spark-mojo-platform/scripts/verify-billing-fixture.sh [STORY-ID]
+          Exit 0 = PASS. Nonzero = CONDITIONAL PASS (log warning, do not block).
+
       All gates pass:
         ralph emit "story.verified" "[ID]: all gates pass. [brief summary]"
 
