@@ -202,5 +202,15 @@
     "fieldtype": "Date",
     "label": "SM Contract Term End",
     "insert_after": "sm_contract_term_start"
+  },
+  {
+    "doctype": "Custom Field",
+    "name": "Subscription-sm_professional_services",
+    "dt": "Subscription",
+    "fieldname": "sm_professional_services",
+    "fieldtype": "Table",
+    "label": "SM Professional Services",
+    "options": "SM Professional Services Line",
+    "insert_after": "sm_contract_term_end"
   }
 ]
