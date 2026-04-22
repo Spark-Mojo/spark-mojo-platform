@@ -19,6 +19,7 @@ from registry import ConnectorRegistry, SiteRegistry
 from connectors import frappe_native, simplepractice, valant, plane
 from routes.onboarding import router as onboarding_router
 from routes.provisioning import router as provisioning_router
+from routes.provisioning_stripe import router as provisioning_stripe_router
 from routes.billing import router as billing_router, webhook_router as billing_webhook_router
 from routes.clinical import router as clinical_router
 from google_auth import router as google_auth_router
@@ -81,6 +82,7 @@ app.include_router(
     prefix="/api/admin",
     dependencies=[Depends(verify_admin_key)],
 )
+app.include_router(provisioning_stripe_router)
 app.include_router(billing_router, prefix="/api/modules/billing")
 app.include_router(billing_webhook_router, prefix="/api/webhooks/stedi")
 app.include_router(clinical_router, prefix="/api/modules/clinical")
