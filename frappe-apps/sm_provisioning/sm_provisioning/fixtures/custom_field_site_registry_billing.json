@@ -1,0 +1,50 @@
+[
+    {
+        "name": "SM Site Registry-billing_motion",
+        "doctype": "Custom Field",
+        "dt": "SM Site Registry",
+        "fieldname": "billing_motion",
+        "label": "Billing Motion",
+        "fieldtype": "Select",
+        "options": "self_serve\nmanaged_account",
+        "insert_after": "provisioning_status"
+    },
+    {
+        "name": "SM Site Registry-stripe_customer_id",
+        "doctype": "Custom Field",
+        "dt": "SM Site Registry",
+        "fieldname": "stripe_customer_id",
+        "label": "Stripe Customer ID",
+        "fieldtype": "Data",
+        "insert_after": "billing_motion"
+    },
+    {
+        "name": "SM Site Registry-stripe_subscription_id",
+        "doctype": "Custom Field",
+        "dt": "SM Site Registry",
+        "fieldname": "stripe_subscription_id",
+        "label": "Stripe Subscription ID",
+        "fieldtype": "Data",
+        "insert_after": "stripe_customer_id"
+    },
+    {
+        "name": "SM Site Registry-erpnext_customer_name",
+        "doctype": "Custom Field",
+        "dt": "SM Site Registry",
+        "fieldname": "erpnext_customer_name",
+        "label": "ERPNext Customer Name",
+        "fieldtype": "Link",
+        "options": "Customer",
+        "insert_after": "stripe_subscription_id"
+    },
+    {
+        "name": "SM Site Registry-erpnext_subscription_name",
+        "doctype": "Custom Field",
+        "dt": "SM Site Registry",
+        "fieldname": "erpnext_subscription_name",
+        "label": "ERPNext Subscription Name",
+        "fieldtype": "Link",
+        "options": "Subscription",
+        "insert_after": "erpnext_customer_name"
+    }
+]
