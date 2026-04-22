@@ -172,6 +172,9 @@ If a spec requires violating one of these rules, stop and write a BLOCKED-[TOPIC
     only - are created as WorkboardMojo Tasks via POST /api/modules/tasks/create. No Mojo
     maintains a parallel task queue. Mojo-specific focused views are filtered lenses over
     WorkboardMojo tasks enriched with Mojo-specific data. See DECISION-029.
+15. Every Mojo has a Billable Action Registry fixture file committed with its build.
+    A Mojo with no billing registration is incomplete. The fixture must include at minimum
+    a mojo_access action record. See platform/PRICING-STRATEGY.md.
 
 ---
 
@@ -231,6 +234,7 @@ One line per decision. Rationale is in `platform/decisions/`. Do not re-litigate
 | Unified workboard contract | All Mojos create WorkboardMojo Tasks via POST /api/modules/tasks/create. No parallel queues. Mojo views are lenses. See DECISION-029. |
 | Google OAuth auth ownership | MAL owns all Google OAuth. Single callback URI. Scales to unlimited tenants. Per-site Frappe login retired. See DECISION-030. |
 | Platform authentication strategy | MAL is sole JWT issuer. All upstream auth methods terminate at MAL. Opinionated per-tenant deployment via Configuration Mojo. HIPAA tenants require MFA. See DECISION-032. |
+| Commercial billing model | Two billing motions: Self-Serve (Stripe) and Managed Account (ERPNext). All billing traces to a Mojo via the Billable Action Registry. Six billing types. No universal rack rates. See platform/PRICING-STRATEGY.md. |
 
 ---
 
@@ -240,14 +244,14 @@ Things that are NOT yet decided. An agent encountering one of these must flag it
 
 | # | Question | Context |
 |---|---------|--------|
-| OQ-001 | Pricing and metering model | Every capability has invented pricing independently. Not locked. Requires dedicated session before spec factory runs on any revenue-sensitive capability. |
+| OQ-001 | RESOLVED Session B April 21 2026 | See platform/PRICING-STRATEGY.md |
 | OQ-002 | AI model names at build time | Bedrock model availability changes rapidly. Model names in research docs are directional. Verify against current Bedrock catalog at implementation. |
 | OQ-003 | canonical_state field type for Workflow Engine | Select (Frappe Desk friendly, requires bench migrate on change) vs. Data (no migrate, supports client-facing configurator). Pending workflow configurator priority decision. |
 | OQ-004 | Generic SM State Log migration | Build generic SM State Log now and migrate SM Claim State Log, or accept per-DocType State Log debt temporarily. |
 | OQ-005 | Canonical phase/release definitions | Not resolved until NORTH_STAR.md session (J-020). All phase references in all research docs are directional only. |
 | OQ-006 | Session note sync timing relative to billing AI | Does session note sync need to precede or accompany billing AI claim coding features? Unphased. Requires NORTH_STAR.md. |
 | OQ-007 | Clinical AI legal review | All clinical AI features (diagnosis code suggestion, treatment plan drafting, clinical decision support) require James legal go/no-go before spec factory commission. This is not a technical question. It is a liability question. |
-| OQ-008 | Pricing and packaging strategy blocks final Mojo completion | Every capability requires pricing mechanics to be considered complete. The commercial model is unresolved: metered vs. base + usage vs. all-inclusive vs. all-inclusive with limits. Which capabilities are base, which are add-ons, which are usage-billed, where seat limits sit, annual vs. monthly differential - none decided. The choice is whether to continue building capabilities and add pricing mechanics later (J-NEW-001), or solve pricing structure first. Either way, no Mojo ships as complete without it. Platform-level constraint affecting every capability in the library. |
+| OQ-008 | RESOLVED Session B April 21 2026 | Billable Action Registry fixture file is mandatory fourth Mojo completion gate. See platform/PRICING-STRATEGY.md |
 
 ---
 
@@ -272,6 +276,7 @@ story. This is a live security gap.
 *Authored: Session 30, April 7, 2026. Updated: Session 32, April 8, 2026. Section 10 (process documentation) removed - see platform/FACTORY-DESIGN.md.*
 *Updated: Session 39, April 10, 2026. Leg 1 language updated to "trackable work items" (action or observable). Rule 14 added (unified workboard mandate). DECISION-029 locked.*
 *Updated: Session A2, April 20, 2026. DECISION-030 (Google OAuth auth ownership) and DECISION-032 (platform authentication strategy) added to Section 7.*
+*Updated: Session B, April 21, 2026. OQ-001 and OQ-008 resolved. Rule 15 added (Billable Action Registry fixture file mandatory gate). Commercial billing model added to Section 7. See platform/PRICING-STRATEGY.md.*
 *James Ilsley verbal confirmation on record in session transcripts.*
 *Maintained by: Claude Chat (strategy). Updated via CoWork at end of session.*
 *This document is the highest-authority governance document on the platform.*
