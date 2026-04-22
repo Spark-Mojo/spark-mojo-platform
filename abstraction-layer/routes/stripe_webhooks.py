@@ -90,18 +90,210 @@ async def _update_event_log(name: str, updates: dict):
             )
 
 
-async def handle_subscription_sync(data_object: dict):
-    logger.info(
-        "Stub handler: subscription sync for %s",
-        data_object.get("id", ""),
+async def _get_site_for_subscription(
+    stripe_subscription_id: str,
+) -> tuple[str, str] | None:
+    async with httpx.AsyncClient() as client:
+        resp = await client.get(
+            f"{ADMIN_FRAPPE_URL}/api/resource/SM Site Registry",
+            params={
+                "filters": json.dumps(
+                    [["stripe_subscription_id", "=", stripe_subscription_id]]
+                ),
+                "fields": '["name","site_name"]',
+                "limit_page_length": 1,
+            },
+            headers=_admin_headers(),
+            timeout=10,
+        )
+        if resp.status_code != 200:
+            return None
+        data = resp.json().get("data", [])
+        if not data:
+            return None
+        site_name = data[0].get("site_name", "")
+        if not site_name:
+            return None
+        frappe_url = f"https://{site_name}"
+        return site_name, frappe_url
+
+
+def _client_headers() -> dict:
+    headers = {"Content-Type": "application/json"}
+    if ADMIN_API_KEY and ADMIN_API_SECRET:
+        headers["Authorization"] = f"token {ADMIN_API_KEY}:{ADMIN_API_SECRET}"
+    return headers
+
+
+async def _find_sm_subscription(
+    frappe_url: str, headers: dict, stripe_subscription_id: str
+) -> dict | None:
+    async with httpx.AsyncClient() as client:
+        resp = await client.get(
+            f"{frappe_url}/api/resource/SM Subscription",
+            params={
+                "filters": json.dumps(
+                    [["stripe_subscription_id", "=", stripe_subscription_id]]
+                ),
+                "fields": '["name"]',
+                "limit_page_length": 1,
+            },
+            headers=headers,
+            timeout=10,
+        )
+        if resp.status_code != 200:
+            return None
+        data = resp.json().get("data", [])
+        return data[0] if data else None
+
+
+async def _upsert_sm_subscription(
+    frappe_url: str,
+    headers: dict,
+    stripe_subscription_id: str,
+    payload: dict,
+):
+    existing = await _find_sm_subscription(
+        frappe_url, headers, stripe_subscription_id
     )
+    async with httpx.AsyncClient() as client:
+        if existing:
+            resp = await client.put(
+                f"{frappe_url}/api/resource/SM Subscription/{existing['name']}",
+                json=payload,
+                headers=headers,
+                timeout=10,
+            )
+        else:
+            resp = await client.post(
+                f"{frappe_url}/api/resource/SM Subscription",
+                json=payload,
+                headers=headers,
+                timeout=10,
+            )
+        if resp.status_code not in (200, 201):
+            raise RuntimeError(
+                f"Failed to upsert SM Subscription: {resp.status_code} {resp.text}"
+            )
+
+
+def _build_subscription_payload(data_object: dict, billing_motion: str) -> dict:
+    payload = {
+        "source_system": "stripe",
+        "stripe_customer_id": data_object.get("customer", ""),
+        "stripe_subscription_id": data_object.get("id", ""),
+        "billing_motion": billing_motion,
+        "billing_status": data_object.get("status", ""),
+        "cancel_at_period_end": 1 if data_object.get("cancel_at_period_end") else 0,
+        "last_synced_at": datetime.now(timezone.utc).strftime(
+            "%Y-%m-%d %H:%M:%S"
+        ),
+    }
+
+    plan = data_object.get("plan") or {}
+    if plan.get("interval"):
+        payload["billing_interval"] = plan["interval"]
+
+    period_start = data_object.get("current_period_start")
+    if period_start:
+        payload["current_period_start"] = datetime.fromtimestamp(
+            period_start, tz=timezone.utc
+        ).strftime("%Y-%m-%d")
+
+    period_end = data_object.get("current_period_end")
+    if period_end:
+        payload["current_period_end"] = datetime.fromtimestamp(
+            period_end, tz=timezone.utc
+        ).strftime("%Y-%m-%d")
+
+    trial_end = data_object.get("trial_end")
+    if trial_end:
+        payload["trial_end"] = datetime.fromtimestamp(
+            trial_end, tz=timezone.utc
+        ).strftime("%Y-%m-%d")
+
+    return payload
+
+
+async def _get_registry_for_subscription(
+    stripe_subscription_id: str,
+) -> dict | None:
+    async with httpx.AsyncClient() as client:
+        resp = await client.get(
+            f"{ADMIN_FRAPPE_URL}/api/resource/SM Site Registry",
+            params={
+                "filters": json.dumps(
+                    [["stripe_subscription_id", "=", stripe_subscription_id]]
+                ),
+                "fields": '["name","site_name","billing_motion"]',
+                "limit_page_length": 1,
+            },
+            headers=_admin_headers(),
+            timeout=10,
+        )
+        if resp.status_code != 200:
+            return None
+        data = resp.json().get("data", [])
+        return data[0] if data else None
+
+
+async def handle_subscription_sync(data_object: dict):
+    sub_id = data_object.get("id", "")
+    registry = await _get_registry_for_subscription(sub_id)
+    if not registry:
+        logger.warning("No SM Site Registry for stripe sub %s", sub_id)
+        return
+
+    site_name = registry.get("site_name", "")
+    if not site_name:
+        logger.warning("SM Site Registry has no site_name for sub %s", sub_id)
+        return
+
+    billing_motion = registry.get("billing_motion", "self_serve")
+    frappe_url = f"https://{site_name}"
+    headers = _client_headers()
+    payload = _build_subscription_payload(data_object, billing_motion)
+
+    await _upsert_sm_subscription(frappe_url, headers, sub_id, payload)
+    logger.info("Synced SM Subscription for %s on %s", sub_id, site_name)
 
 
 async def handle_subscription_deleted(data_object: dict):
-    logger.info(
-        "Stub handler: subscription deleted for %s",
-        data_object.get("id", ""),
-    )
+    sub_id = data_object.get("id", "")
+    registry = await _get_registry_for_subscription(sub_id)
+    if not registry:
+        logger.warning("No SM Site Registry for stripe sub %s", sub_id)
+        return
+
+    site_name = registry.get("site_name", "")
+    if not site_name:
+        logger.warning("SM Site Registry has no site_name for sub %s", sub_id)
+        return
+
+    frappe_url = f"https://{site_name}"
+    headers = _client_headers()
+    existing = await _find_sm_subscription(frappe_url, headers, sub_id)
+    if not existing:
+        logger.warning("No SM Subscription found for deleted sub %s", sub_id)
+        return
+
+    async with httpx.AsyncClient() as client:
+        resp = await client.put(
+            f"{frappe_url}/api/resource/SM Subscription/{existing['name']}",
+            json={
+                "billing_status": "canceled",
+                "last_synced_at": datetime.now(timezone.utc).strftime(
+                    "%Y-%m-%d %H:%M:%S"
+                ),
+            },
+            headers=headers,
+            timeout=10,
+        )
+        if resp.status_code not in (200, 201):
+            raise RuntimeError(
+                f"Failed to update SM Subscription: {resp.status_code} {resp.text}"
+            )
+    logger.info("Marked SM Subscription canceled for %s on %s", sub_id, site_name)
 
 
 async def handle_invoice_sync(data_object: dict):
@@ -126,10 +318,47 @@ async def handle_invoice_payment_failed(data_object: dict):
 
 
 async def handle_trial_will_end(data_object: dict):
-    logger.info(
-        "Stub handler: trial will end for %s",
-        data_object.get("id", ""),
-    )
+    sub_id = data_object.get("id", "")
+    registry = await _get_registry_for_subscription(sub_id)
+    if not registry:
+        logger.warning("No SM Site Registry for stripe sub %s", sub_id)
+        return
+
+    site_name = registry.get("site_name", "")
+    if not site_name:
+        logger.warning("SM Site Registry has no site_name for sub %s", sub_id)
+        return
+
+    frappe_url = f"https://{site_name}"
+    headers = _client_headers()
+    existing = await _find_sm_subscription(frappe_url, headers, sub_id)
+    if not existing:
+        logger.warning("No SM Subscription found for trial_will_end sub %s", sub_id)
+        return
+
+    trial_end = data_object.get("trial_end")
+    updates = {
+        "last_synced_at": datetime.now(timezone.utc).strftime(
+            "%Y-%m-%d %H:%M:%S"
+        ),
+    }
+    if trial_end:
+        updates["trial_end"] = datetime.fromtimestamp(
+            trial_end, tz=timezone.utc
+        ).strftime("%Y-%m-%d")
+
+    async with httpx.AsyncClient() as client:
+        resp = await client.put(
+            f"{frappe_url}/api/resource/SM Subscription/{existing['name']}",
+            json=updates,
+            headers=headers,
+            timeout=10,
+        )
+        if resp.status_code not in (200, 201):
+            raise RuntimeError(
+                f"Failed to update SM Subscription: {resp.status_code} {resp.text}"
+            )
+    logger.info("Updated trial_end for sub %s on %s", sub_id, site_name)
 
 
 HANDLERS = {

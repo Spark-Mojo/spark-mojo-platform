@@ -1,0 +1,210 @@
+{
+    "actions": [],
+    "autoname": "",
+    "creation": "2026-04-22 00:00:00.000000",
+    "doctype": "DocType",
+    "engine": "InnoDB",
+    "field_order": [
+        "source_system",
+        "stripe_customer_id",
+        "stripe_subscription_id",
+        "erpnext_subscription_name",
+        "plan_name",
+        "billing_motion",
+        "billing_status",
+        "billing_interval",
+        "invoice_cadence",
+        "current_period_start",
+        "current_period_end",
+        "trial_end",
+        "payment_method_type",
+        "payment_method_last4",
+        "payment_method_brand",
+        "payment_method_expiry",
+        "next_invoice_date",
+        "next_invoice_estimate",
+        "cancel_at_period_end",
+        "usage_alert_threshold_1",
+        "usage_alert_threshold_2",
+        "invoice_email_recipients",
+        "last_synced_at"
+    ],
+    "fields": [
+        {
+            "fieldname": "source_system",
+            "fieldtype": "Select",
+            "in_list_view": 1,
+            "label": "Source System",
+            "options": "stripe\nerpnext",
+            "read_only": 1,
+            "reqd": 1
+        },
+        {
+            "fieldname": "stripe_customer_id",
+            "fieldtype": "Data",
+            "label": "Stripe Customer ID",
+            "read_only": 1
+        },
+        {
+            "fieldname": "stripe_subscription_id",
+            "fieldtype": "Data",
+            "in_list_view": 1,
+            "label": "Stripe Subscription ID",
+            "read_only": 1
+        },
+        {
+            "fieldname": "erpnext_subscription_name",
+            "fieldtype": "Data",
+            "label": "ERPNext Subscription Name",
+            "read_only": 1
+        },
+        {
+            "fieldname": "plan_name",
+            "fieldtype": "Data",
+            "in_list_view": 1,
+            "label": "Plan Name",
+            "read_only": 1
+        },
+        {
+            "fieldname": "billing_motion",
+            "fieldtype": "Select",
+            "label": "Billing Motion",
+            "options": "self_serve\nmanaged_account",
+            "read_only": 1
+        },
+        {
+            "fieldname": "billing_status",
+            "fieldtype": "Select",
+            "in_list_view": 1,
+            "label": "Billing Status",
+            "options": "active\ntrialing\npast_due\ncanceled\nunpaid",
+            "read_only": 1
+        },
+        {
+            "fieldname": "billing_interval",
+            "fieldtype": "Select",
+            "label": "Billing Interval",
+            "options": "month\nyear",
+            "read_only": 1
+        },
+        {
+            "fieldname": "invoice_cadence",
+            "fieldtype": "Select",
+            "label": "Invoice Cadence",
+            "options": "monthly\nannual",
+            "read_only": 1
+        },
+        {
+            "fieldname": "current_period_start",
+            "fieldtype": "Date",
+            "label": "Current Period Start",
+            "read_only": 1
+        },
+        {
+            "fieldname": "current_period_end",
+            "fieldtype": "Date",
+            "label": "Current Period End",
+            "read_only": 1
+        },
+        {
+            "fieldname": "trial_end",
+            "fieldtype": "Date",
+            "label": "Trial End",
+            "read_only": 1
+        },
+        {
+            "fieldname": "payment_method_type",
+            "fieldtype": "Select",
+            "label": "Payment Method Type",
+            "options": "card\nus_bank_account\nach\ncheck\nwire",
+            "read_only": 1
+        },
+        {
+            "fieldname": "payment_method_last4",
+            "fieldtype": "Data",
+            "label": "Payment Method Last 4",
+            "read_only": 1
+        },
+        {
+            "fieldname": "payment_method_brand",
+            "fieldtype": "Data",
+            "label": "Payment Method Brand",
+            "read_only": 1
+        },
+        {
+            "fieldname": "payment_method_expiry",
+            "fieldtype": "Data",
+            "label": "Payment Method Expiry",
+            "read_only": 1
+        },
+        {
+            "fieldname": "next_invoice_date",
+            "fieldtype": "Date",
+            "label": "Next Invoice Date",
+            "read_only": 1
+        },
+        {
+            "fieldname": "next_invoice_estimate",
+            "fieldtype": "Currency",
+            "label": "Next Invoice Estimate",
+            "read_only": 1
+        },
+        {
+            "fieldname": "cancel_at_period_end",
+            "fieldtype": "Check",
+            "label": "Cancel at Period End",
+            "read_only": 1
+        },
+        {
+            "fieldname": "usage_alert_threshold_1",
+            "fieldtype": "Int",
+            "default": "75",
+            "label": "Usage Alert Threshold 1"
+        },
+        {
+            "fieldname": "usage_alert_threshold_2",
+            "fieldtype": "Int",
+            "default": "90",
+            "label": "Usage Alert Threshold 2"
+        },
+        {
+            "fieldname": "invoice_email_recipients",
+            "fieldtype": "Small Text",
+            "label": "Invoice Email Recipients"
+        },
+        {
+            "fieldname": "last_synced_at",
+            "fieldtype": "Datetime",
+            "label": "Last Synced At",
+            "read_only": 1
+        }
+    ],
+    "index_web_pages_for_search": 0,
+    "issingle": 0,
+    "istable": 0,
+    "links": [],
+    "modified": "2026-04-22 00:00:00.000000",
+    "modified_by": "Administrator",
+    "module": "SM Widgets",
+    "name": "SM Subscription",
+    "naming_rule": "Random",
+    "owner": "Administrator",
+    "permissions": [
+        {
+            "create": 1,
+            "delete": 1,
+            "email": 1,
+            "export": 1,
+            "print": 1,
+            "read": 1,
+            "report": 1,
+            "role": "System Manager",
+            "share": 1,
+            "write": 1
+        }
+    ],
+    "sort_field": "creation",
+    "sort_order": "DESC",
+    "title_field": "stripe_subscription_id",
+    "track_changes": 0
+}
