@@ -1,0 +1,78 @@
+[
+  {
+    "doctype": "Custom Field",
+    "dt": "Item",
+    "fieldname": "sm_mojo_id",
+    "fieldtype": "Data",
+    "label": "SM Mojo ID",
+    "insert_after": "item_group"
+  },
+  {
+    "doctype": "Custom Field",
+    "dt": "Item",
+    "fieldname": "sm_action_id",
+    "fieldtype": "Data",
+    "label": "SM Action ID",
+    "insert_after": "sm_mojo_id"
+  },
+  {
+    "doctype": "Custom Field",
+    "dt": "Item",
+    "fieldname": "sm_billing_type",
+    "fieldtype": "Select",
+    "label": "SM Billing Type",
+    "options": "flat_monthly\nalways_billed\nmetered_overage\nincluded\none_time_implementation\none_time_enhancement",
+    "insert_after": "sm_action_id"
+  },
+  {
+    "doctype": "Custom Field",
+    "dt": "Item",
+    "fieldname": "sm_included_units",
+    "fieldtype": "Int",
+    "label": "SM Included Units",
+    "default": "0",
+    "insert_after": "sm_billing_type"
+  },
+  {
+    "doctype": "Custom Field",
+    "dt": "Item",
+    "fieldname": "sm_invoice_line_label",
+    "fieldtype": "Data",
+    "label": "SM Invoice Line Label",
+    "insert_after": "sm_included_units"
+  },
+  {
+    "doctype": "Custom Field",
+    "dt": "Item",
+    "fieldname": "sm_commission_eligible",
+    "fieldtype": "Check",
+    "label": "SM Commission Eligible",
+    "default": "1",
+    "insert_after": "sm_invoice_line_label"
+  },
+  {
+    "doctype": "Custom Field",
+    "dt": "Sales Invoice Item",
+    "fieldname": "sm_quoted_rack_rate",
+    "fieldtype": "Currency",
+    "label": "SM Quoted Rack Rate",
+    "insert_after": "rate"
+  },
+  {
+    "doctype": "Custom Field",
+    "dt": "Sales Invoice Item",
+    "fieldname": "sm_discount_amount",
+    "fieldtype": "Currency",
+    "label": "SM Discount Amount",
+    "insert_after": "sm_quoted_rack_rate"
+  },
+  {
+    "doctype": "Custom Field",
+    "dt": "Sales Invoice Item",
+    "fieldname": "sm_commission_eligible",
+    "fieldtype": "Check",
+    "label": "SM Commission Eligible",
+    "default": "1",
+    "insert_after": "sm_discount_amount"
+  }
+]

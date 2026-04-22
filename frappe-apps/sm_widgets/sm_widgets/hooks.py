@@ -6,3 +6,10 @@ app_icon = "octicon octicon-tasklist"
 app_color = "#006666"
 app_email = "dev@sparkmojo.com"
 app_license = "MIT"
+
+fixtures = [
+    {
+        "doctype": "Custom Field",
+        "filters": [["fieldname", "like", "sm_%"]]
+    }
+]
