@@ -6,11 +6,10 @@ import sys
 import tempfile
 
 import httpx
-import pytest
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from scripts.load_billing_fixtures import build_session, load_fixtures, upsert_item
+from scripts.load_billing_fixtures import build_session, load_fixtures, upsert_item  # noqa: E402
 
 
 SAMPLE_RECORD = {
