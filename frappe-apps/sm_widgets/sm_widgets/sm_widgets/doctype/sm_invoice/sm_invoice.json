@@ -1,0 +1,189 @@
+{
+    "actions": [],
+    "autoname": "",
+    "creation": "2026-04-22 00:00:00.000000",
+    "doctype": "DocType",
+    "engine": "InnoDB",
+    "field_order": [
+        "source_system",
+        "stripe_invoice_id",
+        "erpnext_sales_invoice_name",
+        "invoice_number",
+        "invoice_date",
+        "due_date",
+        "status",
+        "total",
+        "subtotal",
+        "tax",
+        "amount_paid",
+        "amount_remaining",
+        "currency",
+        "period_start",
+        "period_end",
+        "hosted_invoice_url",
+        "invoice_pdf_url",
+        "payment_date",
+        "payment_method_last4",
+        "lines"
+    ],
+    "fields": [
+        {
+            "fieldname": "source_system",
+            "fieldtype": "Select",
+            "in_list_view": 1,
+            "label": "Source System",
+            "options": "stripe\nerpnext",
+            "read_only": 1,
+            "reqd": 1
+        },
+        {
+            "fieldname": "stripe_invoice_id",
+            "fieldtype": "Data",
+            "in_list_view": 1,
+            "label": "Stripe Invoice ID",
+            "read_only": 1,
+            "unique": 1
+        },
+        {
+            "fieldname": "erpnext_sales_invoice_name",
+            "fieldtype": "Data",
+            "label": "ERPNext Sales Invoice Name",
+            "read_only": 1
+        },
+        {
+            "fieldname": "invoice_number",
+            "fieldtype": "Data",
+            "in_list_view": 1,
+            "label": "Invoice Number",
+            "read_only": 1
+        },
+        {
+            "fieldname": "invoice_date",
+            "fieldtype": "Date",
+            "label": "Invoice Date",
+            "read_only": 1
+        },
+        {
+            "fieldname": "due_date",
+            "fieldtype": "Date",
+            "label": "Due Date",
+            "read_only": 1
+        },
+        {
+            "fieldname": "status",
+            "fieldtype": "Select",
+            "in_list_view": 1,
+            "label": "Status",
+            "options": "draft\nopen\npaid\nvoid\nuncollectible",
+            "read_only": 1
+        },
+        {
+            "fieldname": "total",
+            "fieldtype": "Currency",
+            "label": "Total",
+            "read_only": 1
+        },
+        {
+            "fieldname": "subtotal",
+            "fieldtype": "Currency",
+            "label": "Subtotal",
+            "read_only": 1
+        },
+        {
+            "fieldname": "tax",
+            "fieldtype": "Currency",
+            "label": "Tax",
+            "read_only": 1
+        },
+        {
+            "fieldname": "amount_paid",
+            "fieldtype": "Currency",
+            "label": "Amount Paid",
+            "read_only": 1
+        },
+        {
+            "fieldname": "amount_remaining",
+            "fieldtype": "Currency",
+            "label": "Amount Remaining",
+            "read_only": 1
+        },
+        {
+            "fieldname": "currency",
+            "fieldtype": "Data",
+            "default": "usd",
+            "label": "Currency",
+            "read_only": 1
+        },
+        {
+            "fieldname": "period_start",
+            "fieldtype": "Date",
+            "label": "Period Start",
+            "read_only": 1
+        },
+        {
+            "fieldname": "period_end",
+            "fieldtype": "Date",
+            "label": "Period End",
+            "read_only": 1
+        },
+        {
+            "fieldname": "hosted_invoice_url",
+            "fieldtype": "Data",
+            "label": "Hosted Invoice URL",
+            "read_only": 1
+        },
+        {
+            "fieldname": "invoice_pdf_url",
+            "fieldtype": "Data",
+            "label": "Invoice PDF URL",
+            "read_only": 1
+        },
+        {
+            "fieldname": "payment_date",
+            "fieldtype": "Date",
+            "label": "Payment Date",
+            "read_only": 1
+        },
+        {
+            "fieldname": "payment_method_last4",
+            "fieldtype": "Data",
+            "label": "Payment Method Last 4",
+            "read_only": 1
+        },
+        {
+            "fieldname": "lines",
+            "fieldtype": "Table",
+            "label": "Lines",
+            "options": "SM Invoice Line",
+            "read_only": 1
+        }
+    ],
+    "index_web_pages_for_search": 0,
+    "issingle": 0,
+    "istable": 0,
+    "links": [],
+    "modified": "2026-04-22 00:00:00.000000",
+    "modified_by": "Administrator",
+    "module": "SM Widgets",
+    "name": "SM Invoice",
+    "naming_rule": "Random",
+    "owner": "Administrator",
+    "permissions": [
+        {
+            "create": 1,
+            "delete": 1,
+            "email": 1,
+            "export": 1,
+            "print": 1,
+            "read": 1,
+            "report": 1,
+            "role": "System Manager",
+            "share": 1,
+            "write": 1
+        }
+    ],
+    "sort_field": "creation",
+    "sort_order": "DESC",
+    "title_field": "stripe_invoice_id",
+    "track_changes": 0
+}

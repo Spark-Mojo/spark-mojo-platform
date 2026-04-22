@@ -296,25 +296,223 @@ async def handle_subscription_deleted(data_object: dict):
     logger.info("Marked SM Subscription canceled for %s on %s", sub_id, site_name)
 
 
+async def _get_site_for_customer(
+    stripe_customer_id: str,
+) -> tuple[str, str] | None:
+    async with httpx.AsyncClient() as client:
+        resp = await client.get(
+            f"{ADMIN_FRAPPE_URL}/api/resource/SM Site Registry",
+            params={
+                "filters": json.dumps(
+                    [["stripe_customer_id", "=", stripe_customer_id]]
+                ),
+                "fields": '["name","site_name"]',
+                "limit_page_length": 1,
+            },
+            headers=_admin_headers(),
+            timeout=10,
+        )
+        if resp.status_code != 200:
+            return None
+        data = resp.json().get("data", [])
+        if not data:
+            return None
+        site_name = data[0].get("site_name", "")
+        if not site_name:
+            return None
+        frappe_url = f"https://{site_name}"
+        return site_name, frappe_url
+
+
+async def _find_sm_invoice(
+    frappe_url: str, headers: dict, stripe_invoice_id: str
+) -> dict | None:
+    async with httpx.AsyncClient() as client:
+        resp = await client.get(
+            f"{frappe_url}/api/resource/SM Invoice",
+            params={
+                "filters": json.dumps(
+                    [["stripe_invoice_id", "=", stripe_invoice_id]]
+                ),
+                "fields": '["name"]',
+                "limit_page_length": 1,
+            },
+            headers=headers,
+            timeout=10,
+        )
+        if resp.status_code != 200:
+            return None
+        data = resp.json().get("data", [])
+        return data[0] if data else None
+
+
+async def _upsert_sm_invoice(
+    frappe_url: str,
+    headers: dict,
+    stripe_invoice_id: str,
+    payload: dict,
+):
+    existing = await _find_sm_invoice(
+        frappe_url, headers, stripe_invoice_id
+    )
+    async with httpx.AsyncClient() as client:
+        if existing:
+            resp = await client.put(
+                f"{frappe_url}/api/resource/SM Invoice/{existing['name']}",
+                json=payload,
+                headers=headers,
+                timeout=10,
+            )
+        else:
+            resp = await client.post(
+                f"{frappe_url}/api/resource/SM Invoice",
+                json=payload,
+                headers=headers,
+                timeout=10,
+            )
+        if resp.status_code not in (200, 201):
+            raise RuntimeError(
+                f"Failed to upsert SM Invoice: {resp.status_code} {resp.text}"
+            )
+
+
+def _build_invoice_line(line_item: dict, product: dict) -> dict:
+    metadata = product.get("metadata") or {}
+    price = line_item.get("price") or {}
+    recurring = price.get("recurring") or {}
+    usage_type = recurring.get("usage_type", "")
+
+    if usage_type == "metered":
+        price_type = "metered_overage"
+    else:
+        price_type = "subscription"
+
+    billing_type = metadata.get("sm_billing_type")
+    action_id = metadata.get("sm_action_id")
+
+    meter_name = None
+    if billing_type in ("always_billed", "metered_overage"):
+        meter_name = action_id
+
+    unit_amount_raw = price.get("unit_amount")
+    unit_amount = unit_amount_raw / 100 if unit_amount_raw else 0
+
+    return {
+        "mojo_id": metadata.get("sm_mojo_id"),
+        "action_id": action_id,
+        "invoice_line_label": product.get("name", ""),
+        "description": line_item.get("description", ""),
+        "quantity": line_item.get("quantity", 0),
+        "unit_amount": unit_amount,
+        "amount": line_item.get("amount", 0) / 100,
+        "price_type": price_type,
+        "billing_type": billing_type,
+        "meter_name": meter_name,
+    }
+
+
+def _build_invoice_payload(data_object: dict, lines: list) -> dict:
+    payload = {
+        "source_system": "stripe",
+        "stripe_invoice_id": data_object.get("id", ""),
+        "invoice_number": data_object.get("number"),
+        "status": data_object.get("status", ""),
+        "total": data_object.get("total", 0) / 100,
+        "subtotal": data_object.get("subtotal", 0) / 100,
+        "tax": (data_object.get("tax") or 0) / 100,
+        "amount_paid": data_object.get("amount_paid", 0) / 100,
+        "amount_remaining": data_object.get("amount_remaining", 0) / 100,
+        "currency": data_object.get("currency", "usd"),
+        "hosted_invoice_url": data_object.get("hosted_invoice_url"),
+        "invoice_pdf_url": data_object.get("invoice_pdf"),
+        "lines": lines,
+    }
+
+    created = data_object.get("created")
+    if created:
+        payload["invoice_date"] = datetime.fromtimestamp(
+            created, tz=timezone.utc
+        ).strftime("%Y-%m-%d")
+
+    due_date = data_object.get("due_date")
+    if due_date:
+        payload["due_date"] = datetime.fromtimestamp(
+            due_date, tz=timezone.utc
+        ).strftime("%Y-%m-%d")
+
+    period_start = data_object.get("period_start")
+    if period_start:
+        payload["period_start"] = datetime.fromtimestamp(
+            period_start, tz=timezone.utc
+        ).strftime("%Y-%m-%d")
+
+    period_end = data_object.get("period_end")
+    if period_end:
+        payload["period_end"] = datetime.fromtimestamp(
+            period_end, tz=timezone.utc
+        ).strftime("%Y-%m-%d")
+
+    status_transitions = data_object.get("status_transitions") or {}
+    paid_at = status_transitions.get("paid_at")
+    if paid_at:
+        payload["payment_date"] = datetime.fromtimestamp(
+            paid_at, tz=timezone.utc
+        ).strftime("%Y-%m-%d")
+
+    return payload
+
+
 async def handle_invoice_sync(data_object: dict):
+    invoice_id = data_object.get("id", "")
+    customer_id = data_object.get("customer", "")
+
+    site_info = await _get_site_for_customer(customer_id)
+    if not site_info:
+        logger.warning(
+            "No SM Site Registry for stripe customer %s (invoice %s)",
+            customer_id,
+            invoice_id,
+        )
+        return
+
+    site_name, frappe_url = site_info
+    headers = _client_headers()
+
+    stripe_lines = data_object.get("lines", {}).get("data", [])
+    invoice_lines = []
+    for line_item in stripe_lines:
+        price = line_item.get("price") or {}
+        product_id = price.get("product", "")
+        product = {}
+        if product_id:
+            try:
+                product = stripe.Product.retrieve(product_id)
+                if hasattr(product, "to_dict"):
+                    product = product.to_dict()
+                elif not isinstance(product, dict):
+                    product = dict(product)
+            except Exception:
+                logger.warning(
+                    "Failed to retrieve Stripe Product %s", product_id
+                )
+                product = {}
+        invoice_lines.append(_build_invoice_line(line_item, product))
+
+    payload = _build_invoice_payload(data_object, invoice_lines)
+    await _upsert_sm_invoice(
+        frappe_url, headers, data_object.get("id", ""), payload
+    )
     logger.info(
-        "Stub handler: invoice sync for %s",
-        data_object.get("id", ""),
+        "Synced SM Invoice %s on %s", invoice_id, site_name
     )
 
 
 async def handle_invoice_paid(data_object: dict):
-    logger.info(
-        "Stub handler: invoice paid for %s",
-        data_object.get("id", ""),
-    )
+    await handle_invoice_sync(data_object)
 
 
 async def handle_invoice_payment_failed(data_object: dict):
-    logger.info(
-        "Stub handler: invoice payment failed for %s",
-        data_object.get("id", ""),
-    )
+    await handle_invoice_sync(data_object)
 
 
 async def handle_trial_will_end(data_object: dict):

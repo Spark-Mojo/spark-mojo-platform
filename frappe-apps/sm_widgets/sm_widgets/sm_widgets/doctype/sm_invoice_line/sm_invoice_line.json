@@ -1,0 +1,125 @@
+{
+    "actions": [],
+    "creation": "2026-04-22 00:00:00.000000",
+    "doctype": "DocType",
+    "engine": "InnoDB",
+    "field_order": [
+        "mojo_id",
+        "action_id",
+        "description",
+        "invoice_line_label",
+        "quantity",
+        "unit_amount",
+        "amount",
+        "quoted_rack_rate",
+        "discount_amount",
+        "price_type",
+        "billing_type",
+        "meter_name",
+        "usage_quantity",
+        "included_quantity",
+        "overage_quantity",
+        "commission_eligible"
+    ],
+    "fields": [
+        {
+            "fieldname": "mojo_id",
+            "fieldtype": "Data",
+            "in_list_view": 1,
+            "label": "Mojo ID"
+        },
+        {
+            "fieldname": "action_id",
+            "fieldtype": "Data",
+            "in_list_view": 1,
+            "label": "Action ID"
+        },
+        {
+            "fieldname": "description",
+            "fieldtype": "Data",
+            "label": "Description"
+        },
+        {
+            "fieldname": "invoice_line_label",
+            "fieldtype": "Data",
+            "in_list_view": 1,
+            "label": "Invoice Line Label"
+        },
+        {
+            "fieldname": "quantity",
+            "fieldtype": "Float",
+            "label": "Quantity"
+        },
+        {
+            "fieldname": "unit_amount",
+            "fieldtype": "Currency",
+            "label": "Unit Amount"
+        },
+        {
+            "fieldname": "amount",
+            "fieldtype": "Currency",
+            "in_list_view": 1,
+            "label": "Amount"
+        },
+        {
+            "fieldname": "quoted_rack_rate",
+            "fieldtype": "Currency",
+            "label": "Quoted Rack Rate"
+        },
+        {
+            "fieldname": "discount_amount",
+            "fieldtype": "Currency",
+            "label": "Discount Amount"
+        },
+        {
+            "fieldname": "price_type",
+            "fieldtype": "Select",
+            "label": "Price Type",
+            "options": "subscription\nmetered_overage\none_time"
+        },
+        {
+            "fieldname": "billing_type",
+            "fieldtype": "Select",
+            "label": "Billing Type",
+            "options": "flat_monthly\nalways_billed\nmetered_overage\nincluded\none_time_implementation\none_time_enhancement"
+        },
+        {
+            "fieldname": "meter_name",
+            "fieldtype": "Data",
+            "label": "Meter Name"
+        },
+        {
+            "fieldname": "usage_quantity",
+            "fieldtype": "Int",
+            "label": "Usage Quantity"
+        },
+        {
+            "fieldname": "included_quantity",
+            "fieldtype": "Int",
+            "label": "Included Quantity"
+        },
+        {
+            "fieldname": "overage_quantity",
+            "fieldtype": "Int",
+            "label": "Overage Quantity"
+        },
+        {
+            "fieldname": "commission_eligible",
+            "fieldtype": "Check",
+            "label": "Commission Eligible"
+        }
+    ],
+    "index_web_pages_for_search": 0,
+    "issingle": 0,
+    "istable": 1,
+    "links": [],
+    "modified": "2026-04-22 00:00:00.000000",
+    "modified_by": "Administrator",
+    "module": "SM Widgets",
+    "name": "SM Invoice Line",
+    "owner": "Administrator",
+    "permissions": [],
+    "sort_field": "creation",
+    "sort_order": "DESC",
+    "track_changes": 0
+}
