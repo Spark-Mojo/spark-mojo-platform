@@ -11,6 +11,7 @@ import logging
 import os
 from datetime import datetime, timedelta, timezone
 from typing import Optional
+from urllib.parse import urlparse
 
 import httpx
 from fastapi import APIRouter, HTTPException, Query
@@ -37,6 +38,18 @@ def _read_secret_or_empty(name: str) -> str:
 
 
 STEDI_API_KEY = _read_secret_or_empty("stedi_api_key")
+
+ADMIN_FRAPPE_URL = os.getenv("ADMIN_FRAPPE_URL", "")
+ADMIN_API_KEY = _read_secret_or_empty("admin_api_key")
+ADMIN_API_SECRET = _read_secret_or_empty("admin_api_secret")
+_SITE_NAME = urlparse(FRAPPE_URL).hostname or ""
+
+
+def _admin_headers():
+    headers = {"Content-Type": "application/json"}
+    if ADMIN_API_KEY and ADMIN_API_SECRET:
+        headers["Authorization"] = f"token {ADMIN_API_KEY}:{ADMIN_API_SECRET}"
+    return headers
 
 
 def _frappe_headers():
@@ -651,6 +664,38 @@ async def submit_claim(req: ClaimSubmitRequest):
             "canonical_state": "submitted",
             "submission_date": datetime.now(timezone.utc).strftime("%Y-%m-%d"),
         })
+
+        try:
+            stripe_customer_id = None
+            if ADMIN_FRAPPE_URL and _SITE_NAME:
+                async with httpx.AsyncClient() as meter_client:
+                    reg_resp = await meter_client.get(
+                        f"{ADMIN_FRAPPE_URL}/api/resource/SM Site Registry",
+                        params={
+                            "filters": json.dumps(
+                                [["frappe_site", "=", _SITE_NAME]]
+                            ),
+                            "fields": '["name","frappe_site","stripe_customer_id"]',
+                            "limit_page_length": 1,
+                        },
+                        headers=_admin_headers(),
+                        timeout=10,
+                    )
+                    if reg_resp.status_code == 200:
+                        reg_data = reg_resp.json().get("data", [])
+                        if reg_data:
+                            stripe_customer_id = reg_data[0].get(
+                                "stripe_customer_id"
+                            )
+            from services.claims_metering import record_claim_submitted
+            await record_claim_submitted(
+                site_name=_SITE_NAME,
+                stripe_customer_id=stripe_customer_id,
+                claim_name=req.claim_name,
+            )
+        except Exception as e:
+            logger.error("Claims metering failed for %s: %s", req.claim_name, e)
+
         return ClaimSubmitResponse(
             success=True,
             claim_name=req.claim_name,
