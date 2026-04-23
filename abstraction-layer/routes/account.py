@@ -271,3 +271,109 @@ async def get_subscription(user: dict = Depends(get_current_user)):
         "cancel_at_period_end": bool(sub.get("cancel_at_period_end")),
         "included": _get_included_units(billable_actions),
     }
+
+
+@router.get("/usage")
+async def get_usage(user: dict = Depends(get_current_user)):
+    site_name = user.get("site_name", "")
+    if not site_name:
+        tenant_id = user.get("tenant_id", "")
+        if tenant_id and tenant_id != "default":
+            site_name = f"{tenant_id}.sparkmojo.com"
+
+    if not site_name:
+        raise HTTPException(status_code=400, detail="Cannot determine site for user")
+
+    client_frappe_url = f"https://{site_name}"
+
+    async with httpx.AsyncClient() as client:
+        usage_resp = await client.get(
+            f"{client_frappe_url}/api/resource/SM Usage Summary",
+            params={
+                "fields": json.dumps([
+                    "billing_period_start", "billing_period_end",
+                    "ai_tokens_used", "ai_tokens_included",
+                    "ai_tokens_tier1_used", "ai_tokens_tier2_used",
+                    "ai_tokens_tier3_used",
+                    "claims_processed", "claims_included",
+                    "storage_used_gb", "storage_included_gb",
+                    "active_staff_seats", "staff_seats_included",
+                    "active_portal_seats", "portal_seats_included",
+                    "estimated_overage", "alert_level", "last_updated",
+                ]),
+                "limit_page_length": 1,
+            },
+            headers=_admin_headers(),
+            timeout=10,
+        )
+        if usage_resp.status_code != 200:
+            raise HTTPException(
+                status_code=404,
+                detail="No SM Usage Summary on this site",
+            )
+        usage_data = usage_resp.json().get("data", [])
+        if not usage_data:
+            raise HTTPException(
+                status_code=404,
+                detail="No SM Usage Summary on this site",
+            )
+
+    usage = usage_data[0]
+
+    def pct(used, included):
+        return round((used / included) * 100, 1) if included else 0
+
+    return {
+        "period": {
+            "start": usage.get("billing_period_start"),
+            "end": usage.get("billing_period_end"),
+        },
+        "ai_tokens": {
+            "used": usage.get("ai_tokens_used", 0),
+            "included": usage.get("ai_tokens_included", 0),
+            "pct": pct(
+                usage.get("ai_tokens_used", 0),
+                usage.get("ai_tokens_included", 0),
+            ),
+            "by_tier": {
+                "tier1": usage.get("ai_tokens_tier1_used", 0),
+                "tier2": usage.get("ai_tokens_tier2_used", 0),
+                "tier3": usage.get("ai_tokens_tier3_used", 0),
+            },
+        },
+        "claims": {
+            "processed": usage.get("claims_processed", 0),
+            "included": usage.get("claims_included", 0),
+            "pct": pct(
+                usage.get("claims_processed", 0),
+                usage.get("claims_included", 0),
+            ),
+        },
+        "storage": {
+            "used_gb": usage.get("storage_used_gb", 0),
+            "included_gb": usage.get("storage_included_gb", 0),
+            "pct": pct(
+                usage.get("storage_used_gb", 0),
+                usage.get("storage_included_gb", 0),
+            ),
+        },
+        "staff_seats": {
+            "active": usage.get("active_staff_seats", 0),
+            "included": usage.get("staff_seats_included", 0),
+            "pct": pct(
+                usage.get("active_staff_seats", 0),
+                usage.get("staff_seats_included", 0),
+            ),
+        },
+        "portal_seats": {
+            "active": usage.get("active_portal_seats", 0),
+            "included": usage.get("portal_seats_included", 0),
+            "pct": pct(
+                usage.get("active_portal_seats", 0),
+                usage.get("portal_seats_included", 0),
+            ),
+        },
+        "estimated_overage": usage.get("estimated_overage", 0),
+        "alert_level": usage.get("alert_level", "green"),
+        "last_updated": usage.get("last_updated"),
+    }
