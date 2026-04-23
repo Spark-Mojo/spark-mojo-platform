@@ -1,0 +1,159 @@
+{
+  "actions": [],
+  "autoname": "field:site_registry",
+  "creation": "2026-04-23 00:00:00.000000",
+  "doctype": "DocType",
+  "engine": "InnoDB",
+  "field_order": [
+    "site_registry",
+    "billing_motion",
+    "stripe_customer_id",
+    "stripe_subscription_id",
+    "erpnext_customer_name",
+    "erpnext_subscription_name",
+    "plan_name",
+    "monthly_revenue",
+    "annual_revenue",
+    "lifetime_revenue",
+    "billing_health",
+    "days_past_due",
+    "churn_risk_score",
+    "last_usage_review",
+    "upsell_candidate",
+    "notes"
+  ],
+  "fields": [
+    {
+      "fieldname": "site_registry",
+      "fieldtype": "Link",
+      "label": "Site Registry",
+      "options": "SM Site Registry",
+      "reqd": 1,
+      "unique": 1,
+      "in_list_view": 1
+    },
+    {
+      "fieldname": "billing_motion",
+      "fieldtype": "Select",
+      "label": "Billing Motion",
+      "options": "self_serve\nmanaged_account",
+      "in_list_view": 1
+    },
+    {
+      "fieldname": "stripe_customer_id",
+      "fieldtype": "Data",
+      "label": "Stripe Customer ID",
+      "length": 128
+    },
+    {
+      "fieldname": "stripe_subscription_id",
+      "fieldtype": "Data",
+      "label": "Stripe Subscription ID",
+      "length": 128
+    },
+    {
+      "fieldname": "erpnext_customer_name",
+      "fieldtype": "Data",
+      "label": "ERPNext Customer Name",
+      "length": 256
+    },
+    {
+      "fieldname": "erpnext_subscription_name",
+      "fieldtype": "Data",
+      "label": "ERPNext Subscription Name",
+      "length": 256
+    },
+    {
+      "fieldname": "plan_name",
+      "fieldtype": "Data",
+      "label": "Plan Name",
+      "length": 256,
+      "in_list_view": 1
+    },
+    {
+      "fieldname": "monthly_revenue",
+      "fieldtype": "Currency",
+      "label": "Monthly Revenue",
+      "in_list_view": 1
+    },
+    {
+      "fieldname": "annual_revenue",
+      "fieldtype": "Currency",
+      "label": "Annual Revenue"
+    },
+    {
+      "fieldname": "lifetime_revenue",
+      "fieldtype": "Currency",
+      "label": "Lifetime Revenue"
+    },
+    {
+      "fieldname": "billing_health",
+      "fieldtype": "Select",
+      "label": "Billing Health",
+      "options": "\nhealthy\nat_risk\npast_due\nchurned",
+      "in_list_view": 1
+    },
+    {
+      "fieldname": "days_past_due",
+      "fieldtype": "Int",
+      "label": "Days Past Due",
+      "default": "0"
+    },
+    {
+      "fieldname": "churn_risk_score",
+      "fieldtype": "Float",
+      "label": "Churn Risk Score",
+      "default": "0"
+    },
+    {
+      "fieldname": "last_usage_review",
+      "fieldtype": "Date",
+      "label": "Last Usage Review"
+    },
+    {
+      "fieldname": "upsell_candidate",
+      "fieldtype": "Check",
+      "label": "Upsell Candidate",
+      "default": "0"
+    },
+    {
+      "fieldname": "notes",
+      "fieldtype": "Text",
+      "label": "Notes"
+    }
+  ],
+  "index_web_pages_for_search": 0,
+  "is_submittable": 0,
+  "links": [],
+  "modified": "2026-04-23 00:00:00.000000",
+  "modified_by": "Administrator",
+  "module": "SM Provisioning",
+  "name": "SM Platform Billing",
+  "naming_rule": "By fieldname",
+  "owner": "Administrator",
+  "permissions": [
+    {
+      "read": 1,
+      "role": "SM Ops"
+    },
+    {
+      "read": 1,
+      "role": "SM Finance"
+    },
+    {
+      "create": 1,
+      "delete": 1,
+      "email": 1,
+      "export": 1,
+      "print": 1,
+      "read": 1,
+      "report": 1,
+      "role": "System Manager",
+      "share": 1,
+      "write": 1
+    }
+  ],
+  "sort_field": "creation",
+  "sort_order": "DESC",
+  "track_changes": 0
+}
