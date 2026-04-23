@@ -1,0 +1,396 @@
+{
+  "name": "WF-METERING-STORAGE-CALC",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 0 * * *"
+            }
+          ]
+        }
+      },
+      "id": "cron-trigger",
+      "name": "Daily Midnight UTC",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.1,
+      "position": [250, 300]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "https://admin.sparkmojo.com/api/resource/SM Site Registry",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "filters",
+              "value": "[[\"status\",\"=\",\"active\"]]"
+            },
+            {
+              "name": "fields",
+              "value": "[\"name\",\"site_name\",\"stripe_customer_id\",\"billing_motion\"]"
+            },
+            {
+              "name": "limit_page_length",
+              "value": "0"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "token {{ $env.FRAPPE_ADMIN_API_KEY }}:{{ $env.FRAPPE_ADMIN_API_SECRET }}"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "get-active-sites",
+      "name": "Get Active Sites",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [470, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const response = $input.first().json;\nconst sites = response.data || [];\nreturn sites.map(site => ({ json: site }));"
+      },
+      "id": "split-sites",
+      "name": "Split Sites",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [690, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://{{ $json.site_name }}/api/method/frappe.client.get_list",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "token {{ $env.FRAPPE_ADMIN_API_KEY }}:{{ $env.FRAPPE_ADMIN_API_SECRET }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"doctype\": \"File\",\n  \"filters\": {\"is_private\": 1, \"attached_to_doctype\": [\"is\", \"set\"]},\n  \"fieldname\": \"sum(file_size) as total_bytes\",\n  \"limit_page_length\": 0\n}",
+        "options": {
+          "timeout": 60000,
+          "allowUnauthorizedCerts": false
+        }
+      },
+      "id": "frappe-file-size",
+      "name": "Frappe File Size",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [910, 300],
+      "onError": "continueRegularOutput",
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "jsCode": "// Medplum Binary size stub — 0 GB for MVP.\n// DEFICIENCY: Medplum Binary storage size lookup not yet implemented.\n// When Medplum exposes a storage-size API or Binary size field,\n// replace this stub with a real HTTP request to:\n//   GET https://medplum.sparkmojo.com/fhir/Binary?_summary=count\n// and estimate size from count * average binary size.\n\nconst site = $('Split Sites').first().json;\nconst frappeResponse = $input.first().json;\n\nlet frappe_gb = 0;\nif (frappeResponse && !frappeResponse.error) {\n  const data = frappeResponse.message || frappeResponse.data || [];\n  if (Array.isArray(data) && data.length > 0) {\n    const total_bytes = data[0].total_bytes || 0;\n    frappe_gb = total_bytes / (1024 * 1024 * 1024);\n  }\n}\n\nconst medplum_gb = 0;\nconst total_raw = frappe_gb + medplum_gb;\nconst total_gb = Math.max(Math.ceil(total_raw), 0);\n\nreturn [{\n  json: {\n    site_name: site.site_name,\n    name: site.name,\n    stripe_customer_id: site.stripe_customer_id || null,\n    billing_motion: site.billing_motion || null,\n    frappe_gb: Math.round(frappe_gb * 100) / 100,\n    medplum_gb: medplum_gb,\n    total_gb: total_gb,\n    error: frappeResponse.error ? String(frappeResponse.error) : null\n  }\n}];"
+      },
+      "id": "calculate-total",
+      "name": "Calculate Total GB",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1130, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "condition-billing-motion",
+              "leftValue": "={{ $json.billing_motion }}",
+              "rightValue": "self_serve",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            },
+            {
+              "id": "condition-stripe-id",
+              "leftValue": "={{ $json.stripe_customer_id }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty"
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      },
+      "id": "if-self-serve",
+      "name": "Is Self-Serve with Stripe",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [1350, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.stripe.com/v1/billing/meter_events",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer {{ $env.STRIPE_SECRET_KEY }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/x-www-form-urlencoded"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "form-urlencoded",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "event_name",
+              "value": "sm_account_billing.storage_gb"
+            },
+            {
+              "name": "payload[stripe_customer_id]",
+              "value": "={{ $json.stripe_customer_id }}"
+            },
+            {
+              "name": "payload[value]",
+              "value": "={{ $json.total_gb }}"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 15000
+        }
+      },
+      "id": "stripe-meter-event",
+      "name": "Stripe MeterEvent",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [1570, 200],
+      "onError": "continueRegularOutput",
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "jsCode": "// Pass through site data for SM Usage Summary update (Self-Serve path)\nconst site = $('Calculate Total GB').first().json;\nconst stripeResult = $input.first().json;\nreturn [{\n  json: {\n    ...site,\n    stripe_event_sent: !stripeResult.error,\n    stripe_error: stripeResult.error ? String(stripeResult.error) : null\n  }\n}];"
+      },
+      "id": "merge-stripe-result",
+      "name": "Merge Stripe Result",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1790, 200]
+    },
+    {
+      "parameters": {
+        "method": "PUT",
+        "url": "=https://{{ $json.site_name }}/api/resource/SM Usage Summary/{{ $json.site_name }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "token {{ $env.FRAPPE_ADMIN_API_KEY }}:{{ $env.FRAPPE_ADMIN_API_SECRET }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"storage_used_gb\": {{ $json.total_gb }}\n}",
+        "options": {
+          "timeout": 15000
+        }
+      },
+      "id": "update-usage-summary",
+      "name": "Update SM Usage Summary",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [2010, 300],
+      "onError": "continueRegularOutput",
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\nlet totalGB = 0;\nlet processed = 0;\nlet errors = [];\n\nfor (const item of items) {\n  const d = item.json;\n  processed++;\n  totalGB += (d.total_gb || 0);\n  if (d.error) {\n    errors.push(`${d.site_name}: ${d.error}`);\n  }\n}\n\nreturn [{\n  json: {\n    summary: {\n      rows_processed: processed,\n      total_gb_across_fleet: totalGB,\n      error_count: errors.length,\n      errors: errors\n    }\n  }\n}];"
+      },
+      "id": "aggregate-summary",
+      "name": "Aggregate Summary",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2230, 300]
+    },
+    {
+      "parameters": {},
+      "id": "done-node",
+      "name": "Done",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [2450, 300]
+    },
+    {
+      "parameters": {
+        "content": "### DEFICIENCY: Medplum Binary Size\n\nMedplum binary storage size is stubbed at 0 GB.\nThe Medplum FHIR API does not expose an aggregate storage-size endpoint.\n\nFuture: When Medplum adds a storage/size API or we implement a\nBinary resource scanner, replace the stub in \"Calculate Total GB\"\nwith a real HTTP request node.\n\nTracked in: ACCT-022 DEFICIENCIES.md"
+      },
+      "id": "sticky-deficiency",
+      "name": "Sticky Note",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [1050, 480],
+      "notesInFlow": false
+    }
+  ],
+  "connections": {
+    "Daily Midnight UTC": {
+      "main": [
+        [
+          {
+            "node": "Get Active Sites",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Active Sites": {
+      "main": [
+        [
+          {
+            "node": "Split Sites",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split Sites": {
+      "main": [
+        [
+          {
+            "node": "Frappe File Size",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Frappe File Size": {
+      "main": [
+        [
+          {
+            "node": "Calculate Total GB",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Calculate Total GB": {
+      "main": [
+        [
+          {
+            "node": "Is Self-Serve with Stripe",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is Self-Serve with Stripe": {
+      "main": [
+        [
+          {
+            "node": "Stripe MeterEvent",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Update SM Usage Summary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Stripe MeterEvent": {
+      "main": [
+        [
+          {
+            "node": "Merge Stripe Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge Stripe Result": {
+      "main": [
+        [
+          {
+            "node": "Update SM Usage Summary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update SM Usage Summary": {
+      "main": [
+        [
+          {
+            "node": "Aggregate Summary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Aggregate Summary": {
+      "main": [
+        [
+          {
+            "node": "Done",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "meta": {
+    "description": "Daily storage calculator per tenant. Calculates Frappe File + Medplum Binary storage, reports to Stripe Meters (Self-Serve) and SM Usage Summary (all motions). Triggered at 00:00 UTC."
+  },
+  "active": true
+}
