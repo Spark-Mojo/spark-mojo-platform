@@ -1,0 +1,44 @@
+[
+  {
+    "doctype": "Dunning Type",
+    "name": "SM Friendly Reminder",
+    "dunning_type": "SM Friendly Reminder",
+    "dunning_fee": 0,
+    "rate_of_interest": 0,
+    "is_default": 0,
+    "company": "",
+    "dunning_letter_text": "This is a friendly reminder that the referenced invoice is past due. Please arrange payment at your earliest convenience.",
+    "email_template": "SM Friendly Reminder"
+  },
+  {
+    "doctype": "Dunning Type",
+    "name": "SM Second Notice",
+    "dunning_type": "SM Second Notice",
+    "dunning_fee": 0,
+    "rate_of_interest": 0,
+    "is_default": 0,
+    "company": "",
+    "dunning_letter_text": "This is a second notice regarding the referenced invoice which remains unpaid. Immediate attention is required to avoid further escalation.",
+    "email_template": "SM Second Notice"
+  },
+  {
+    "doctype": "Dunning Type",
+    "name": "SM Escalation",
+    "dunning_type": "SM Escalation",
+    "dunning_fee": 0,
+    "rate_of_interest": 0,
+    "is_default": 0,
+    "company": "",
+    "dunning_letter_text": "This invoice has been escalated to operations for personal outreach. The account is 30+ days past due."
+  },
+  {
+    "doctype": "Dunning Type",
+    "name": "SM Executive Escalation",
+    "dunning_type": "SM Executive Escalation",
+    "dunning_fee": 0,
+    "rate_of_interest": 0,
+    "is_default": 0,
+    "company": "",
+    "dunning_letter_text": "This invoice has been escalated to executive leadership. The account is 60+ days past due and requires immediate executive attention."
+  }
+]

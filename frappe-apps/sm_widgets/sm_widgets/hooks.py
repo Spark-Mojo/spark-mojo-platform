@@ -23,6 +23,14 @@ fixtures = [
     {
         "doctype": "Client Script",
         "filters": [["name", "like", "SM%Invoice%"]]
+    },
+    {
+        "doctype": "Dunning Type",
+        "filters": [["name", "like", "SM %"]]
+    },
+    {
+        "doctype": "Email Template",
+        "filters": [["name", "like", "SM %"]]
     }
 ]
 

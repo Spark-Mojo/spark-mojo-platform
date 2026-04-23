@@ -1,0 +1,16 @@
+[
+  {
+    "doctype": "Email Template",
+    "name": "SM Friendly Reminder",
+    "subject": "Friendly Reminder: Invoice {{ doc.name }} is past due",
+    "use_html": 1,
+    "response_html": "<p>Dear {{ doc.customer_name }},</p>\n<p>This is a friendly reminder that invoice <strong>{{ doc.name }}</strong> with an outstanding amount of <strong>{{ frappe.utils.fmt_money(doc.outstanding_amount, currency=doc.currency) }}</strong> was due on <strong>{{ frappe.utils.formatdate(doc.due_date) }}</strong>.</p>\n<p>If payment has already been sent, please disregard this notice. Otherwise, we kindly request that you arrange payment at your earliest convenience.</p>\n<p>If you have any questions or need to discuss payment arrangements, please do not hesitate to reach out.</p>\n<p>Thank you for your prompt attention to this matter.</p>\n<p>Best regards,<br>Spark Mojo Billing Team</p>"
+  },
+  {
+    "doctype": "Email Template",
+    "name": "SM Second Notice",
+    "subject": "Second Notice: Invoice {{ doc.name }} requires attention",
+    "use_html": 1,
+    "response_html": "<p>Dear {{ doc.customer_name }},</p>\n<p>This is a second notice regarding invoice <strong>{{ doc.name }}</strong> with an outstanding amount of <strong>{{ frappe.utils.fmt_money(doc.outstanding_amount, currency=doc.currency) }}</strong>, which was due on <strong>{{ frappe.utils.formatdate(doc.due_date) }}</strong>.</p>\n<p>Despite our previous reminder, this invoice remains unpaid. We urge you to arrange payment immediately to avoid further escalation.</p>\n<p>If there are circumstances preventing timely payment, please contact us as soon as possible so we can discuss a resolution.</p>\n<p>Thank you for your immediate attention.</p>\n<p>Regards,<br>Spark Mojo Billing Team</p>"
+  }
+]

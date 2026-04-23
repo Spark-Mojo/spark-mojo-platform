@@ -1,0 +1,362 @@
+{
+  "name": "WF-BILLING-DUNNING-ESCALATION",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 9 * * *"
+            }
+          ]
+        }
+      },
+      "id": "node-trigger",
+      "name": "Daily 09:00 UTC",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [0, 0]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "https://poc-dev.sparkmojo.com/api/resource/Sales Invoice",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "filters",
+              "value": "[[\"outstanding_amount\",\">\",0],[\"due_date\",\"<\",\"{{ $now.format('yyyy-MM-dd') }}\"],[\"docstatus\",\"=\",1]]"
+            },
+            {
+              "name": "fields",
+              "value": "[\"name\",\"customer\",\"customer_name\",\"outstanding_amount\",\"due_date\",\"currency\"]"
+            },
+            {
+              "name": "limit_page_length",
+              "value": "0"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "node-query-invoices",
+      "name": "Query Overdue Invoices",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [220, 0],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "frappe-api-key",
+          "name": "Frappe API Key"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\nconst results = [];\nconst today = new Date();\ntoday.setHours(0, 0, 0, 0);\n\nfor (const item of items) {\n  const data = item.json.data || [item.json];\n  for (const inv of (Array.isArray(data) ? data : [data])) {\n    const dueDate = new Date(inv.due_date);\n    dueDate.setHours(0, 0, 0, 0);\n    const daysOverdue = Math.floor((today - dueDate) / (1000 * 60 * 60 * 24));\n\n    let dunningType = null;\n    let createTask = false;\n    let assigneeRole = null;\n\n    if (daysOverdue >= 60) {\n      dunningType = 'SM Executive Escalation';\n      createTask = true;\n      assigneeRole = 'SM Exec';\n    } else if (daysOverdue >= 30) {\n      dunningType = 'SM Escalation';\n      createTask = true;\n      assigneeRole = 'SM Ops';\n    } else if (daysOverdue >= 14) {\n      dunningType = 'SM Second Notice';\n    } else if (daysOverdue >= 7) {\n      dunningType = 'SM Friendly Reminder';\n    }\n\n    if (dunningType) {\n      results.push({\n        json: {\n          invoice_name: inv.name,\n          customer: inv.customer,\n          customer_name: inv.customer_name,\n          outstanding_amount: inv.outstanding_amount,\n          due_date: inv.due_date,\n          currency: inv.currency,\n          days_overdue: daysOverdue,\n          dunning_type: dunningType,\n          create_task: createTask,\n          assignee_role: assigneeRole\n        }\n      });\n    }\n  }\n}\n\nreturn results;"
+      },
+      "id": "node-compute-level",
+      "name": "Compute Dunning Level",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [440, 0]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "=https://poc-dev.sparkmojo.com/api/resource/SM Site Registry",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "filters",
+              "value": "=[[\"customer\",\"=\",\"{{ $json.customer }}\"]]"
+            },
+            {
+              "name": "fields",
+              "value": "[\"billing_motion\"]"
+            },
+            {
+              "name": "limit_page_length",
+              "value": "1"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "node-check-billing-motion",
+      "name": "Check Billing Motion",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [660, 0],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "frappe-api-key",
+          "name": "Frappe API Key"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\nconst results = [];\n\nfor (const item of items) {\n  const siteData = item.json.data || [];\n  const billingMotion = (siteData.length > 0) ? siteData[0].billing_motion : null;\n\n  if (billingMotion === 'self_serve') {\n    continue;\n  }\n\n  const prev = $('Compute Dunning Level').item(item.index);\n  results.push({\n    json: {\n      ...prev.json,\n      billing_motion: billingMotion || 'managed'\n    }\n  });\n}\n\nreturn results;"
+      },
+      "id": "node-filter-self-serve",
+      "name": "Filter Self-Serve",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [880, 0]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "=https://poc-dev.sparkmojo.com/api/resource/Dunning",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "filters",
+              "value": "=[[\"dunning_type\",\"=\",\"{{ $json.dunning_type }}\"],[\"sales_invoice\",\"=\",\"{{ $json.invoice_name }}\"]]"
+            },
+            {
+              "name": "limit_page_length",
+              "value": "1"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "node-check-existing-dunning",
+      "name": "Check Existing Dunning",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1100, 0],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "frappe-api-key",
+          "name": "Frappe API Key"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\nconst results = [];\n\nfor (const item of items) {\n  const existingData = item.json.data || [];\n  if (existingData.length === 0) {\n    const prev = $('Filter Self-Serve').item(item.index);\n    results.push({ json: prev.json });\n  }\n}\n\nreturn results;"
+      },
+      "id": "node-filter-existing",
+      "name": "Filter Already Dunned",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1320, 0]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://poc-dev.sparkmojo.com/api/resource/Dunning",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "dunning_type",
+              "value": "={{ $json.dunning_type }}"
+            },
+            {
+              "name": "sales_invoice",
+              "value": "={{ $json.invoice_name }}"
+            },
+            {
+              "name": "customer",
+              "value": "={{ $json.customer }}"
+            },
+            {
+              "name": "outstanding_amount",
+              "value": "={{ $json.outstanding_amount }}"
+            },
+            {
+              "name": "currency",
+              "value": "={{ $json.currency }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "node-create-dunning",
+      "name": "Create Dunning",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1540, 0],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "frappe-api-key",
+          "name": "Frappe API Key"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $('Filter Already Dunned').item.json.create_task }}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "id": "node-check-task-needed",
+      "name": "Task Needed?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [1760, 0]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://poc-dev.app.sparkmojo.com/api/modules/tasks/create",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"title\": \"Dunning day {{ $('Filter Already Dunned').item.json.days_overdue }}: {{ $('Filter Already Dunned').item.json.customer_name }} \\u2014 invoice {{ $('Filter Already Dunned').item.json.invoice_name }}\",\n  \"description\": \"Manual outreach required. Invoice {{ $('Filter Already Dunned').item.json.invoice_name }} is {{ $('Filter Already Dunned').item.json.days_overdue }}+ days past due. Open invoice at https://poc-dev.sparkmojo.com/app/sales-invoice/{{ $('Filter Already Dunned').item.json.invoice_name }}.\",\n  \"assignee_role\": \"{{ $('Filter Already Dunned').item.json.assignee_role }}\",\n  \"source_mojo\": \"sm_account_billing\",\n  \"source_doc\": \"Sales Invoice\",\n  \"source_name\": \"{{ $('Filter Already Dunned').item.json.invoice_name }}\",\n  \"priority\": \"high\",\n  \"category\": \"dunning\"\n}",
+        "options": {}
+      },
+      "id": "node-create-task",
+      "name": "Create WorkboardMojo Task",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1980, -100],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "abstraction-layer-api-key",
+          "name": "Abstraction Layer API Key"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Daily 09:00 UTC": {
+      "main": [
+        [
+          {
+            "node": "Query Overdue Invoices",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Query Overdue Invoices": {
+      "main": [
+        [
+          {
+            "node": "Compute Dunning Level",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Compute Dunning Level": {
+      "main": [
+        [
+          {
+            "node": "Check Billing Motion",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Billing Motion": {
+      "main": [
+        [
+          {
+            "node": "Filter Self-Serve",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter Self-Serve": {
+      "main": [
+        [
+          {
+            "node": "Check Existing Dunning",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Existing Dunning": {
+      "main": [
+        [
+          {
+            "node": "Filter Already Dunned",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter Already Dunned": {
+      "main": [
+        [
+          {
+            "node": "Create Dunning",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Dunning": {
+      "main": [
+        [
+          {
+            "node": "Task Needed?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Task Needed?": {
+      "main": [
+        [
+          {
+            "node": "Create WorkboardMojo Task",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "meta": {
+    "instanceId": "spark-mojo-poc"
+  },
+  "tags": [
+    {
+      "name": "billing"
+    },
+    {
+      "name": "dunning"
+    },
+    {
+      "name": "automation"
+    }
+  ]
+}
