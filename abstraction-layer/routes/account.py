@@ -5,6 +5,7 @@ import os
 import httpx
 import stripe
 from fastapi import APIRouter, Depends, HTTPException
+from fastapi.responses import RedirectResponse
 
 from auth import get_current_user
 from secrets_loader import SecretNotFoundError, read_secret
@@ -442,3 +443,142 @@ async def list_invoices(
         "limit": limit,
         "offset": offset,
     }
+
+
+@router.get("/invoices/{invoice_name}")
+async def get_invoice_detail(
+    invoice_name: str,
+    user: dict = Depends(get_current_user),
+):
+    site_name = user.get("site_name", "")
+    if not site_name:
+        tenant_id = user.get("tenant_id", "")
+        if tenant_id and tenant_id != "default":
+            site_name = f"{tenant_id}.sparkmojo.com"
+
+    if not site_name:
+        raise HTTPException(status_code=400, detail="Cannot determine site for user")
+
+    client_frappe_url = f"https://{site_name}"
+
+    async with httpx.AsyncClient() as client:
+        resp = await client.get(
+            f"{client_frappe_url}/api/resource/SM Invoice/{invoice_name}",
+            headers=_admin_headers(),
+            timeout=10,
+        )
+        if resp.status_code != 200:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Invoice {invoice_name} not found",
+            )
+        doc = resp.json().get("data")
+        if not doc:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Invoice {invoice_name} not found",
+            )
+
+    invoice = {
+        "name": doc.get("name"),
+        "invoice_number": doc.get("invoice_number"),
+        "invoice_date": doc.get("invoice_date"),
+        "due_date": doc.get("due_date"),
+        "status": doc.get("status"),
+        "total": doc.get("total"),
+        "subtotal": doc.get("subtotal"),
+        "tax": doc.get("tax"),
+        "amount_paid": doc.get("amount_paid"),
+        "amount_remaining": doc.get("amount_remaining"),
+        "currency": doc.get("currency"),
+        "period_start": doc.get("period_start"),
+        "period_end": doc.get("period_end"),
+        "source_system": doc.get("source_system"),
+        "hosted_invoice_url": doc.get("hosted_invoice_url"),
+        "invoice_pdf_url": doc.get("invoice_pdf_url"),
+    }
+
+    line_fields = [
+        "action_id", "invoice_line_label", "description",
+        "quantity", "unit_amount", "amount",
+        "quoted_rack_rate", "discount_amount", "price_type",
+        "billing_type", "usage_quantity", "included_quantity",
+        "overage_quantity",
+    ]
+    lines = doc.get("lines", [])
+    mojo_groups = {}
+    for line in lines:
+        mojo_id = line.get("mojo_id") or "other"
+        line_obj = {f: line.get(f) for f in line_fields}
+        mojo_groups.setdefault(mojo_id, []).append(line_obj)
+
+    return {"invoice": invoice, "mojo_groups": mojo_groups}
+
+
+@router.get("/invoices/{invoice_name}/pdf")
+async def get_invoice_pdf(
+    invoice_name: str,
+    user: dict = Depends(get_current_user),
+):
+    site_name = user.get("site_name", "")
+    if not site_name:
+        tenant_id = user.get("tenant_id", "")
+        if tenant_id and tenant_id != "default":
+            site_name = f"{tenant_id}.sparkmojo.com"
+
+    if not site_name:
+        raise HTTPException(status_code=400, detail="Cannot determine site for user")
+
+    client_frappe_url = f"https://{site_name}"
+
+    async with httpx.AsyncClient() as client:
+        resp = await client.get(
+            f"{client_frappe_url}/api/resource/SM Invoice/{invoice_name}",
+            headers=_admin_headers(),
+            timeout=10,
+        )
+        if resp.status_code != 200:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Invoice {invoice_name} not found",
+            )
+        doc = resp.json().get("data")
+        if not doc:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Invoice {invoice_name} not found",
+            )
+
+    source_system = doc.get("source_system", "")
+
+    if source_system == "stripe":
+        pdf_url = (
+            doc.get("invoice_pdf_url")
+            or doc.get("hosted_invoice_url")
+        )
+        if not pdf_url:
+            raise HTTPException(
+                status_code=404,
+                detail="No PDF URL available for this Stripe invoice",
+            )
+        return RedirectResponse(url=pdf_url, status_code=302)
+
+    if source_system == "erpnext":
+        si_name = doc.get("erpnext_sales_invoice_name", "")
+        if not si_name:
+            raise HTTPException(
+                status_code=404,
+                detail="No ERPNext Sales Invoice linked",
+            )
+        erpnext_url = (
+            "https://admin.sparkmojo.com/api/method/"
+            "frappe.utils.print_format.download_pdf"
+            f"?doctype=Sales%20Invoice&name={si_name}"
+            "&format=SM%20Mojo-Grouped%20Invoice&no_letterhead=0"
+        )
+        return RedirectResponse(url=erpnext_url, status_code=302)
+
+    raise HTTPException(
+        status_code=500,
+        detail=f"Unknown source_system: {source_system}",
+    )
