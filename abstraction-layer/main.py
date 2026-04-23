@@ -29,9 +29,20 @@ from google_auth import router as google_auth_router
 from modules.tasks.routes import router as tasks_router
 
 
+import asyncio
 import logging
 
 logger = logging.getLogger("abstraction-layer")
+
+
+async def _ai_meter_flush_loop():
+    from services.ai_metering import meter
+    while True:
+        await asyncio.sleep(meter.FLUSH_INTERVAL)
+        try:
+            await meter.flush()
+        except Exception as e:
+            logger.error(f"AI meter flush failed: {e}")
 
 
 @asynccontextmanager
@@ -47,7 +58,15 @@ async def lifespan(app: FastAPI):
         logger.warning("SiteRegistry: no sites available at startup, continuing anyway")
     app.state.site_registry = site_registry
 
+    flush_task = asyncio.create_task(_ai_meter_flush_loop())
+
     yield
+
+    flush_task.cancel()
+    try:
+        await flush_task
+    except asyncio.CancelledError:
+        pass
 
 
 app = FastAPI(
