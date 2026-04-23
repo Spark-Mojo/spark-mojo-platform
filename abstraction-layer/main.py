@@ -23,6 +23,7 @@ from routes.provisioning_stripe import router as provisioning_stripe_router
 from routes.billing import router as billing_router, webhook_router as billing_webhook_router
 from routes.stripe_webhooks import router as stripe_webhooks_router
 from routes.account import router as account_router
+from routes.revenue import router as revenue_router
 from routes.clinical import router as clinical_router
 from google_auth import router as google_auth_router
 from modules.tasks.routes import router as tasks_router
@@ -89,6 +90,7 @@ app.include_router(billing_router, prefix="/api/modules/billing")
 app.include_router(billing_webhook_router, prefix="/api/webhooks/stedi")
 app.include_router(stripe_webhooks_router, prefix="/api/webhooks/stripe")
 app.include_router(account_router)
+app.include_router(revenue_router)
 app.include_router(clinical_router, prefix="/api/modules/clinical")
 app.include_router(google_auth_router)
 app.include_router(tasks_router)

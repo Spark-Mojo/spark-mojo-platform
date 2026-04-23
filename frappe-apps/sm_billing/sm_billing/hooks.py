@@ -34,4 +34,4 @@ home_page = ""
 
 # Fixtures
 # ----------
-fixtures = ["SM Payer"]
+fixtures = ["SM Payer", "Custom Field"]

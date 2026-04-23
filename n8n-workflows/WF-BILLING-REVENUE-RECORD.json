@@ -1,0 +1,93 @@
+{
+  "name": "WF-BILLING-REVENUE-RECORD",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "billing-revenue-record",
+        "responseMode": "lastNode"
+      },
+      "id": "trigger-node",
+      "name": "Webhook Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [250, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const body = $input.first().json.body;\nconst payload = JSON.parse(body.payload || '{}');\nreturn [{ json: { stripe_invoice_id: payload.id || body.stripe_invoice_id } }];"
+      },
+      "id": "parse-node",
+      "name": "Parse Invoice ID",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [470, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.poc.sparkmojo.com/api/admin/revenue/record-invoice",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-Admin-Key",
+              "value": "={{ $env.ADMIN_SERVICE_KEY }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "stripe_invoice_id",
+              "value": "={{ $json.stripe_invoice_id }}"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "http-node",
+      "name": "Record Invoice",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [690, 300]
+    }
+  ],
+  "connections": {
+    "Webhook Trigger": {
+      "main": [
+        [
+          {
+            "node": "Parse Invoice ID",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Invoice ID": {
+      "main": [
+        [
+          {
+            "node": "Record Invoice",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "meta": {
+    "description": "Triggered by SM Stripe Event Log insert (event_type=invoice.paid, status=processed). Calls /api/admin/revenue/record-invoice to create admin-site Sales Invoice + Payment Entry."
+  }
+}
