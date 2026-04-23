@@ -1,0 +1,22 @@
+[
+  {
+    "doctype": "Role",
+    "role_name": "SM Sales",
+    "desk_access": 1
+  },
+  {
+    "doctype": "Role",
+    "role_name": "SM Finance",
+    "desk_access": 1
+  },
+  {
+    "doctype": "Role",
+    "role_name": "SM Ops",
+    "desk_access": 1
+  },
+  {
+    "doctype": "Role",
+    "role_name": "SM Exec",
+    "desk_access": 1
+  }
+]

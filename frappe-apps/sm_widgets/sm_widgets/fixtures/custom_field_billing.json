@@ -221,5 +221,15 @@
     "label": "SM Professional Services",
     "options": "SM Professional Services Line",
     "insert_after": "sm_contract_term_end"
+  },
+  {
+    "doctype": "Custom Field",
+    "name": "Sales Invoice-workflow_state",
+    "dt": "Sales Invoice",
+    "fieldname": "workflow_state",
+    "fieldtype": "Data",
+    "label": "Workflow State",
+    "hidden": 1,
+    "allow_on_submit": 1
   }
 ]

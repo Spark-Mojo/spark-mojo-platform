@@ -1,0 +1,24 @@
+[
+  {
+    "doctype": "Workflow",
+    "workflow_name": "SM Managed Account Invoice Approval",
+    "document_type": "Sales Invoice",
+    "is_active": 1,
+    "workflow_state_field": "workflow_state",
+    "send_email_alert": 1,
+    "states": [
+      { "state": "Draft", "doc_status": 0, "allow_edit": "SM Sales", "update_field": null },
+      { "state": "Pending Approval", "doc_status": 0, "allow_edit": null, "update_field": null },
+      { "state": "Approved", "doc_status": 0, "allow_edit": null, "update_field": null },
+      { "state": "Rejected", "doc_status": 0, "allow_edit": "SM Sales", "update_field": null },
+      { "state": "Submitted", "doc_status": 1, "allow_edit": null, "update_field": null }
+    ],
+    "transitions": [
+      { "state": "Draft", "action": "Submit for Approval", "next_state": "Pending Approval", "allowed": "SM Sales" },
+      { "state": "Pending Approval", "action": "Approve", "next_state": "Approved", "allowed": "SM Finance" },
+      { "state": "Pending Approval", "action": "Reject", "next_state": "Rejected", "allowed": "SM Finance" },
+      { "state": "Rejected", "action": "Rework", "next_state": "Draft", "allowed": "SM Sales" },
+      { "state": "Approved", "action": "Submit Invoice", "next_state": "Submitted", "allowed": "SM Finance" }
+    ]
+  }
+]

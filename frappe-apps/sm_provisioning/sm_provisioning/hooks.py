@@ -9,5 +9,9 @@ fixtures = [
     {
         "doctype": "Custom Field",
         "filters": [["dt", "=", "SM Site Registry"]]
+    },
+    {
+        "doctype": "Role",
+        "filters": [["role_name", "like", "SM %"]]
     }
 ]

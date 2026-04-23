@@ -15,6 +15,14 @@ fixtures = [
     {
         "doctype": "Print Format",
         "filters": [["name", "=", "SM Mojo-Grouped Invoice"]]
+    },
+    {
+        "doctype": "Workflow",
+        "filters": [["name", "=", "SM Managed Account Invoice Approval"]]
+    },
+    {
+        "doctype": "Client Script",
+        "filters": [["name", "like", "SM%Invoice%"]]
     }
 ]
 

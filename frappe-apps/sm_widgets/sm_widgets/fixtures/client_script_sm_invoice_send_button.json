@@ -1,0 +1,10 @@
+[
+  {
+    "doctype": "Client Script",
+    "name": "SM Invoice Send Button Visibility",
+    "dt": "Sales Invoice",
+    "script_type": "Client",
+    "enabled": 1,
+    "script": "frappe.ui.form.on('Sales Invoice', {\n    refresh: function(frm) {\n        var state = frm.doc.workflow_state;\n        if (state !== 'Approved' && state !== 'Submitted') {\n            frm.page.hide_menu_item('Send');\n        }\n    }\n});"
+  }
+]
