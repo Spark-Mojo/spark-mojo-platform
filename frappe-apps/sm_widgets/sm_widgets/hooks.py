@@ -13,3 +13,9 @@ fixtures = [
         "filters": [["fieldname", "like", "sm_%"]]
     }
 ]
+
+doc_events = {
+    "Sales Invoice Item": {
+        "before_insert": "sm_widgets.sm_widgets.sales_invoice_item_hooks.populate_sm_fields",
+    },
+}
