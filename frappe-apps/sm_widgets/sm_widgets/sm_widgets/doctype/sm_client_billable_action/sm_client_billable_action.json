@@ -1,0 +1,148 @@
+{
+    "actions": [],
+    "autoname": "",
+    "creation": "2026-04-22 00:00:00.000000",
+    "doctype": "DocType",
+    "engine": "InnoDB",
+    "field_order": [
+        "mojo_id",
+        "action_id",
+        "item_code",
+        "customer",
+        "quoted_rack_rate",
+        "contracted_rate",
+        "discount_amount",
+        "unit_label",
+        "billing_type",
+        "included_units",
+        "billing_motion",
+        "effective_date",
+        "commission_eligible",
+        "pricing_rule",
+        "notes"
+    ],
+    "fields": [
+        {
+            "fieldname": "mojo_id",
+            "fieldtype": "Data",
+            "in_list_view": 1,
+            "label": "Mojo ID",
+            "reqd": 1
+        },
+        {
+            "fieldname": "action_id",
+            "fieldtype": "Data",
+            "in_list_view": 1,
+            "label": "Action ID",
+            "reqd": 1
+        },
+        {
+            "fieldname": "item_code",
+            "fieldtype": "Link",
+            "in_list_view": 1,
+            "label": "Item Code",
+            "options": "Item",
+            "reqd": 1
+        },
+        {
+            "fieldname": "customer",
+            "fieldtype": "Link",
+            "in_list_view": 1,
+            "label": "Customer",
+            "options": "Customer",
+            "reqd": 1
+        },
+        {
+            "fieldname": "quoted_rack_rate",
+            "fieldtype": "Currency",
+            "label": "Quoted Rack Rate"
+        },
+        {
+            "fieldname": "contracted_rate",
+            "fieldtype": "Currency",
+            "label": "Contracted Rate",
+            "reqd": 1
+        },
+        {
+            "fieldname": "discount_amount",
+            "fieldtype": "Currency",
+            "label": "Discount Amount",
+            "read_only": 1
+        },
+        {
+            "fieldname": "unit_label",
+            "fieldtype": "Data",
+            "label": "Unit Label"
+        },
+        {
+            "fieldname": "billing_type",
+            "fieldtype": "Select",
+            "label": "Billing Type",
+            "options": "flat_monthly\nalways_billed\nmetered_overage\nincluded\none_time_implementation\none_time_enhancement"
+        },
+        {
+            "fieldname": "included_units",
+            "fieldtype": "Int",
+            "default": "0",
+            "label": "Included Units"
+        },
+        {
+            "fieldname": "billing_motion",
+            "fieldtype": "Select",
+            "label": "Billing Motion",
+            "options": "self_serve\nmanaged_account",
+            "reqd": 1
+        },
+        {
+            "fieldname": "effective_date",
+            "fieldtype": "Date",
+            "label": "Effective Date",
+            "reqd": 1
+        },
+        {
+            "fieldname": "commission_eligible",
+            "fieldtype": "Check",
+            "label": "Commission Eligible"
+        },
+        {
+            "fieldname": "pricing_rule",
+            "fieldtype": "Link",
+            "label": "Pricing Rule",
+            "options": "Pricing Rule",
+            "read_only": 1
+        },
+        {
+            "fieldname": "notes",
+            "fieldtype": "Text",
+            "label": "Notes"
+        }
+    ],
+    "index_web_pages_for_search": 0,
+    "issingle": 0,
+    "istable": 0,
+    "links": [],
+    "modified": "2026-04-22 00:00:00.000000",
+    "modified_by": "Administrator",
+    "module": "SM Widgets",
+    "name": "SM Client Billable Action",
+    "naming_rule": "",
+    "owner": "Administrator",
+    "permissions": [
+        {
+            "create": 1,
+            "delete": 1,
+            "email": 1,
+            "export": 1,
+            "print": 1,
+            "read": 1,
+            "report": 1,
+            "role": "System Manager",
+            "share": 1,
+            "write": 1
+        }
+    ],
+    "sort_field": "creation",
+    "sort_order": "DESC",
+    "title_field": "customer",
+    "track_changes": 0
+}
