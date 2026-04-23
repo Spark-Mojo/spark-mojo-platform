@@ -11,6 +11,10 @@ fixtures = [
     {
         "doctype": "Custom Field",
         "filters": [["fieldname", "like", "sm_%"]]
+    },
+    {
+        "doctype": "Print Format",
+        "filters": [["name", "=", "SM Mojo-Grouped Invoice"]]
     }
 ]
 

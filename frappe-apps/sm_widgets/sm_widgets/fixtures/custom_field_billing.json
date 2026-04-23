@@ -86,6 +86,15 @@
   },
   {
     "doctype": "Custom Field",
+    "name": "Sales Invoice Item-sm_invoice_line_label",
+    "dt": "Sales Invoice Item",
+    "fieldname": "sm_invoice_line_label",
+    "fieldtype": "Data",
+    "label": "SM Invoice Line Label",
+    "insert_after": "sm_commission_eligible"
+  },
+  {
+    "doctype": "Custom Field",
     "name": "Subscription-sm_billing_motion",
     "dt": "Subscription",
     "fieldname": "sm_billing_motion",

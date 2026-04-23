@@ -10,6 +10,9 @@ def populate_sm_fields(doc, method):
     if not customer:
         return
 
+    item = frappe.get_doc("Item", doc.item_code)
+    doc.sm_invoice_line_label = item.sm_invoice_line_label
+
     scba = frappe.db.get_value(
         "SM Client Billable Action",
         {"customer": customer, "item_code": doc.item_code},
@@ -22,7 +25,6 @@ def populate_sm_fields(doc, method):
         doc.sm_discount_amount = scba.discount_amount or 0
         doc.sm_commission_eligible = scba.commission_eligible
     else:
-        item = frappe.get_doc("Item", doc.item_code)
         doc.sm_quoted_rack_rate = doc.rate
         doc.sm_discount_amount = 0
         doc.sm_commission_eligible = item.sm_commission_eligible
