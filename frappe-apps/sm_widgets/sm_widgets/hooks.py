@@ -35,6 +35,9 @@ fixtures = [
 ]
 
 doc_events = {
+    "Sales Invoice": {
+        "before_insert": "sm_widgets.sm_widgets.subscription_hooks.append_managed_account_lines",
+    },
     "Sales Invoice Item": {
         "before_insert": "sm_widgets.sm_widgets.sales_invoice_item_hooks.populate_sm_fields",
     },
