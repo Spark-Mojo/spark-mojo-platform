@@ -35,6 +35,9 @@ fixtures = [
 ]
 
 doc_events = {
+    "User": {
+        "after_save": "sm_widgets.sm_widgets.seat_metering.record_staff_seat_change",
+    },
     "Sales Invoice": {
         "before_insert": "sm_widgets.sm_widgets.subscription_hooks.append_managed_account_lines",
     },
