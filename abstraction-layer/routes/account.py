@@ -127,3 +127,147 @@ async def create_portal_session(user: dict = Depends(get_current_user)):
         )
 
     return {"url": session.url}
+
+
+def _get_included_units(billable_actions: list) -> dict:
+    mapping = {
+        "ai_tokens": 0,
+        "claims": 0,
+        "storage_gb": 0,
+        "staff_seats": 0,
+        "portal_seats": 0,
+    }
+    suffix_to_key = {
+        "ai_tokens": "ai_tokens",
+        "claims_processed": "claims",
+        "storage_gb": "storage_gb",
+        "staff_seats": "staff_seats",
+        "portal_seats": "portal_seats",
+    }
+    for action in billable_actions:
+        action_id = action.get("action_id", "")
+        included = action.get("included_units", 0)
+        for suffix, key in suffix_to_key.items():
+            if action_id.endswith(f".{suffix}"):
+                mapping[key] = int(included or 0)
+                break
+    return mapping
+
+
+@router.get("/subscription")
+async def get_subscription(user: dict = Depends(get_current_user)):
+    allowed_roles = {"System Manager", "Practice Admin"}
+    user_roles = set(user.get("roles", []))
+    if not allowed_roles & user_roles:
+        raise HTTPException(
+            status_code=403,
+            detail="Requires System Manager or Practice Admin role",
+        )
+
+    if not ADMIN_FRAPPE_URL:
+        raise HTTPException(status_code=500, detail="Admin site not configured")
+
+    site_name = user.get("site_name", "")
+    if not site_name:
+        tenant_id = user.get("tenant_id", "")
+        if tenant_id and tenant_id != "default":
+            site_name = f"{tenant_id}.sparkmojo.com"
+
+    if not site_name:
+        raise HTTPException(status_code=400, detail="Cannot determine site for user")
+
+    async with httpx.AsyncClient() as client:
+        registry_resp = await client.get(
+            f"{ADMIN_FRAPPE_URL}/api/resource/SM Site Registry",
+            params={
+                "filters": json.dumps([["frappe_site", "=", site_name]]),
+                "fields": json.dumps([
+                    "name", "frappe_site", "billing_motion",
+                    "stripe_customer_id",
+                ]),
+                "limit_page_length": 1,
+            },
+            headers=_admin_headers(),
+            timeout=10,
+        )
+        if registry_resp.status_code != 200:
+            raise HTTPException(
+                status_code=404,
+                detail=f"No SM Site Registry entry for {site_name}",
+            )
+        registry_data = registry_resp.json().get("data", [])
+        if not registry_data:
+            raise HTTPException(
+                status_code=404,
+                detail=f"No SM Site Registry entry for {site_name}",
+            )
+
+    registry = registry_data[0]
+    client_frappe_url = f"https://{site_name}"
+
+    async with httpx.AsyncClient() as client:
+        sub_resp = await client.get(
+            f"{client_frappe_url}/api/resource/SM Subscription",
+            params={
+                "fields": json.dumps([
+                    "billing_motion", "plan_name", "billing_status",
+                    "billing_interval", "invoice_cadence",
+                    "current_period_start", "current_period_end", "trial_end",
+                    "payment_method_type", "payment_method_last4",
+                    "payment_method_brand", "payment_method_expiry",
+                    "next_invoice_date", "next_invoice_estimate",
+                    "cancel_at_period_end",
+                ]),
+                "limit_page_length": 1,
+            },
+            headers=_admin_headers(),
+            timeout=10,
+        )
+        if sub_resp.status_code != 200:
+            raise HTTPException(
+                status_code=404,
+                detail="No SM Subscription on this site",
+            )
+        sub_data = sub_resp.json().get("data", [])
+        if not sub_data:
+            raise HTTPException(
+                status_code=404,
+                detail="No SM Subscription on this site",
+            )
+
+    sub = sub_data[0]
+
+    async with httpx.AsyncClient() as client:
+        actions_resp = await client.get(
+            f"{client_frappe_url}/api/resource/SM Client Billable Action",
+            params={
+                "fields": json.dumps(["action_id", "included_units"]),
+                "limit_page_length": 0,
+            },
+            headers=_admin_headers(),
+            timeout=10,
+        )
+        billable_actions = []
+        if actions_resp.status_code == 200:
+            billable_actions = actions_resp.json().get("data", [])
+
+    return {
+        "motion": sub.get("billing_motion") or registry.get("billing_motion"),
+        "plan_name": sub.get("plan_name"),
+        "billing_status": sub.get("billing_status"),
+        "billing_interval": sub.get("billing_interval"),
+        "invoice_cadence": sub.get("invoice_cadence"),
+        "current_period_start": sub.get("current_period_start"),
+        "current_period_end": sub.get("current_period_end"),
+        "trial_end": sub.get("trial_end"),
+        "payment_method": {
+            "type": sub.get("payment_method_type"),
+            "last4": sub.get("payment_method_last4"),
+            "brand": sub.get("payment_method_brand"),
+            "expiry": sub.get("payment_method_expiry"),
+        },
+        "next_invoice_date": sub.get("next_invoice_date"),
+        "next_invoice_estimate": sub.get("next_invoice_estimate"),
+        "cancel_at_period_end": bool(sub.get("cancel_at_period_end")),
+        "included": _get_included_units(billable_actions),
+    }
