@@ -377,3 +377,68 @@ async def get_usage(user: dict = Depends(get_current_user)):
         "alert_level": usage.get("alert_level", "green"),
         "last_updated": usage.get("last_updated"),
     }
+
+
+@router.get("/invoices")
+async def list_invoices(
+    user: dict = Depends(get_current_user),
+    limit: int = 20,
+    offset: int = 0,
+    status: str | None = None,
+):
+    site_name = user.get("site_name", "")
+    if not site_name:
+        tenant_id = user.get("tenant_id", "")
+        if tenant_id and tenant_id != "default":
+            site_name = f"{tenant_id}.sparkmojo.com"
+
+    if not site_name:
+        raise HTTPException(status_code=400, detail="Cannot determine site for user")
+
+    client_frappe_url = f"https://{site_name}"
+    filters = {}
+    if status:
+        filters["status"] = status
+
+    invoice_fields = [
+        "name", "invoice_number", "invoice_date", "due_date", "status",
+        "total", "amount_paid", "amount_remaining", "currency",
+        "period_start", "period_end", "source_system",
+    ]
+
+    async with httpx.AsyncClient() as client:
+        inv_resp = await client.get(
+            f"{client_frappe_url}/api/resource/SM Invoice",
+            params={
+                "fields": json.dumps(invoice_fields),
+                "filters": json.dumps(filters),
+                "order_by": "invoice_date desc",
+                "limit_page_length": limit,
+                "limit_start": offset,
+            },
+            headers=_admin_headers(),
+            timeout=10,
+        )
+        invoices = []
+        if inv_resp.status_code == 200:
+            invoices = inv_resp.json().get("data", [])
+
+        count_resp = await client.get(
+            f"{client_frappe_url}/api/method/frappe.client.get_count",
+            params={
+                "doctype": "SM Invoice",
+                "filters": json.dumps(filters),
+            },
+            headers=_admin_headers(),
+            timeout=10,
+        )
+        total = 0
+        if count_resp.status_code == 200:
+            total = int(count_resp.json().get("message", 0))
+
+    return {
+        "invoices": invoices,
+        "total": total,
+        "limit": limit,
+        "offset": offset,
+    }
