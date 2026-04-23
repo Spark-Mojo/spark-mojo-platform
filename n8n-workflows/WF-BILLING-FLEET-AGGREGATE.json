@@ -1,0 +1,519 @@
+{
+  "name": "WF-BILLING-FLEET-AGGREGATE",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 * * * *"
+            }
+          ]
+        }
+      },
+      "id": "cron-trigger",
+      "name": "Hourly Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.1,
+      "position": [250, 300]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "https://admin.sparkmojo.com/api/resource/SM Site Registry",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "filters",
+              "value": "[[\"status\",\"=\",\"active\"]]"
+            },
+            {
+              "name": "fields",
+              "value": "[\"name\",\"site_name\",\"billing_motion\",\"stripe_customer_id\",\"stripe_subscription_id\",\"erpnext_customer_name\",\"erpnext_subscription_name\"]"
+            },
+            {
+              "name": "limit_page_length",
+              "value": "0"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "token {{ $env.FRAPPE_ADMIN_API_KEY }}:{{ $env.FRAPPE_ADMIN_API_SECRET }}"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "get-active-sites",
+      "name": "Get Active Sites",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [470, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const response = $input.first().json;\nconst sites = response.data || [];\nreturn sites.map(site => ({ json: site }));"
+      },
+      "id": "split-sites",
+      "name": "Split Sites",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [690, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "condition-billing-motion",
+              "leftValue": "={{ $json.billing_motion }}",
+              "rightValue": "self_serve",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      },
+      "id": "route-by-motion",
+      "name": "Route by Motion",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [910, 300]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "=https://api.stripe.com/v1/subscriptions/{{ $json.stripe_subscription_id }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer {{ $env.STRIPE_SECRET_KEY }}"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 15000
+        }
+      },
+      "id": "stripe-get-subscription",
+      "name": "Get Stripe Subscription",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [1130, 160],
+      "onError": "continueRegularOutput",
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "https://api.stripe.com/v1/invoices",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "customer",
+              "value": "={{ $('Route by Motion').item.json.stripe_customer_id }}"
+            },
+            {
+              "name": "limit",
+              "value": "100"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer {{ $env.STRIPE_SECRET_KEY }}"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 15000
+        }
+      },
+      "id": "stripe-get-invoices",
+      "name": "Get Stripe Invoices",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [1350, 160],
+      "onError": "continueRegularOutput",
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "jsCode": "const site = $('Route by Motion').item.json;\nconst sub = $('Get Stripe Subscription').first().json;\nconst invoicesResp = $input.first().json;\n\nlet plan_name = '';\nlet plan_rate = 0;\nif (sub && sub.items && sub.items.data && sub.items.data.length > 0) {\n  const item = sub.items.data[0];\n  plan_name = (item.price && item.price.nickname) || (item.plan && item.plan.nickname) || '';\n  plan_rate = item.price ? (item.price.unit_amount || 0) / 100 : 0;\n}\n\nconst now = Date.now();\nconst thirtyDaysAgo = Math.floor((now - 30 * 24 * 60 * 60 * 1000) / 1000);\n\nlet monthly_revenue = 0;\nlet lifetime_revenue = 0;\nlet days_past_due = 0;\nlet billing_health = 'healthy';\n\nconst invoices = (invoicesResp && invoicesResp.data) || [];\n\nfor (const inv of invoices) {\n  if (inv.status === 'paid') {\n    lifetime_revenue += (inv.amount_paid || 0) / 100;\n    if (inv.created >= thirtyDaysAgo) {\n      monthly_revenue += (inv.amount_paid || 0) / 100;\n    }\n  }\n  if (inv.status === 'open' && inv.due_date) {\n    const dueDateSec = inv.due_date;\n    const nowSec = Math.floor(now / 1000);\n    if (dueDateSec < nowSec) {\n      const overdueDays = Math.floor((nowSec - dueDateSec) / 86400);\n      if (overdueDays > days_past_due) {\n        days_past_due = overdueDays;\n      }\n      billing_health = 'past_due';\n    }\n  }\n}\n\nif (monthly_revenue === 0 && plan_rate > 0) {\n  monthly_revenue = plan_rate;\n}\n\nconst annual_revenue = monthly_revenue * 12;\n\nreturn [{\n  json: {\n    site_registry: site.name,\n    billing_motion: site.billing_motion || 'self_serve',\n    stripe_customer_id: site.stripe_customer_id || '',\n    stripe_subscription_id: site.stripe_subscription_id || '',\n    erpnext_customer_name: site.erpnext_customer_name || '',\n    erpnext_subscription_name: site.erpnext_subscription_name || '',\n    plan_name: plan_name,\n    monthly_revenue: monthly_revenue,\n    annual_revenue: annual_revenue,\n    lifetime_revenue: lifetime_revenue,\n    billing_health: billing_health,\n    days_past_due: days_past_due,\n    churn_risk_score: 0,\n    last_usage_review: null,\n    upsell_candidate: 0,\n    notes: null\n  }\n}];"
+      },
+      "id": "self-serve-compute",
+      "name": "Self-Serve Compute",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1570, 160]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "https://admin.sparkmojo.com/api/resource/Sales Invoice",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "filters",
+              "value": "={{ JSON.stringify([['customer','=', $json.erpnext_customer_name],['docstatus','=',1]]) }}"
+            },
+            {
+              "name": "fields",
+              "value": "[\"name\",\"grand_total\",\"outstanding_amount\",\"due_date\",\"posting_date\"]"
+            },
+            {
+              "name": "limit_page_length",
+              "value": "0"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "token {{ $env.FRAPPE_ADMIN_API_KEY }}:{{ $env.FRAPPE_ADMIN_API_SECRET }}"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "erpnext-get-invoices",
+      "name": "Get ERPNext Invoices",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [1130, 460],
+      "onError": "continueRegularOutput",
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "jsCode": "const site = $('Route by Motion').item.json;\nconst invoicesResp = $input.first().json;\n\nconst now = new Date();\nconst thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);\nconst thirtyDaysAgoStr = thirtyDaysAgo.toISOString().slice(0, 10);\n\nlet monthly_revenue = 0;\nlet lifetime_revenue = 0;\nlet days_past_due = 0;\nlet billing_health = 'healthy';\n\nconst invoices = (invoicesResp && invoicesResp.data) || [];\n\nfor (const inv of invoices) {\n  lifetime_revenue += (inv.grand_total || 0);\n\n  if (inv.posting_date >= thirtyDaysAgoStr) {\n    monthly_revenue += (inv.grand_total || 0);\n  }\n\n  if (inv.outstanding_amount > 0 && inv.due_date) {\n    const dueDate = new Date(inv.due_date);\n    if (dueDate < now) {\n      const overdueDays = Math.floor((now - dueDate) / (1000 * 60 * 60 * 24));\n      if (overdueDays > days_past_due) {\n        days_past_due = overdueDays;\n      }\n      billing_health = 'past_due';\n    }\n  }\n}\n\nconst annual_revenue = monthly_revenue * 12;\n\nreturn [{\n  json: {\n    site_registry: site.name,\n    billing_motion: site.billing_motion || 'managed_account',\n    stripe_customer_id: site.stripe_customer_id || '',\n    stripe_subscription_id: site.stripe_subscription_id || '',\n    erpnext_customer_name: site.erpnext_customer_name || '',\n    erpnext_subscription_name: site.erpnext_subscription_name || '',\n    plan_name: '',\n    monthly_revenue: monthly_revenue,\n    annual_revenue: annual_revenue,\n    lifetime_revenue: lifetime_revenue,\n    billing_health: billing_health,\n    days_past_due: days_past_due,\n    churn_risk_score: 0,\n    last_usage_review: null,\n    upsell_candidate: 0,\n    notes: null\n  }\n}];"
+      },
+      "id": "managed-compute",
+      "name": "Managed Compute",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1350, 460]
+    },
+    {
+      "parameters": {
+        "mode": "append",
+        "options": {}
+      },
+      "id": "merge-paths",
+      "name": "Merge Paths",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3,
+      "position": [1790, 300]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "https://admin.sparkmojo.com/api/resource/SM Platform Billing",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "filters",
+              "value": "={{ JSON.stringify([['site_registry','=', $json.site_registry]]) }}"
+            },
+            {
+              "name": "fields",
+              "value": "[\"name\"]"
+            },
+            {
+              "name": "limit_page_length",
+              "value": "1"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "token {{ $env.FRAPPE_ADMIN_API_KEY }}:{{ $env.FRAPPE_ADMIN_API_SECRET }}"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 15000
+        }
+      },
+      "id": "check-existing-billing",
+      "name": "Check Existing Billing",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [2010, 300],
+      "onError": "continueRegularOutput",
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "jsCode": "const billing = $('Merge Paths').item.json;\nconst existingResp = $input.first().json;\nconst existing = (existingResp && existingResp.data && existingResp.data.length > 0) ? existingResp.data[0] : null;\n\nconst payload = {\n  site_registry: billing.site_registry,\n  billing_motion: billing.billing_motion,\n  stripe_customer_id: billing.stripe_customer_id,\n  stripe_subscription_id: billing.stripe_subscription_id,\n  erpnext_customer_name: billing.erpnext_customer_name,\n  erpnext_subscription_name: billing.erpnext_subscription_name,\n  plan_name: billing.plan_name,\n  monthly_revenue: billing.monthly_revenue,\n  annual_revenue: billing.annual_revenue,\n  lifetime_revenue: billing.lifetime_revenue,\n  billing_health: billing.billing_health,\n  days_past_due: billing.days_past_due,\n  churn_risk_score: billing.churn_risk_score,\n  last_usage_review: billing.last_usage_review,\n  upsell_candidate: billing.upsell_candidate,\n  notes: billing.notes\n};\n\nreturn [{\n  json: {\n    method: existing ? 'PUT' : 'POST',\n    url: existing\n      ? `https://admin.sparkmojo.com/api/resource/SM Platform Billing/${existing.name}`\n      : 'https://admin.sparkmojo.com/api/resource/SM Platform Billing',\n    payload: payload,\n    site_registry: billing.site_registry\n  }\n}];"
+      },
+      "id": "build-upsert",
+      "name": "Build Upsert Request",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2230, 300]
+    },
+    {
+      "parameters": {
+        "method": "={{ $json.method }}",
+        "url": "={{ $json.url }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "token {{ $env.FRAPPE_ADMIN_API_KEY }}:{{ $env.FRAPPE_ADMIN_API_SECRET }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.payload) }}",
+        "options": {
+          "timeout": 15000
+        }
+      },
+      "id": "upsert-platform-billing",
+      "name": "Upsert SM Platform Billing",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [2450, 300],
+      "onError": "continueRegularOutput",
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\nlet processed = 0;\nlet created = 0;\nlet updated = 0;\nlet errors = [];\n\nfor (const item of items) {\n  const d = item.json;\n  processed++;\n  if (d.error) {\n    errors.push(`${d.site_registry || 'unknown'}: ${d.error}`);\n  } else {\n    const buildItem = $('Build Upsert Request').item;\n    if (buildItem && buildItem.json && buildItem.json.method === 'POST') {\n      created++;\n    } else {\n      updated++;\n    }\n  }\n}\n\nreturn [{\n  json: {\n    summary: {\n      rows_processed: processed,\n      created: created,\n      updated: updated,\n      error_count: errors.length,\n      errors: errors\n    }\n  }\n}];"
+      },
+      "id": "aggregate-summary",
+      "name": "Aggregate Summary",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2670, 300]
+    },
+    {
+      "parameters": {},
+      "id": "done-node",
+      "name": "Done",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [2890, 300]
+    },
+    {
+      "parameters": {
+        "content": "### WF-BILLING-FLEET-AGGREGATE\n\nHourly fleet aggregation for SM Platform Billing.\nPopulates one record per active SM Site Registry entry.\n\nSelf-Serve path: Stripe Subscription + Invoices.\nManaged Account path: ERPNext Sales Invoices.\n\nchurn_risk_score is stubbed at 0 (future AI phase).\nlast_usage_review, upsell_candidate, notes: not set by this workflow."
+      },
+      "id": "sticky-notes",
+      "name": "Sticky Note",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [250, 480],
+      "notesInFlow": false
+    }
+  ],
+  "connections": {
+    "Hourly Trigger": {
+      "main": [
+        [
+          {
+            "node": "Get Active Sites",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Active Sites": {
+      "main": [
+        [
+          {
+            "node": "Split Sites",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split Sites": {
+      "main": [
+        [
+          {
+            "node": "Route by Motion",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Route by Motion": {
+      "main": [
+        [
+          {
+            "node": "Get Stripe Subscription",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Get ERPNext Invoices",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Stripe Subscription": {
+      "main": [
+        [
+          {
+            "node": "Get Stripe Invoices",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Stripe Invoices": {
+      "main": [
+        [
+          {
+            "node": "Self-Serve Compute",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Self-Serve Compute": {
+      "main": [
+        [
+          {
+            "node": "Merge Paths",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get ERPNext Invoices": {
+      "main": [
+        [
+          {
+            "node": "Managed Compute",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Managed Compute": {
+      "main": [
+        [
+          {
+            "node": "Merge Paths",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Merge Paths": {
+      "main": [
+        [
+          {
+            "node": "Check Existing Billing",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Existing Billing": {
+      "main": [
+        [
+          {
+            "node": "Build Upsert Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Upsert Request": {
+      "main": [
+        [
+          {
+            "node": "Upsert SM Platform Billing",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Upsert SM Platform Billing": {
+      "main": [
+        [
+          {
+            "node": "Aggregate Summary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Aggregate Summary": {
+      "main": [
+        [
+          {
+            "node": "Done",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "meta": {
+    "description": "Hourly fleet aggregation for SM Platform Billing. Populates one record per active SM Site Registry entry from Stripe (Self-Serve) and ERPNext (Managed Account) signals. Triggered at :00 every hour."
+  },
+  "active": true
+}
