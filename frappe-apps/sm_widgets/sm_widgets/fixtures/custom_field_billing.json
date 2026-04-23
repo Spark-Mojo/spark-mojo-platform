@@ -231,5 +231,15 @@
     "label": "Workflow State",
     "hidden": 1,
     "allow_on_submit": 1
+  },
+  {
+    "doctype": "Custom Field",
+    "name": "Contact-sm_is_portal_seat",
+    "dt": "Contact",
+    "fieldname": "sm_is_portal_seat",
+    "fieldtype": "Check",
+    "label": "SM Is Portal Seat",
+    "default": "0",
+    "insert_after": "email_id"
   }
 ]
