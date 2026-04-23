@@ -1,11 +1,13 @@
 import json
 import logging
 import os
+from typing import List
 
 import httpx
 import stripe
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import RedirectResponse
+from pydantic import BaseModel, EmailStr, Field
 
 from auth import get_current_user
 from secrets_loader import SecretNotFoundError, read_secret
@@ -272,6 +274,95 @@ async def get_subscription(user: dict = Depends(get_current_user)):
         "cancel_at_period_end": bool(sub.get("cancel_at_period_end")),
         "included": _get_included_units(billable_actions),
     }
+
+
+class SettingsUpdate(BaseModel):
+    usage_alert_threshold_1: int | None = Field(None, ge=1, le=100)
+    usage_alert_threshold_2: int | None = Field(None, ge=1, le=100)
+    invoice_email_recipients: List[EmailStr] | None = None
+
+
+@router.put("/subscription/settings")
+async def update_settings(
+    payload: SettingsUpdate,
+    user: dict = Depends(get_current_user),
+):
+    if "System Manager" not in user.get("roles", []):
+        raise HTTPException(
+            status_code=403, detail="Requires System Manager role"
+        )
+
+    site_name = user.get("site_name", "")
+    if not site_name:
+        tenant_id = user.get("tenant_id", "")
+        if tenant_id and tenant_id != "default":
+            site_name = f"{tenant_id}.sparkmojo.com"
+
+    if not site_name:
+        raise HTTPException(
+            status_code=400, detail="Cannot determine site for user"
+        )
+
+    client_frappe_url = f"https://{site_name}"
+
+    async with httpx.AsyncClient() as client:
+        sub_resp = await client.get(
+            f"{client_frappe_url}/api/resource/SM Subscription",
+            params={
+                "fields": json.dumps(["name"]),
+                "limit_page_length": 1,
+            },
+            headers=_admin_headers(),
+            timeout=10,
+        )
+        if sub_resp.status_code != 200:
+            raise HTTPException(
+                status_code=404,
+                detail="No SM Subscription on this site",
+            )
+        sub_data = sub_resp.json().get("data", [])
+        if not sub_data:
+            raise HTTPException(
+                status_code=404,
+                detail="No SM Subscription on this site",
+            )
+
+    sub_name = sub_data[0].get("name")
+
+    if (
+        payload.usage_alert_threshold_1 is not None
+        and payload.usage_alert_threshold_2 is not None
+        and payload.usage_alert_threshold_2 < payload.usage_alert_threshold_1
+    ):
+        raise HTTPException(
+            status_code=422,
+            detail="threshold_2 must be >= threshold_1",
+        )
+
+    updates = {}
+    if payload.usage_alert_threshold_1 is not None:
+        updates["usage_alert_threshold_1"] = payload.usage_alert_threshold_1
+    if payload.usage_alert_threshold_2 is not None:
+        updates["usage_alert_threshold_2"] = payload.usage_alert_threshold_2
+    if payload.invoice_email_recipients is not None:
+        updates["invoice_email_recipients"] = ",".join(
+            payload.invoice_email_recipients
+        )
+
+    if not updates:
+        raise HTTPException(
+            status_code=422, detail="No valid fields to update"
+        )
+
+    async with httpx.AsyncClient() as client:
+        await client.put(
+            f"{client_frappe_url}/api/resource/SM Subscription/{sub_name}",
+            json=updates,
+            headers=_admin_headers(),
+            timeout=10,
+        )
+
+    return {"status": "ok", "updated": list(updates.keys())}
 
 
 @router.get("/usage")
