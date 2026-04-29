@@ -173,6 +173,8 @@ spark-mojo-platform/
 └── scripts/
     ├── smoke_test.sh                # 16-check smoke test across all 4 sites
     └── docker-cleanup.sh            # Weekly Docker disk maintenance (cron: Sunday 3am)
+└── n8n/
+    └── workflows/               # n8n workflow JSON files — ALL workflow exports go here, no exceptions
 ```
 
 ---
@@ -335,6 +337,8 @@ Consider adding `git checkout main` as the first line of deploy.sh.
   - `poc-dev.app.sparkmojo.com` — Abstraction layer module routes only. Use for: `GET/POST /api/modules/billing/...`, `GET /api/modules/provisioning/...`
   - `api.poc.sparkmojo.com` — Webhook routes only. Use for: `POST /api/webhooks/stedi/835`, `POST /api/webhooks/...`
   Always use the correct host in test commands and story verification steps. Using `poc-dev.sparkmojo.com` for API module calls is a silent failure — you get a Frappe error instead of a 401/422 from the app.
+
+**n8n workflow exports belong in n8n/workflows/ only** — do not create n8n-workflows/ or any other top-level n8n directory. All workflow JSON files live at n8n/workflows/<WF-NAME>.json.
 
 ### SM Account Billing — Canonical Route Paths
 
