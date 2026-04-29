@@ -336,6 +336,15 @@ Consider adding `git checkout main` as the first line of deploy.sh.
   - `api.poc.sparkmojo.com` — Webhook routes only. Use for: `POST /api/webhooks/stedi/835`, `POST /api/webhooks/...`
   Always use the correct host in test commands and story verification steps. Using `poc-dev.sparkmojo.com` for API module calls is a silent failure — you get a Frappe error instead of a 401/422 from the app.
 
+### SM Account Billing — Canonical Route Paths
+
+Routes for SM Account Billing are split across three routers.
+Do not assume all account routes live under /api/modules/account/:
+- Client-facing account routes: /api/modules/account/*
+- Platform billing + dunning (admin): /api/modules/platform-billing/*
+- Stripe webhook receiver: /api/webhooks/stripe/billing
+- Revenue recording (admin): /api/admin/revenue/record-invoice
+
 ---
 
 ## Ralph Orchestrator Rules
